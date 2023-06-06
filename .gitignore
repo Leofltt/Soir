@@ -1,0 +1,7 @@
+.DS_Store
+.vscode/
+build/
+*.3dsx
+*.elf
+*.lst
+*.smdh

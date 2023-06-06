@@ -1,0 +1,180 @@
+#ifndef ENVELOPE_H
+#define ENVELOPE_H
+
+#include "audio_utils.h"
+
+typedef enum {
+    ENV_ON = 1,
+    ENV_OFF = 0
+} EnvGate;
+
+typedef struct {
+    EnvGate gate;
+    int env_pos;
+    float* env_buffer;
+    float sr;
+    
+    // Env params 
+    int atk;
+    int dec;
+    int sus_time;
+    float sus_level; 
+    int rel;
+    int dur; 
+} Envelope;
+
+void triggerEnvelope(Envelope* env) {
+    env->env_pos = 0;
+    env->gate = ENV_ON;
+};
+
+void renderEnvBuffer(Envelope* env, bool atk_has_changed, bool dec_has_canged, 
+                       bool sus_has_changed, bool rel_has_changed) {
+    int x = 0;
+    float y = 0.;
+    
+    float inc = 1. / env->atk;;
+    if (atk_has_changed) {
+        for (int i = 0; i < env->atk; i++) {
+            env->env_buffer[i] = y;
+            y += inc;
+        }
+    }
+    
+    inc = env->sus_level - 1. / env->dec;
+    x += env->atk;
+    if (dec_has_canged) {
+        for (int i = 0; i < env->dec; i++) {
+            env->env_buffer[i+x] = y;
+            y += inc;
+        }
+    }
+    
+    x += env->dec;
+    if (sus_has_changed) {
+        for (int i = 0; i < env->sus_time; i++) {
+            env->env_buffer[i+x] = env->sus_level;
+        }
+    }
+    
+    inc = 0. - env->sus_level / env->rel;
+    x += env->sus_time;
+    if (rel_has_changed) {
+        for (int i = 0; i < env->rel; i++) {
+            env->env_buffer[i+x] = y;
+            y += inc;
+        }
+    }
+};
+
+bool updateAttack(Envelope* env, int attack) {
+    int new_atk = attack * env->sr * 0.001; 
+    bool updated = false;
+    if (env->atk != new_atk) {
+        env->atk = new_atk;
+        updated = true;
+    }
+    return updated;
+};
+
+bool updateDecay(Envelope* env, int decay) {
+    int new_decay = decay * env->sr * 0.001;
+    bool updated = false;
+    if (env->dec != new_decay) {
+        env->dec = new_decay;
+        updated = true;
+    }
+    return updated;
+};
+
+bool updateSustain(Envelope* env, float sustain) {
+    int sustain_time = env->dur - (env->atk + env->dec + env->rel);
+    bool updated = false;
+    if (env->sus_level != sustain) {
+        env->sus_level = sustain;
+        updated = true;
+    }
+    if (env->sus_time != sustain_time) {
+        env->sus_time = sustain_time > 0 ? sustain_time : 0;
+        updated = true;
+    }
+    return updated;
+};
+
+bool updateDuration(Envelope* env, int dur_ms) {
+    int new_dur = dur_ms * env->sr * 0.001;
+    bool updated = false;
+    if (env->dur != new_dur) {
+        env->dur = new_dur;
+        if (env->env_buffer) linearFree(env->env_buffer);
+        env->env_buffer = (float*) linearAlloc(new_dur);
+        updated = true;
+    }
+    return updated;
+};
+
+bool updateRelease(Envelope* env, int release) {
+    int new_rel = release * env->sr * 0.001;
+    bool updated = false;
+    if (env->rel != new_rel) { 
+        env->rel = new_rel;
+        updated = true; 
+    }
+    return updated;
+};
+
+void updateEnvelope(Envelope* env, int attack, int decay, float sustain, int release, int dur_ms) {
+    bool update_atk = updateAttack(env, attack);
+    bool update_dec = updateDecay(env, decay);
+    bool update_rel = updateRelease(env, release);
+    bool update_dur = updateDuration(env, dur_ms);
+    bool update_sus = updateSustain(env, sustain);
+    renderEnvBuffer(env, update_atk, update_dec, (update_dur || update_sus), update_rel);
+};
+
+void fillEnvelopeAudiobuffer(void* audioBuffer, size_t size, Envelope* env) {
+	u32* dest = (u32*) audioBuffer;
+
+	for (int i = 0; i < size; i++) {	
+        u32 sample = dest[i];
+        s16 sampleLeft = (s16)(sample >> 16);  // Extract the left channel sample
+        s16 sampleRight = (s16)(sample & 0xffff);  // Extract the right channel sample
+        float sLeftf = int16_to_float(sampleLeft);
+        float sRightf = int16_to_float(sampleRight);
+        float env_value;
+
+        switch(env->gate) {
+            case ENV_OFF: {
+                env_value = 0.;
+                break;
+            }
+            case ENV_ON: {
+                env_value = env->env_buffer[env->env_pos];
+                env->env_pos++;
+                break;
+            }
+            default: {
+                env->gate = ENV_OFF;
+                env_value = 0.;
+                env->env_pos = 0.;
+                break;
+            }
+        }
+        env->env_pos++;
+        int next_pos = env->env_pos;
+        
+        if (next_pos >= env->dur) {
+            env->gate = ENV_OFF;
+        }
+
+        sLeftf *= env_value; 
+        sRightf *= env_value;
+        sampleLeft = float_to_int16(sLeftf);
+        sampleRight = float_to_int16(sRightf);
+        dest[i] = (sampleLeft << 16) | (sampleRight & 0xffff);
+	}
+
+	DSP_FlushDataCache(audioBuffer, size);
+}
+
+#endif // ENVELOPE_H
