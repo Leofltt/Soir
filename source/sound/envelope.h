@@ -28,43 +28,35 @@ void triggerEnvelope(Envelope* env) {
     env->gate = ENV_ON;
 };
 
-void renderEnvBuffer(Envelope* env, bool atk_has_changed, bool dec_has_canged, 
-                       bool sus_has_changed, bool rel_has_changed) {
+void renderEnvBuffer(Envelope* env) {
     int x = 0;
     float y = 0.;
     
-    float inc = 1. / env->atk;;
-    if (atk_has_changed) {
-        for (int i = 0; i < env->atk; i++) {
-            env->env_buffer[i] = y;
-            y += inc;
-        }
+    float inc = 1. / (float)env->atk;;
+    for (int i = 0; i <= env->atk; i++) {
+        env->env_buffer[i] = y;
+        y += inc;
     }
     
-    inc = env->sus_level - 1. / env->dec;
+    inc = env->sus_level - 1. / (float)env->dec;
     x += env->atk;
-    if (dec_has_canged) {
-        for (int i = 0; i < env->dec; i++) {
+    for (int i = 0; i <= env->dec; i++) {
             env->env_buffer[i+x] = y;
-            y += inc;
-        }
+        y += inc;
     }
     
     x += env->dec;
-    if (sus_has_changed) {
-        for (int i = 0; i < env->sus_time; i++) {
-            env->env_buffer[i+x] = env->sus_level;
-        }
+    for (int i = 0; i <= env->sus_time; i++) {
+        env->env_buffer[i+x] = y;
     }
     
-    inc = 0. - env->sus_level / env->rel;
+    inc = 0. - env->sus_level / (float)env->rel;
     x += env->sus_time;
-    if (rel_has_changed) {
-        for (int i = 0; i < env->rel; i++) {
-            env->env_buffer[i+x] = y;
-            y += inc;
-        }
+    for (int i = 0; i <= env->rel; i++) {
+        env->env_buffer[i+x] = y;
+        y += inc;
     }
+    
 };
 
 bool updateAttack(Envelope* env, int attack) {
@@ -124,12 +116,12 @@ bool updateRelease(Envelope* env, int release) {
 };
 
 void updateEnvelope(Envelope* env, int attack, int decay, float sustain, int release, int dur_ms) {
-    bool update_atk = updateAttack(env, attack);
-    bool update_dec = updateDecay(env, decay);
-    bool update_rel = updateRelease(env, release);
-    bool update_dur = updateDuration(env, dur_ms);
-    bool update_sus = updateSustain(env, sustain);
-    renderEnvBuffer(env, update_atk, update_dec, (update_dur || update_sus), update_rel);
+    updateAttack(env, attack);
+    updateDecay(env, decay);
+    updateRelease(env, release);
+    updateDuration(env, dur_ms);
+    updateSustain(env, sustain);
+    renderEnvBuffer(env);
 };
 
 void fillEnvelopeAudiobuffer(void* audioBuffer, size_t size, Envelope* env) {

@@ -80,14 +80,14 @@ int main(int argc, char **argv) {
 	                          .dec = 10,
 							  .rel = 10,
 							  .dur = 40,
-							  .sus_level = 0.5,
+							  .sus_level = 0.6,
 							  .sus_time = 10,
 							  .gate = ENV_OFF,
 							  .env_pos = 0,
 							  .sr = SAMPLERATE
 							};
 	Envelope* env = &ampEnvelope;
-	updateEnvelope(env, 100, 200, 0.6, 100, 500);
+	updateEnvelope(env, 20, 200, 0.4, 300, 500);
 
 	// We set up two wave buffers and alternate between the two,
 	// effectively streaming an infinitely long sine wave.
