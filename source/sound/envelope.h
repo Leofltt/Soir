@@ -1,7 +1,6 @@
 #ifndef ENVELOPE_H
 #define ENVELOPE_H
 
-#include "audio_utils.h"
 
 typedef enum {
     ENV_ON = 1,
@@ -124,49 +123,32 @@ void updateEnvelope(Envelope* env, int attack, int decay, float sustain, int rel
     renderEnvBuffer(env);
 };
 
-void fillEnvelopeAudiobuffer(void* audioBuffer, size_t size, Envelope* env) {
-	u32* dest = (u32*) audioBuffer;
+float nextEnvelopeSample(Envelope* env) {
+    float env_value;
 
-	for (int i = 0; i < size; i++) {	
-        u32 sample = dest[i];
-        s16 sampleLeft = (s16)(sample >> 16);  // Extract the left channel sample
-        s16 sampleRight = (s16)(sample & 0xffff);  // Extract the right channel sample
-        float sLeftf = int16_to_float(sampleLeft);
-        float sRightf = int16_to_float(sampleRight);
-        float env_value;
-
-        switch(env->gate) {
-            case ENV_OFF: {
-                env_value = 0.;
-                break;
-            }
-            case ENV_ON: {
-                env_value = env->env_buffer[env->env_pos];
-                env->env_pos++;
-                break;
-            }
-            default: {
-                env->gate = ENV_OFF;
-                env_value = 0.;
-                env->env_pos = 0.;
-                break;
-            }
+    switch(env->gate) {
+        case ENV_OFF: {
+            env_value = 0.;
+            break;
         }
-        env->env_pos++;
-        int next_pos = env->env_pos;
-        
-        if (next_pos >= env->dur) {
+        case ENV_ON: {
+            env_value = env->env_buffer[env->env_pos];
+            env->env_pos++;
+            break;
+        }
+        default: {
             env->gate = ENV_OFF;
+            env_value = 0.;
+            env->env_pos = 0.;
+            break;
         }
-
-        sLeftf *= env_value; 
-        sRightf *= env_value;
-        sampleLeft = float_to_int16(sLeftf);
-        sampleRight = float_to_int16(sRightf);
-        dest[i] = (sampleLeft << 16) | (sampleRight & 0xffff);
-	}
-
-	DSP_FlushDataCache(audioBuffer, size);
-}
+    }
+    int next_pos = env->env_pos;
+        
+    if (next_pos >= env->dur) {
+        env->gate = ENV_OFF;
+    }
+    return env_value;
+};
 
 #endif // ENVELOPE_H

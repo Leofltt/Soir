@@ -26,7 +26,7 @@ static const float K_INT16_MIN = (-1.) * K_INT16_MAX_PLUS1;
 float clamp(float d, float min, float max) {
   const float t = d < min ? min : d;
   return t > max ? max : t;
-}
+};
 
 s16 float_to_int16(float x) {
     s16 converted = (s16) clamp(x * K_INT16_MAX_PLUS1, K_INT16_MIN, K_INT16_MAX);
@@ -38,4 +38,4 @@ float int16_to_float(s16 x){
     return converted;
 };
 
-#endif
+#endif // AUDIO_UTILS_H 

@@ -9,6 +9,7 @@
 #include "sound/envelope.h"
 #include "sound/filters.h"
 #include "sound/audio_utils.h"
+#include "sound/synth.h"
 
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 
@@ -37,19 +38,8 @@ int main(int argc, char **argv) {
 
 	romfsInit();
 	ndspInit();
-
-	ndspChnReset(0);
 	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-	ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
-	ndspChnSetRate(0, SAMPLERATE);
-	ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-
-	float mix[12];
-	memset(mix, 0, sizeof(mix));
-	mix[0] = 1.0;
-	mix[1] = 1.0;
-	ndspChnSetMix(0, mix);
-
+	
 	// Note Frequencies
 	int notefreq[] = {
 		220,
@@ -58,9 +48,24 @@ int main(int argc, char **argv) {
 		7040, 3520, 1760, 880, 440
 	};
 
-	int note = 4;
-	int cf = 5;
-		
+	int note = 1;
+	int cf = 4;
+	
+	size_t stream_offset = 0;
+
+	// TRACK 1 ///////////////////////////////////////////
+	ndspChnReset(0);
+	ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
+	ndspChnSetRate(0, SAMPLERATE);
+	ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
+
+	float mix[12];
+	memset(mix, 0, sizeof(mix));
+	mix[0] = 1.0;
+	mix[1] = 1.0;
+
+	ndspChnSetMix(0, mix);
+    		
 	NdspBiquad biquadFilter = { .cutoff_freq = (float)notefreq[cf],
 	                      .filter_type = NDSP_BIQUAD_NONE, 
 						  .update_params = false,
@@ -89,6 +94,12 @@ int main(int argc, char **argv) {
 	Envelope* env = &ampEnvelope;
 	updateEnvelope(env, 20, 200, 0.4, 300, 500);
 
+	SubSynth subs = { 
+		.osc = osc,
+		.env = env
+	};
+	SubSynth* subsynth = &subs;
+
 	// We set up two wave buffers and alternate between the two,
 	// effectively streaming an infinitely long sine wave.
 
@@ -99,15 +110,13 @@ int main(int argc, char **argv) {
 	waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
 	waveBuf[1].nsamples = SAMPLESPERBUF;
 
-	size_t stream_offset = 0;
-
-	fillPolyblepAudiobuffer(audioBuffer, SAMPLESPERBUF * NCHANNELS, osc);
-	fillEnvelopeAudiobuffer(audioBuffer, SAMPLESPERBUF * NCHANNELS, env);
-	
-	stream_offset += SAMPLESPERBUF;
+	fillSubSynthAudiobuffer(audioBuffer, SAMPLESPERBUF * NCHANNELS, subsynth, 0.88);
 
 	ndspChnWaveBufAdd(0, &waveBuf[0]);
 	ndspChnWaveBufAdd(0, &waveBuf[1]);
+	////////////////////////////////////////
+
+	stream_offset += SAMPLESPERBUF;
 
 	printf("Press up/down to change tone frequency\n");
 	printf("Press left/right to change filter\n");
@@ -129,8 +138,8 @@ int main(int argc, char **argv) {
 		if (kHeld & KEY_START) break; // break in order to return to hbmenu 
 
 		if (kDown & KEY_X) {
-			//trigger a not
-			triggerEnvelope(env);
+			//trigger a note
+			triggerEnvelope(subsynth->env);
 		}
 
 		// OSC NOTE
@@ -140,14 +149,14 @@ int main(int argc, char **argv) {
 				note = ARRAY_SIZE(notefreq) - 1;
 			}
 			printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
-			setOscFrequency(osc, notefreq[note]);
+			setOscFrequency(subsynth->osc, notefreq[note]);
 		} else if (kDown & KEY_UP) {
 			note++;
 			if (note >= ARRAY_SIZE(notefreq)) {
 				note = 0;
 			}
 			printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
-			setOscFrequency(osc, notefreq[note]);
+			setOscFrequency(subsynth->osc, notefreq[note]);
 		}
 		
 		// FILTER TYPE
@@ -191,8 +200,7 @@ int main(int argc, char **argv) {
 
 
 		if (waveBuf[fillBlock].status == NDSP_WBUF_DONE) {
-			fillPolyblepAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, osc);
-			fillEnvelopeAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, env);
+			fillSubSynthAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, subsynth, 0.88);
 			ndspChnWaveBufAdd(0, &waveBuf[fillBlock]);
 			stream_offset += waveBuf[fillBlock].nsamples;
 			fillBlock = !fillBlock;
@@ -201,7 +209,7 @@ int main(int argc, char **argv) {
 
 	ndspChnReset(0);
 	linearFree(audioBuffer);
-	linearFree(env->env_buffer);
+	linearFree((subsynth->env)->env_buffer);
 
 	ndspExit();
 	romfsExit();
