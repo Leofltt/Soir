@@ -11,6 +11,8 @@ typedef enum {
     SAW = 2    
 } Waveform;
 
+extern const char* waveform_names[]; 
+
 typedef struct {
     float frequency;
     float samplerate;
@@ -18,6 +20,8 @@ typedef struct {
     float phase_inc;
     float phase;
 } PolyBLEPOscillator;
+
+extern void setWaveform(PolyBLEPOscillator* osc, int wf_idx);;
 
 extern void setOscFrequency(PolyBLEPOscillator* osc, float frequency);
 

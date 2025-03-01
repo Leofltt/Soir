@@ -13,7 +13,7 @@
 #include "samplers.h"
 
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
-static const char *ROMFS_PATH = "romfs:/";
+// static const char *ROMFS_PATH = "romfs:/";
 static const char *PATH = "romfs:/samples/bibop.opus";  // Path to Opus file to play
 
 // static const int THREAD_AFFINITY = -1;           // Execute thread on any core
@@ -48,15 +48,17 @@ int main(int argc, char **argv) {
 	
 	// Note Frequencies
 	int notefreq[] = {
-		220,
-		440, 880, 1760, 3520, 7040,
-		14080,
-		7040, 3520, 1760, 880, 440
+		220, 440, 880, 1760, 3520, 7040
+	};
+
+	int pcfreq [] = { 
+		131, 147, 156, 175, 196, 220, 233 
 	};
 
 	int note = 1;
 	int cf = 4;
 	int cf2 = 4;
+	int wf = 0;
 	
 	size_t stream_offset = 0;
 
@@ -84,7 +86,7 @@ int main(int argc, char **argv) {
 	                   .samplerate = SAMPLERATE,
                        .waveform = SINE,
 					   .phase = 0.,
-					   .phase_inc = notefreq[note] * M_TWOPI / SAMPLERATE
+					   .phase_inc = pcfreq[note] * M_TWOPI / SAMPLERATE
 					   };
 	PolyBLEPOscillator* osc = &pbOscillator;
 
@@ -161,27 +163,27 @@ int main(int argc, char **argv) {
 
 	stream_offset += SAMPLESPERBUF;
 
-	printf("\x1b[1;1HSELECT: switch between Synth (Track 0) and Sampler (Track 1)\n");
-	printf("\x1b[2;16HActive Track: %i\n", active_track);
+	printf("\x1b[1;1HL: switch selected track\n");
+	printf("\x1b[3;16HActive Track: %i\n", active_track);
 
-	printf("\x1b[4;1Hleft/right: change filter type\n");
-	printf("\x1b[5;1Hup/down: change filter frequency\n");
+	printf("\x1b[5;1Hleft/right: change filter type\n");
+	printf("\x1b[6;1Hup/down: change filter frequency\n");
 
 	if (active_track == 0) {
-		printf("\x1b[6;1HX/B: change Synth frequency\n");
-		printf("\x1b[7;1HY: trigger a note\n");
-		printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
-		printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
-		printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf]);
+		printf("\x1b[7;1HX/B: change Synth frequency\n");
+		printf("\x1b[8;1HY: trigger a note\n");
+		printf("\x1b[9;1HA: switch Synth waveform\n");
+		printf("\x1b[11;1Hnote = %i Hz        ", pcfreq[note]);
+		printf("\x1b[12;1Hwaveform = %s        ", waveform_names[subsynth->osc->waveform]);
 	}
 	else if (active_track == 1) {
 
-		printf("\x1b[6;1HY/X/A/B: change Sampler sample start position\n");
-		printf("\x1b[7;1HR: change Sampler playback mode\n");
-		printf("\x1b[10;1Hstart pos = %i         ", 0);
-		printf("\x1b[11;1Hplayback mode = %i         ", 0);
-		printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
-		printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf2]);
+		printf("\x1b[7;1HY/X/A/B: change Sampler sample start position\n");
+		printf("\x1b[8;1HR: change Sampler playback mode\n");
+		printf("\x1b[11;1Hstart pos = %i         ", 0);
+		printf("\x1b[12;1Hplayback mode = %i         ", 0);
+		printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
+		printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf2]);
 		
 	}
 	else {
@@ -211,31 +213,51 @@ int main(int argc, char **argv) {
 
 		//////////////////////// CONTROLS ////////////////////////
 
-		if (kHeld & KEY_SELECT) {
+		if (kDown & KEY_L) {
 			active_track == 1 ? active_track-- : active_track++;
+			printf("\x1b[3;16HActive Track: %i\n", active_track);
 		}
 
 		if (active_track == 0) {
+			
+			printf("\x1b[7;1HX/B: change Synth frequency\n");
+			printf("\x1b[8;1HY: trigger a note\n");
+			printf("\x1b[9;1HA: switch Synth waveform\n");
+			printf("\x1b[11;1Hnote = %i Hz        ", pcfreq[note]);
+			printf("\x1b[12;1Hwaveform = %s        ", waveform_names[subsynth->osc->waveform]);
+			printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
+			printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf]);
+			
 			if (kDown & KEY_Y) {
 				// trigger a note
 				triggerEnvelope(subsynth->env);
+			}
+
+			if (kDown & KEY_A) {
+				wf++;
+				if (wf >= 3) {
+					wf = 0;
+				}
+				setWaveform(subsynth->osc, wf);
+				printf("\x1b[12;1Hwaveform = %s         ", waveform_names[subsynth->osc->waveform]);
+				printf("\x1b[12;14H wf = %i         ", wf);
 			}
 
 			// OSC NOTE
 			if (kDown & KEY_B) {
 				note--;
 				if (note < 0) {
-					note = ARRAY_SIZE(notefreq) - 1;
+					note = ARRAY_SIZE(pcfreq) - 1;
 				}
-				printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
-				setOscFrequency(subsynth->osc, notefreq[note]);
+				printf("\x1b[11;1Hnote = %i Hz        ", pcfreq[note]);
+				setOscFrequency(subsynth->osc, pcfreq[note]);
 			} else if (kDown & KEY_X) {
 				note++;
-				if (note >= ARRAY_SIZE(notefreq)) {
+				if (note >= ARRAY_SIZE(pcfreq)) {
 					note = 0;
 				}
-				printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
-				setOscFrequency(subsynth->osc, notefreq[note]);
+				printf("\x1b[11;1Hnote = %i Hz        ", pcfreq[note]);
+				setOscFrequency(subsynth->osc, pcfreq[note]);
 			}
 			
 			// FILTER TYPE
@@ -269,8 +291,8 @@ int main(int argc, char **argv) {
 			}
 
 			if (filter->update_params) {
-				printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
-				printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf]);
+				printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
+				printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf]);
 				
 				update_ndspbiquad(*filter);
 				filter->update_params=false;
@@ -278,6 +300,13 @@ int main(int argc, char **argv) {
 		}
 
 		else if (active_track == 1) {
+			
+			printf("\x1b[7;1HY/X/A/B: change Sampler sample start position\n");
+			printf("\x1b[8;1HR: change Sampler playback mode\n");
+			printf("\x1b[11;1Hstart pos = %i         ", 0);
+			printf("\x1b[12;1Hplayback mode = %i         ", 0);
+			printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
+			printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf2]);
 
 			// if (kDown & KEY_Y) {
 			// 	// trigger a note
@@ -332,8 +361,8 @@ int main(int argc, char **argv) {
 			}
 
 			if (filter2->update_params) {
-				printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
-				printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf2]);
+				printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
+				printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf2]);
 				
 				update_ndspbiquad(*filter2);
 				filter2->update_params=false;
@@ -343,7 +372,7 @@ int main(int argc, char **argv) {
 
 
 		if (waveBuf[fillBlock].status == NDSP_WBUF_DONE) {
-			fillSubSynthAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, subsynth, 0.5);
+			fillSubSynthAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, subsynth, 1);
 			ndspChnWaveBufAdd(0, &waveBuf[fillBlock]);
 			stream_offset += waveBuf[fillBlock].nsamples;
 			fillBlock = !fillBlock;

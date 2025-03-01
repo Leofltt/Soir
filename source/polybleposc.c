@@ -1,5 +1,15 @@
 #include "polybleposc.h"
 
+const char* waveform_names[] = {
+	"Sine",
+	"Square",
+	"Saw",
+};
+
+void setWaveform(PolyBLEPOscillator* osc, int wf_idx) {
+    osc->waveform = (Waveform)wf_idx;
+};
+
 void setOscFrequency(PolyBLEPOscillator* osc, float frequency) {
     osc->frequency = frequency;
     osc->phase_inc = osc->frequency * M_TWOPI / osc->samplerate;
