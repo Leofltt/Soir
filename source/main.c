@@ -5,18 +5,19 @@
 #include <3ds.h>
 #include <opusfile.h>
 
-#include "sound/oscillators.h"
-#include "sound/envelope.h"
-#include "sound/filters.h"
-#include "sound/audio_utils.h"
-#include "sound/synth.h"
+#include "oscillators.h"
+#include "envelope.h"
+#include "filters.h"
+#include "audio_utils.h"
+#include "synth.h"
+#include "samplers.h"
 
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
+static const char *ROMFS_PATH = "romfs:/";
+static const char *PATH = "romfs:/samples/bibop.opus";  // Path to Opus file to play
 
 // static const int THREAD_AFFINITY = -1;           // Execute thread on any core
 // static const int THREAD_STACK_SZ = 32 * 1024;    // 32kB stack for audio thread
-
-// static const size_t WAVEBUF_SIZE = SAMPLESPERBUF * NCHANNELS * sizeof(int16_t); // Size of NDSP wavebufs
 
 // ------------------------------------------------------------
 
@@ -32,9 +33,14 @@ int main(int argc, char **argv) {
 
 	// u32 kDownOld = 0, kHeldOld = 0, kUpOld = 0; //In these variables there will be information about keys detected in the previous frame
 
+	int active_track = 0;
+
 	u32* audioBuffer = (u32*) linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
 
+	u32* audioBuffer2 = (u32*) linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
+
 	bool fillBlock = false;
+	// bool fillBlock2 = false;
 
 	romfsInit();
 	ndspInit();
@@ -50,6 +56,7 @@ int main(int argc, char **argv) {
 
 	int note = 1;
 	int cf = 4;
+	int cf2 = 4;
 	
 	size_t stream_offset = 0;
 
@@ -100,9 +107,6 @@ int main(int argc, char **argv) {
 	};
 	SubSynth* subsynth = &subs;
 
-	// We set up two wave buffers and alternate between the two,
-	// effectively streaming an infinitely long sine wave.
-
 	ndspWaveBuf waveBuf[2];
 	memset(waveBuf,0,sizeof(waveBuf));
 	waveBuf[0].data_vaddr = &audioBuffer[0];
@@ -110,20 +114,82 @@ int main(int argc, char **argv) {
 	waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
 	waveBuf[1].nsamples = SAMPLESPERBUF;
 
-	fillSubSynthAudiobuffer(audioBuffer, SAMPLESPERBUF * NCHANNELS, subsynth, 0.88);
+	fillBufferWithZeros(audioBuffer, SAMPLESPERBUF * NCHANNELS);
 
 	ndspChnWaveBufAdd(0, &waveBuf[0]);
 	ndspChnWaveBufAdd(0, &waveBuf[1]);
 	////////////////////////////////////////
 
+	// TRACK 2 ///////////////////////////////////////////
+	int error = 0;
+	OggOpusFile *opusFile = op_open_file(PATH, &error);
+
+
+	ndspChnReset(1);
+	ndspChnSetInterp(1, NDSP_INTERP_LINEAR);
+	ndspChnSetRate(1, SAMPLERATE);
+	ndspChnSetFormat(1, NDSP_FORMAT_STEREO_PCM16);
+
+	float mix2[12];
+	memset(mix2, 0, sizeof(mix2));
+	mix2[0] = 1.0;
+	mix2[1] = 1.0;
+
+	ndspChnSetMix(1, mix2);
+    		
+	NdspBiquad biquadFilter2 = { .cutoff_freq = (float)notefreq[cf2],
+	                      .filter_type = NDSP_BIQUAD_NONE, 
+						  .update_params = false,
+						  .id = 1
+	};
+	NdspBiquad* filter2 = &biquadFilter2;
+
+	// We set up two wave buffers and alternate between the two,
+
+	ndspWaveBuf waveBuf2[2];
+	memset(waveBuf2,0,sizeof(waveBuf2));
+	waveBuf2[0].data_vaddr = &audioBuffer2[0];
+	waveBuf2[0].nsamples = SAMPLESPERBUF;
+	waveBuf2[1].data_vaddr = &audioBuffer2[SAMPLESPERBUF];
+	waveBuf2[1].nsamples = SAMPLESPERBUF;
+
+	fillBufferWithZeros(audioBuffer2,  SAMPLESPERBUF * NCHANNELS);
+
+	ndspChnWaveBufAdd(1, &waveBuf2[0]);
+	ndspChnWaveBufAdd(1, &waveBuf2[1]);
+	////////////////////////////////////////
+
 	stream_offset += SAMPLESPERBUF;
 
-	printf("Press up/down to change tone frequency\n");
-	printf("Press left/right to change filter\n");
-	printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
-	printf("\x1b[7;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
-	printf("\x1b[8;1Hcf = %i Hz          ", notefreq[cf]);
-	printf("\x1b[30;16HPress Start to exit.");
+	printf("\x1b[1;1HSELECT: switch between Synth (Track 0) and Sampler (Track 1)\n");
+	printf("\x1b[2;16HActive Track: %i\n", active_track);
+
+	printf("\x1b[4;1Hleft/right: change filter type\n");
+	printf("\x1b[5;1Hup/down: change filter frequency\n");
+
+	if (active_track == 0) {
+		printf("\x1b[6;1HX/B: change Synth frequency\n");
+		printf("\x1b[7;1HY: trigger a note\n");
+		printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
+		printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
+		printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf]);
+	}
+	else if (active_track == 1) {
+
+		printf("\x1b[6;1HY/X/A/B: change Sampler sample start position\n");
+		printf("\x1b[7;1HR: change Sampler playback mode\n");
+		printf("\x1b[10;1Hstart pos = %i         ", 0);
+		printf("\x1b[11;1Hplayback mode = %i         ", 0);
+		printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
+		printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf2]);
+		
+	}
+	else {
+		printf("ERROR: Invalid active track\n");
+	}
+
+	printf("\x1b[30;16HSTART: exit.");
+
 
 	while(aptMainLoop()) {
 
@@ -135,83 +201,178 @@ int main(int argc, char **argv) {
 		u32 kDown = hidKeysDown();
 		u32 kHeld = hidKeysHeld();
 
-		if (kHeld & KEY_START) break; // break in order to return to hbmenu 
 
-		if (kDown & KEY_X) {
-			//trigger a note
-			triggerEnvelope(subsynth->env);
+
+
+		///////////////////////// QUIT w/ Start ////////////////////////
+
+		if (kHeld & KEY_START) break;
+
+
+		//////////////////////// CONTROLS ////////////////////////
+
+		if (kHeld & KEY_SELECT) {
+			active_track == 1 ? active_track-- : active_track++;
 		}
 
-		// OSC NOTE
-		if (kDown & KEY_DOWN) {
-			note--;
-			if (note < 0) {
-				note = ARRAY_SIZE(notefreq) - 1;
+		if (active_track == 0) {
+			if (kDown & KEY_Y) {
+				// trigger a note
+				triggerEnvelope(subsynth->env);
 			}
-			printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
-			setOscFrequency(subsynth->osc, notefreq[note]);
-		} else if (kDown & KEY_UP) {
-			note++;
-			if (note >= ARRAY_SIZE(notefreq)) {
-				note = 0;
-			}
-			printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
-			setOscFrequency(subsynth->osc, notefreq[note]);
-		}
-		
-		// FILTER TYPE
-		if (kDown & KEY_LEFT) {	
-			if (filter->filter_type == NDSP_BIQUAD_NONE) {
-				filter->filter_type = NDSP_BIQUAD_PEAK;
-			} else { filter->filter_type--; }
-			filter->update_params = true;
-		} else if (kDown & KEY_RIGHT) {
-			if (filter->filter_type == NDSP_BIQUAD_PEAK) {
-				filter->filter_type = NDSP_BIQUAD_NONE;
-			} else { filter->filter_type++; }
-			filter->update_params = true;
-		} 
-		
-		// FILTER FREQ
-		if (kDown & KEY_L) {
-			cf--;
-			if (cf < 0) {
-				cf = ARRAY_SIZE(notefreq) - 1;
-			}
-			filter->cutoff_freq = (float)notefreq[cf];
-			filter->update_params = true;
-		} else if (kDown & KEY_R) {
-			cf++;
-			if (cf >= ARRAY_SIZE(notefreq)) {
-				cf = 0;
-			}
-			filter->cutoff_freq = (float)notefreq[cf];
-			filter->update_params = true;
-		}
 
-
-		if (filter->update_params) {
-			printf("\x1b[7;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
-			printf("\x1b[8;1Hcf = %i Hz          ", notefreq[cf]);
+			// OSC NOTE
+			if (kDown & KEY_B) {
+				note--;
+				if (note < 0) {
+					note = ARRAY_SIZE(notefreq) - 1;
+				}
+				printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
+				setOscFrequency(subsynth->osc, notefreq[note]);
+			} else if (kDown & KEY_X) {
+				note++;
+				if (note >= ARRAY_SIZE(notefreq)) {
+					note = 0;
+				}
+				printf("\x1b[10;1Hnote = %i Hz        ", notefreq[note]);
+				setOscFrequency(subsynth->osc, notefreq[note]);
+			}
 			
-			update_ndspbiquad(*filter);
-			filter->update_params=false;
+			// FILTER TYPE
+			if (kDown & KEY_LEFT) {	
+				if (filter->filter_type == NDSP_BIQUAD_NONE) {
+					filter->filter_type = NDSP_BIQUAD_PEAK;
+				} else { filter->filter_type--; }
+				filter->update_params = true;
+			} else if (kDown & KEY_RIGHT) {
+				if (filter->filter_type == NDSP_BIQUAD_PEAK) {
+					filter->filter_type = NDSP_BIQUAD_NONE;
+				} else { filter->filter_type++; }
+				filter->update_params = true;
+			} 
+			
+			// FILTER FREQ
+			if (kDown & KEY_DOWN) {
+				cf--;
+				if (cf < 0) {
+					cf = ARRAY_SIZE(notefreq) - 1;
+				}
+				filter->cutoff_freq = (float)notefreq[cf];
+				filter->update_params = true;
+			} else if (kDown & KEY_UP) {
+				cf++;
+				if (cf >= ARRAY_SIZE(notefreq)) {
+					cf = 0;
+				}
+				filter->cutoff_freq = (float)notefreq[cf];
+				filter->update_params = true;
+			}
+
+			if (filter->update_params) {
+				printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter->filter_type]);
+				printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf]);
+				
+				update_ndspbiquad(*filter);
+				filter->update_params=false;
+			}
+		}
+
+		else if (active_track == 1) {
+
+			// if (kDown & KEY_Y) {
+			// 	// trigger a note
+			// 	triggerEnvelope(subsynth->env);
+			// }
+
+			// // OSC NOTE
+			// if (kDown & KEY_B) {
+			// 	note--;
+			// 	if (note < 0) {
+			// 		note = ARRAY_SIZE(notefreq) - 1;
+			// 	}
+			// 	printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
+			// 	setOscFrequency(subsynth->osc, notefreq[note]);
+			// } else if (kDown & KEY_X) {
+			// 	note++;
+			// 	if (note >= ARRAY_SIZE(notefreq)) {
+			// 		note = 0;
+			// 	}
+			// 	printf("\x1b[6;1Hnote = %i Hz        ", notefreq[note]);
+			// 	setOscFrequency(subsynth->osc, notefreq[note]);
+			// }
+			
+			// FILTER TYPE
+			if (kDown & KEY_LEFT) {	
+				if (filter2->filter_type == NDSP_BIQUAD_NONE) {
+					filter2->filter_type = NDSP_BIQUAD_PEAK;
+				} else { filter2->filter_type--; }
+				filter2->update_params = true;
+			} else if (kDown & KEY_RIGHT) {
+				if (filter2->filter_type == NDSP_BIQUAD_PEAK) {
+					filter2->filter_type = NDSP_BIQUAD_NONE;
+				} else { filter2->filter_type++; }
+				filter2->update_params = true;
+			} 
+			
+			// FILTER FREQ
+			if (kDown & KEY_DOWN) {
+				cf2--;
+				if (cf2 < 0) {
+					cf2 = ARRAY_SIZE(notefreq) - 1;
+				}
+				filter2->cutoff_freq = (float)notefreq[cf2];
+				filter2->update_params = true;
+			} else if (kDown & KEY_UP) {
+				cf2++;
+				if (cf2 >= ARRAY_SIZE(notefreq)) {
+					cf2 = 0;
+				}
+				filter2->cutoff_freq = (float)notefreq[cf2];
+				filter2->update_params = true;
+			}
+
+			if (filter2->update_params) {
+				printf("\x1b[15;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
+				printf("\x1b[16;1Hcf = %i Hz          ", notefreq[cf2]);
+				
+				update_ndspbiquad(*filter2);
+				filter2->update_params=false;
+			}
+
 		}
 
 
 		if (waveBuf[fillBlock].status == NDSP_WBUF_DONE) {
-			fillSubSynthAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, subsynth, 0.88);
+			fillSubSynthAudiobuffer(waveBuf[fillBlock].data_pcm16, waveBuf[fillBlock].nsamples, subsynth, 0.5);
 			ndspChnWaveBufAdd(0, &waveBuf[fillBlock]);
 			stream_offset += waveBuf[fillBlock].nsamples;
 			fillBlock = !fillBlock;
 		}
+
+		// if (waveBuf2[fillBlock2].status == NDSP_WBUF_DONE) {
+		// 	fillSamplerAudiobuffer(waveBuf2[fillBlock2].data_pcm16, waveBuf2[fillBlock2].nsamples, sampler);
+		// 	ndspChnWaveBufAdd(0, &waveBuf2[fillBlock2]);
+		// 	stream_offset += waveBuf2[fillBlock2].nsamples;
+		// 	fillBlock2 = !fillBlock2;
+		// }
 	}
 
+	//////// TRACK 1 //////////////////
 	ndspChnReset(0);
 	linearFree(audioBuffer);
 	linearFree((subsynth->env)->env_buffer);
+	////////////////////////////////////
+
+
+	//////// TRACK 2 //////////////////
+	ndspChnReset(1);
+	linearFree(audioBuffer2);
+	/////////////////////////////
 
 	ndspExit();
+
+	op_free(opusFile);
+
 	romfsExit();
 	gfxExit();
 	return 0;

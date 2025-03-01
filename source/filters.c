@@ -1,30 +1,14 @@
-#ifndef FILTERS_H
-#define FILTERS_H
-
-typedef enum {
-	NDSP_BIQUAD_NONE = 0,
-	NDSP_BIQUAD_LOPASS = 1,
-	NDSP_BIQUAD_HIPASS = 2,
-	NDSP_BIQUAD_BANDPASS = 3,
-	NDSP_BIQUAD_NOTCH = 4,
-	NDSP_BIQUAD_PEAK = 5
-} NdspFilterType;
+#include "filters.h"
+#include <3ds.h>
 
 const char* ndsp_biquad_filter_names[] = {
-		"None",
-		"Low-Pass",
-		"High-Pass",
-		"Band-Pass",
-		"Notch",
-		"Peaking"
-	};
-
-typedef struct {
-    NdspFilterType filter_type;
-    bool update_params;
-    float cutoff_freq;
-	int id;
-} NdspBiquad;
+	"None",
+	"Low-Pass",
+	"High-Pass",
+	"Band-Pass",
+	"Notch",
+	"Peaking"
+};
 
 void update_ndspbiquad(NdspBiquad filter) {
     switch (filter.filter_type) {
@@ -48,5 +32,3 @@ void update_ndspbiquad(NdspBiquad filter) {
 				break;
 			}
 };
-
-#endif // FILTERS_H

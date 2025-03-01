@@ -1,21 +1,4 @@
-#ifndef POLYBLEPOSC_H
-#define POLYBLEPOSC_H
-
-#include <math.h>
-
-typedef enum {
-    SINE = 0,
-    SQUARE = 1,
-    SAW = 2    
-} Waveform;
-
-typedef struct {
-    float frequency;
-    float samplerate;
-    Waveform waveform;
-    float phase_inc;
-    float phase;
-} PolyBLEPOscillator;
+#include "polybleposc.h"
 
 void setOscFrequency(PolyBLEPOscillator* osc, float frequency) {
     osc->frequency = frequency;
@@ -92,5 +75,3 @@ float nextOscillatorSample(PolyBLEPOscillator* osc) {
     
     return sample;
 };
-
-#endif // POLYBLEPOSC_H 

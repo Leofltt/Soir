@@ -1,14 +1,6 @@
-#ifndef SYNTH_H
-#define SYNTH_H
+#include "synth.h"
 
-#include "oscillators.h"
-#include "envelope.h"
-#include "audio_utils.h"
-
-typedef struct {
-    Envelope* env;
-    PolyBLEPOscillator* osc;
-} SubSynth;
+#include <3ds/services/dsp.h>
 
 void fillSubSynthAudiobuffer(void* audioBuffer, size_t size, SubSynth* subsynth, float synthvol) {
     u32* dest = (u32*) audioBuffer;
@@ -24,5 +16,3 @@ void fillSubSynthAudiobuffer(void* audioBuffer, size_t size, SubSynth* subsynth,
 
     DSP_FlushDataCache(audioBuffer, size);
 };
-
-#endif // SYNTH_H

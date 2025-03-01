@@ -1,26 +1,5 @@
-#ifndef ENVELOPE_H
-#define ENVELOPE_H
-
-
-typedef enum {
-    ENV_ON = 1,
-    ENV_OFF = 0
-} EnvGate;
-
-typedef struct {
-    EnvGate gate;
-    int env_pos;
-    float* env_buffer;
-    float sr;
-    
-    // Env params 
-    int atk;
-    int dec;
-    int sus_time;
-    float sus_level; 
-    int rel;
-    int dur; 
-} Envelope;
+#include "envelope.h"
+#include <3ds.h>
 
 void triggerEnvelope(Envelope* env) {
     env->env_pos = 0;
@@ -92,6 +71,16 @@ bool updateSustain(Envelope* env, float sustain) {
     return updated;
 };
 
+bool updateRelease(Envelope* env, int release) {
+    int new_rel = release * env->sr * 0.001;
+    bool updated = false;
+    if (env->rel != new_rel) { 
+        env->rel = new_rel;
+        updated = true; 
+    }
+    return updated;
+};
+
 bool updateDuration(Envelope* env, int dur_ms) {
     int new_dur = dur_ms * env->sr * 0.001;
     bool updated = false;
@@ -100,16 +89,6 @@ bool updateDuration(Envelope* env, int dur_ms) {
         if (env->env_buffer) linearFree(env->env_buffer);
         env->env_buffer = (float*) linearAlloc(new_dur);
         updated = true;
-    }
-    return updated;
-};
-
-bool updateRelease(Envelope* env, int release) {
-    int new_rel = release * env->sr * 0.001;
-    bool updated = false;
-    if (env->rel != new_rel) { 
-        env->rel = new_rel;
-        updated = true; 
     }
     return updated;
 };
@@ -151,4 +130,3 @@ float nextEnvelopeSample(Envelope* env) {
     return env_value;
 };
 
-#endif // ENVELOPE_H
