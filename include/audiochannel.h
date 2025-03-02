@@ -9,6 +9,4 @@ typedef struct {
     float samplerate;
 } AudioChannel;
 
-
-
-#endif // AUDIOCHANNEL_H
+#endif  // AUDIOCHANNEL_H

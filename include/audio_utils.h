@@ -1,10 +1,10 @@
 #ifndef AUDIO_UTILS_H
-#define AUDIO_UTILS_H 
+#define AUDIO_UTILS_H
 
-#include <math.h>
 #include <3ds/types.h>
+#include <math.h>
 
-#ifndef M_PI 
+#ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
@@ -32,4 +32,4 @@ extern float int16_to_float(s16 x);
 
 extern void fillBufferWithZeros(void* audioBuffer, size_t size);
 
-#endif // AUDIO_UTILS_H 
+#endif  // AUDIO_UTILS_H

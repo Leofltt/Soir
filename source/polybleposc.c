@@ -1,9 +1,9 @@
 #include "polybleposc.h"
 
 const char* waveform_names[] = {
-	"Sine",
-	"Square",
-	"Saw",
+    "Sine",
+    "Square",
+    "Saw",
 };
 
 void setWaveform(PolyBLEPOscillator* osc, int wf_idx) {
@@ -12,15 +12,12 @@ void setWaveform(PolyBLEPOscillator* osc, int wf_idx) {
 
 void setOscFrequency(PolyBLEPOscillator* osc, float frequency) {
     osc->frequency = frequency;
-    osc->phase_inc = osc->frequency * M_TWOPI / osc->samplerate;
+    osc->phase_inc = frequency * M_TWOPI / osc->samplerate;
 };
 
 float oscillate(PolyBLEPOscillator* osc) {
     float sample;
     switch (osc->waveform) {
-        default:
-            sample = sin(osc->phase);
-            break;
         case SINE:
             sample = sin(osc->phase);
             break;
@@ -32,8 +29,11 @@ float oscillate(PolyBLEPOscillator* osc) {
             }
             break;
         case SAW:
-           sample = (2.0f * osc->phase / M_TWOPI) - 1.0f;
-           break;
+            sample = (2.0f * osc->phase / M_TWOPI) - 1.0f;
+            break;
+        default:
+            sample = sin(osc->phase);
+            break;
     }
     return sample;
 };
@@ -43,30 +43,30 @@ float polyBLEP(PolyBLEPOscillator* osc, float t) {
     // 0 <= t < 1 : beginning of sample period
     if (t < dt) {
         t /= dt;
-        return t+t - t*t - 1.0;
+        return t + t - t * t - 1.0;
     }
     // -1 < t < 0 : right before the end of a sample period
     else if (t > 1.0 - dt) {
         t = (t - 1.0) / dt;
-        return t*t + t+t + 1.0;
+        return t * t + t + t + 1.0;
     }
     // 0 otherwise
-    else return 0.0;
+    else
+        return 0.0;
 };
 
-
 float nextOscillatorSample(PolyBLEPOscillator* osc) {
-    float sample;
-    float t = osc->phase_inc / M_TWOPI;
-    
+    float sample = 0.0f;
+    // Normalize the phase increment for use within a sample period
+    float t = fmod(osc->phase / M_TWOPI, 1.0f);
+    // float t = osc->phase_inc / M_TWOPI;
+
     if (osc->waveform == SINE) {
         sample = oscillate(osc);
-    }
-    else if (osc->waveform == SAW) {
+    } else if (osc->waveform == SAW) {
         sample = oscillate(osc);
         sample -= polyBLEP(osc, t);
-    }
-    else { // SQUARE WAVE 
+    } else {  // SQUARE WAVE
         sample = oscillate(osc);
         sample += polyBLEP(osc, t);
         sample -= polyBLEP(osc, fmod(t + 0.5, 1.0));
@@ -82,6 +82,6 @@ float nextOscillatorSample(PolyBLEPOscillator* osc) {
     while (osc->phase >= M_TWOPI) {
         osc->phase -= M_TWOPI;
     }
-    
+
     return sample;
 };

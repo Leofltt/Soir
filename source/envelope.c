@@ -1,4 +1,5 @@
 #include "envelope.h"
+
 #include <3ds.h>
 
 void triggerEnvelope(Envelope* env) {
@@ -9,36 +10,35 @@ void triggerEnvelope(Envelope* env) {
 void renderEnvBuffer(Envelope* env) {
     int x = 0;
     float y = 0.;
-    
-    float inc = 1. / (float)env->atk;;
+
+    float inc = 1. / (float)env->atk;
     for (int i = 0; i <= env->atk; i++) {
         env->env_buffer[i] = y;
         y += inc;
     }
-    
+
     inc = env->sus_level - 1. / (float)env->dec;
     x += env->atk;
     for (int i = 0; i <= env->dec; i++) {
-            env->env_buffer[i+x] = y;
+        env->env_buffer[i + x] = y;
         y += inc;
     }
-    
+
     x += env->dec;
     for (int i = 0; i <= env->sus_time; i++) {
-        env->env_buffer[i+x] = y;
+        env->env_buffer[i + x] = y;
     }
-    
+
     inc = 0. - env->sus_level / (float)env->rel;
     x += env->sus_time;
     for (int i = 0; i <= env->rel; i++) {
-        env->env_buffer[i+x] = y;
+        env->env_buffer[i + x] = y;
         y += inc;
     }
-    
 };
 
 bool updateAttack(Envelope* env, int attack) {
-    int new_atk = attack * env->sr * 0.001; 
+    int new_atk = attack * env->sr * 0.001;
     bool updated = false;
     if (env->atk != new_atk) {
         env->atk = new_atk;
@@ -74,9 +74,9 @@ bool updateSustain(Envelope* env, float sustain) {
 bool updateRelease(Envelope* env, int release) {
     int new_rel = release * env->sr * 0.001;
     bool updated = false;
-    if (env->rel != new_rel) { 
+    if (env->rel != new_rel) {
         env->rel = new_rel;
-        updated = true; 
+        updated = true;
     }
     return updated;
 };
@@ -87,7 +87,7 @@ bool updateDuration(Envelope* env, int dur_ms) {
     if (env->dur != new_dur) {
         env->dur = new_dur;
         if (env->env_buffer) linearFree(env->env_buffer);
-        env->env_buffer = (float*) linearAlloc(new_dur);
+        env->env_buffer = (float*)linearAlloc(new_dur);
         updated = true;
     }
     return updated;
@@ -105,7 +105,7 @@ void updateEnvelope(Envelope* env, int attack, int decay, float sustain, int rel
 float nextEnvelopeSample(Envelope* env) {
     float env_value;
 
-    switch(env->gate) {
+    switch (env->gate) {
         case ENV_OFF: {
             env_value = 0.;
             break;
@@ -123,10 +123,9 @@ float nextEnvelopeSample(Envelope* env) {
         }
     }
     int next_pos = env->env_pos;
-        
+
     if (next_pos >= env->dur) {
         env->gate = ENV_OFF;
     }
     return env_value;
 };
-
