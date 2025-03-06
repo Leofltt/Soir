@@ -5,7 +5,7 @@
 
 #include "audio_utils.h"
 
-typedef enum { SINE = 0, SQUARE = 1, SAW = 2 } Waveform;
+typedef enum { SINE = 0, SQUARE = 1, SAW = 2, TRIANGLE = 3 } Waveform;
 
 extern const char* waveform_names[];
 
@@ -22,10 +22,8 @@ extern void setWaveform(PolyBLEPOscillator* osc, int wf_idx);
 
 extern void setOscFrequency(PolyBLEPOscillator* osc, float frequency);
 
-extern float oscillate(PolyBLEPOscillator* osc);
+extern float nextOscillatorSample(PolyBLEPOscillator* osc);
 
 extern float polyBLEP(PolyBLEPOscillator* osc, float t);
-
-extern float nextOscillatorSample(PolyBLEPOscillator* osc);
 
 #endif  // POLYBLEPOSC_H

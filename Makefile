@@ -39,9 +39,10 @@ INCLUDES	:=	include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 APP_AUTHOR  := leofltt
-APP_DESCRIPTION := audio thingy still figuring it out
+APP_DESCRIPTION := a cool little groovebox
 ROMFS		:=	romfs
-#GFXBUILD	:=	$(ROMFS)/gfx
+GFXBUILD	:=	$(ROMFS)/gfx
+# ICON  := $(GFXBUILD)/icon.png
 
 #---------------------------------------------------------------------------------
 # options for code generation

@@ -1,5 +1,7 @@
 #include "samplers.h"
 
+#include <string.h>
+
 #include "audio_utils.h"
 
 const char *opusStrError(int error) {
@@ -68,9 +70,9 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
 
     // Decode samples until our waveBuf is full
     int totalSamples = 0;
-    while (totalSamples < SAMPLESPERBUF) {
+    while (totalSamples < sampler->samples_per_buf) {
         int16_t *buffer = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
-        const size_t bufferSize = (SAMPLESPERBUF - totalSamples) * NCHANNELS;
+        const size_t bufferSize = (sampler->samples_per_buf - totalSamples) * NCHANNELS;
 
         // Decode bufferSize samples from opusFile_ into buffer,
         // storing the number of samples that were decoded (or error)
@@ -78,14 +80,14 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
         if (samples <= 0) {
             if (!isLooping(sampler)) {
                 // If loop is off and no more samples are available, fill buffers with zeros
-                for (size_t i = totalSamples; i < SAMPLESPERBUF; ++i) {
+                for (size_t i = totalSamples; i < sampler->samples_per_buf; ++i) {
                     int16_t *bufferPtr = waveBuf_->data_pcm16 + (i * NCHANNELS);
                     memset(bufferPtr, 0, NCHANNELS * sizeof(int16_t));
                 }
             } else {
                 op_raw_seek(sampler->audiofile, 0);
             }
-            return true;
+            return;
         }
 
         totalSamples += samples;
@@ -99,8 +101,8 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
 
     // Pass samples to NDSP
     waveBuf_->nsamples = totalSamples;
-    ndspChnWaveBufAdd(chan_id, waveBuf_);
     DSP_FlushDataCache(waveBuf_->data_pcm16, totalSamples * NCHANNELS * sizeof(int16_t));
+    ndspChnWaveBufAdd(chan_id, waveBuf_);
 
 #ifdef DEBUG
     // Print timing info
@@ -109,5 +111,5 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
            osTickCounterRead(&timer));
 #endif  // DEBUG
 
-    return true;
+    return;
 };

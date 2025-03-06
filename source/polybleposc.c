@@ -1,10 +1,6 @@
 #include "polybleposc.h"
 
-const char* waveform_names[] = {
-    "Sine",
-    "Square",
-    "Saw",
-};
+const char* waveform_names[] = {"Sine", "Square", "Saw", "Triangle"};
 
 void setWaveform(PolyBLEPOscillator* osc, int wf_idx) {
     osc->waveform = (Waveform)wf_idx;
@@ -15,73 +11,56 @@ void setOscFrequency(PolyBLEPOscillator* osc, float frequency) {
     osc->phase_inc = frequency * M_TWOPI / osc->samplerate;
 };
 
-float oscillate(PolyBLEPOscillator* osc) {
+float nextOscillatorSample(PolyBLEPOscillator* osc) {
     float sample;
+    float t = osc->phase / M_TWOPI;
+
     switch (osc->waveform) {
         case SINE:
             sample = sin(osc->phase);
             break;
         case SQUARE:
-            if (osc->phase < M_TWOPI) {
-                sample = 1.0;
-            } else {
-                sample = -1.0;
-            }
+            float square = t < 0.5f ? 1.0f : -1.0f;
+            float squarePoly = polyBLEP(osc, t);
+            sample = square + squarePoly - polyBLEP(osc, fmod(t + 0.5f, 1.0f));
             break;
         case SAW:
-            sample = (2.0f * osc->phase / M_TWOPI) - 1.0f;
+            sample = ((2.0f * t) - 1.0f) - polyBLEP(osc, t);
+            break;
+        case TRIANGLE:
+            if (t < 0.5f) {
+                sample = 4.0f * t - 1.0f;
+            } else {
+                sample = -4.0f * (t - 0.5f) + 1.0f;
+            }
             break;
         default:
             sample = sin(osc->phase);
             break;
     }
-    return sample;
-};
-
-float polyBLEP(PolyBLEPOscillator* osc, float t) {
-    float dt = osc->phase_inc / M_TWOPI;
-    // 0 <= t < 1 : beginning of sample period
-    if (t < dt) {
-        t /= dt;
-        return t + t - t * t - 1.0;
-    }
-    // -1 < t < 0 : right before the end of a sample period
-    else if (t > 1.0 - dt) {
-        t = (t - 1.0) / dt;
-        return t * t + t + t + 1.0;
-    }
-    // 0 otherwise
-    else
-        return 0.0;
-};
-
-float nextOscillatorSample(PolyBLEPOscillator* osc) {
-    float sample = 0.0f;
-    // Normalize the phase increment for use within a sample period
-    float t = fmod(osc->phase / M_TWOPI, 1.0f);
-    // float t = osc->phase_inc / M_TWOPI;
-
-    if (osc->waveform == SINE) {
-        sample = oscillate(osc);
-    } else if (osc->waveform == SAW) {
-        sample = oscillate(osc);
-        sample -= polyBLEP(osc, t);
-    } else {  // SQUARE WAVE
-        sample = oscillate(osc);
-        sample += polyBLEP(osc, t);
-        sample -= polyBLEP(osc, fmod(t + 0.5, 1.0));
-        // if (osc.waveform == TRIANGLE)
-        // {
-        //     // Leaky integrator: y[n] = A * x[n] + (1 - A) * y[n-1]
-        //     value = mPhaseInc * value + (1 - mPhaseInc) * lastoutput;
-        //     lastoutput = value;
-        // }
-    }
-
     osc->phase += osc->phase_inc;
     while (osc->phase >= M_TWOPI) {
         osc->phase -= M_TWOPI;
     }
-
     return sample;
+};
+
+float polyBLEP(PolyBLEPOscillator* osc, float t) {
+    const float dt = osc->phase_inc / M_TWOPI;
+
+    // Calculate the polyblep value based on the phase within one period
+    if (t < 0 || t > 1) {
+        return 0.0f;
+    } else if (t < dt) {
+        // At the beginning of the sample period
+        t /= dt;
+        return t + t - t * t - 1.0f;
+    } else if (t > 1 - dt) {
+        // At the end of the sample period
+        t = (t - 1.0f) / dt;
+        return t * t + t + t + 1.0f;
+    }
+
+    // If phase is within a valid range, polyblep value is zero
+    return 0.0f;
 };
