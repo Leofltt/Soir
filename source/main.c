@@ -406,7 +406,10 @@ int main(int argc, char** argv) {
             stream_offset2 += waveBuf2[fillBlock2].nsamples;
             fillBlock2 = !fillBlock2;
         }
-        update_clock(clock);
+        bool shouldUpdateSeq = update_clock(clock);
+        // if (shouldUpdateSeq) {
+        //     updateSequencer
+        // }
 
         printf("\x1b[25;1H%d.%d.%d | %s", clock->barBeats->bar, clock->barBeats->beat,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);

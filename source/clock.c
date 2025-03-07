@@ -1,5 +1,6 @@
 #include "clock.h"
 
+#include <3ds/os.h>
 #include <math.h>
 
 const char* clockStatusName[] = {"Stopped", "Playing", "Paused"};

@@ -1,0 +1,20 @@
+BasicInfo:
+  Title: "Soir"
+  CompanyCode: "00"
+  ProductCode: "CTR-LEOFLTT"
+  UniqueId: 0x12345
+  Category: Application
+
+SystemControlInfo:
+  SaveDataSize: 0
+  JumpId: 0x0004000000123456
+
+TitleInfo:
+  UniqueId: 0x12345
+  Category: Application
+
+Option:
+  UseOnSD: true
+  EnableCompress: false
+  FreeProductCode: true
+  EnableCrypto: false

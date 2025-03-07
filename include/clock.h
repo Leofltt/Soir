@@ -1,7 +1,7 @@
 #ifndef CLOCK_H
 #define CLOCK_H
 
-#include <3ds.h>
+#include <3ds/types.h>
 
 // note resolution (I'd recc 2 * 3 * maxSubDivisionNeeded, ex. 4 for 16th notes)
 #define STEPS_PER_BEAT (2 * 3 * 4)

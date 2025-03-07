@@ -164,7 +164,10 @@ endif
 .PHONY: all clean
 
 #---------------------------------------------------------------------------------
-all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
+format:
+	find . -name '*.c' -o -name '*.h' | xargs clang-format -i
+#---------------------------------------------------------------------------------
+all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES) #$(OUTPUT).cia
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 $(BUILD):
@@ -199,9 +202,15 @@ else
 #---------------------------------------------------------------------------------
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
+# $(OUTPUT).cia : $(OUTPUT).elf $(_3DSXDEPS)
+
 $(OFILES_SOURCES) : $(HFILES)
 
 $(OUTPUT).elf	:	$(OFILES)
+
+# $(OUTPUT).cia: $(OUTPUT).elf
+# 	@makerom -f cia -o $(OUTPUT).cia -elf $(OUTPUT).elf -rsf $(CURDIR)/soir.rsf -icon $(OUTPUT).smdh
+
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
@@ -256,3 +265,4 @@ endef
 #---------------------------------------------------------------------------------------
 endif
 #---------------------------------------------------------------------------------------
+

@@ -1,7 +1,7 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
-#include <stdbool.h>
+#include <3ds/types.h>
 
 typedef enum {
     NDSP_BIQUAD_NONE = 0,

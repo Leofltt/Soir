@@ -1,7 +1,7 @@
 #ifndef ENVELOPE_H
 #define ENVELOPE_H
 
-#include <stdbool.h>
+#include <3ds/types.h>
 
 typedef enum { ENV_ON = 1, ENV_OFF = 0 } EnvGate;
 
