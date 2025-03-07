@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "audio_utils.h"
+#include "clock.h"
 #include "envelope.h"
 #include "filters.h"
 #include "oscillators.h"
@@ -62,6 +63,17 @@ int main(int argc, char** argv) {
 
     size_t stream_offset = 0;
     size_t stream_offset2 = 0;
+
+    // CLOCK //////////////////////////
+    MusicalTime mt = {.bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4};
+    Clock cl = {.bpm = 120.0f,
+                .ticks_per_beat = (60.0f / 120.0f),
+                .ticks = 0.0f,
+                .ticks_per_step = 0.0f,
+                .status = STOPPED,
+                .barBeats = &mt};
+    Clock* clock = &cl;
+    set_bpm(clock, 120.0f);
 
     // TRACK 1 ///////////////////////////////////////////
     ndspChnReset(0);
@@ -190,6 +202,8 @@ int main(int argc, char** argv) {
     }
 
     printf("\x1b[30;16HSTART: exit.");
+
+    start_clock(clock);
 
     while (aptMainLoop()) {
         gfxSwapBuffers();
@@ -392,6 +406,10 @@ int main(int argc, char** argv) {
             stream_offset2 += waveBuf2[fillBlock2].nsamples;
             fillBlock2 = !fillBlock2;
         }
+        update_clock(clock);
+
+        printf("\x1b[25;1H%d.%d.%d | %s", clock->barBeats->bar, clock->barBeats->beat,
+               clock->barBeats->deltaStep, clockStatusName[clock->status]);
     }
 
     //////// TRACK 1 //////////////////

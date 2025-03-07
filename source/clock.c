@@ -1,27 +1,61 @@
 #include "clock.h"
 
+#include <math.h>
+
+const char* clockStatusName[] = {"Stopped", "Playing", "Paused"};
+
+void reset_barBeats(Clock* clock) {
+    if (clock->barBeats) {
+        clock->barBeats->bar = 0;
+        clock->barBeats->beat = 0;
+        clock->barBeats->deltaStep = 0;
+        clock->barBeats->steps = 0;
+    }
+}
+
 void reset_clock(Clock* clock) {
-    clock->ticks = 0;
+    uint64_t now = svcGetSystemTick();
+    clock->ticks = now;
 };
 void stop_clock(Clock* clock) {
     clock->status = STOPPED;
-    reset_clock(clock);
+    reset_barBeats(clock);
 };
 void pause_clock(Clock* clock) {
     clock->status = PAUSED;
 };
 void start_clock(Clock* clock) {
     clock->status = PLAYING;
+    reset_clock(clock);
 };
 
 void set_bpm(Clock* clock, float bpm) {
-    clock->bpm = bpm;
-    clock->ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / clock->bpm;
-    clock->ticks_per_step = clock->ticks_per_beat / clock->steps_per_beat;
+    if (clock && clock->bpm != bpm) {
+        clock->bpm = bpm;
+        clock->ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
+        clock->ticks_per_step = clock->ticks_per_beat / STEPS_PER_BEAT;
+        reset_clock(clock);
+    }
 }
 
-void update_clock(Clock* clock) {
-    if (clock->status == PLAYING) {
-        clock->ticks++;
+bool update_clock(Clock* clock) {
+    if (!clock || clock->status != PLAYING) {
+        return false;
     }
+
+    uint64_t now = svcGetSystemTick();
+    bool shouldUpdateStepSequencer = (now - clock->ticks >= clock->ticks_per_step);
+
+    if (shouldUpdateStepSequencer) {
+        clock->ticks = now;
+        // step = (step + 1) % (STEPS_PER_BEAT * BEATS_PER_BAR);  // Loop through steps
+
+        // update musical time
+        clock->barBeats->steps += 1;
+        int totBeats = clock->barBeats->steps / STEPS_PER_BEAT;
+        clock->barBeats->bar = floor(totBeats / clock->barBeats->beats_per_bar);
+        clock->barBeats->beat = (totBeats % clock->barBeats->beats_per_bar);
+        clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+    }
+    return shouldUpdateStepSequencer;
 }
