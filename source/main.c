@@ -1,27 +1,28 @@
-#include <3ds.h>
-#include <opusfile.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "audio_utils.h"
 #include "clock.h"
 #include "envelope.h"
 #include "filters.h"
 #include "oscillators.h"
 #include "samplers.h"
+#include "sequencer.h"
 #include "synth.h"
+
+#include <3ds.h>
+#include <opusfile.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 // static const char *ROMFS_PATH = "romfs:/";
-static const char* PATH = "romfs:/samples/bibop.opus";  // Path to Opus file to play
+static const char *PATH = "romfs:/samples/bibop.opus"; // Path to Opus file to play
 
 // static const int THREAD_AFFINITY = -1;           // Execute thread on any core
 // static const int THREAD_STACK_SZ = 32 * 1024;    // 32kB stack for audio thread
 
 // ------------------------------------------------------------
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     gfxInitDefault();
 
     PrintConsole topScreen;
@@ -36,11 +37,11 @@ int main(int argc, char** argv) {
 
     int active_track = 0;
 
-    u32* audioBuffer = (u32*)linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
+    u32 *audioBuffer = (u32 *) linearAlloc(SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
 
-    u32* audioBuffer2 = (u32*)linearAlloc(OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
+    u32 *audioBuffer2 = (u32 *) linearAlloc(OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
 
-    bool fillBlock = false;
+    bool fillBlock  = false;
     bool fillBlock2 = false;
 
     romfsInit();
@@ -52,27 +53,27 @@ int main(int argc, char** argv) {
         220, 440, 880, 1760, 3520, 7040,
     };
 
-    int pcfreq[] = {175, 196, 220, 233, 262, 284, 314};
+    int pcfreq[] = { 175, 196, 220, 233, 262, 284, 314 };
 
     int note = 1;
-    int cf = 4;
-    int cf2 = 4;
-    int wf = 0;
+    int cf   = 4;
+    int cf2  = 4;
+    int wf   = 0;
 
     bool s_seekRequested = false;
 
-    size_t stream_offset = 0;
+    size_t stream_offset  = 0;
     size_t stream_offset2 = 0;
 
     // CLOCK //////////////////////////
-    MusicalTime mt = {.bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4};
-    Clock cl = {.bpm = 120.0f,
-                .ticks_per_beat = (60.0f / 120.0f),
-                .ticks = 0.0f,
-                .ticks_per_step = 0.0f,
-                .status = STOPPED,
-                .barBeats = &mt};
-    Clock* clock = &cl;
+    MusicalTime mt    = { .bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4 };
+    Clock       cl    = { .bpm            = 120.0f,
+                          .ticks_per_beat = (60.0f / 120.0f),
+                          .ticks          = 0.0f,
+                          .ticks_per_step = 0.0f,
+                          .status         = STOPPED,
+                          .barBeats       = &mt };
+    Clock      *clock = &cl;
     set_bpm(clock, 120.0f);
 
     // TRACK 1 ///////////////////////////////////////////
@@ -88,40 +89,47 @@ int main(int argc, char** argv) {
 
     ndspChnSetMix(0, mix);
 
-    NdspBiquad biquadFilter = {.cutoff_freq = (float)notefreq[cf],
-                               .filter_type = NDSP_BIQUAD_NONE,
-                               .update_params = false,
-                               .id = 0};
-    NdspBiquad* filter = &biquadFilter;
+    NdspBiquad  biquadFilter = { .cutoff_freq   = (float) notefreq[cf],
+                                 .filter_type   = NDSP_BIQUAD_NONE,
+                                 .update_params = false,
+                                 .id            = 0 };
+    NdspBiquad *filter       = &biquadFilter;
 
-    PolyBLEPOscillator pbOscillator = {.frequency = pcfreq[note],
-                                       .samplerate = SAMPLERATE,
-                                       .waveform = SINE,
-                                       .phase = 0.,
-                                       .phase_inc = pcfreq[note] * M_TWOPI / SAMPLERATE};
-    PolyBLEPOscillator* osc = &pbOscillator;
+    PolyBLEPOscillator  pbOscillator = { .frequency  = pcfreq[note],
+                                         .samplerate = SAMPLERATE,
+                                         .waveform   = SINE,
+                                         .phase      = 0.,
+                                         .phase_inc  = pcfreq[note] * M_TWOPI / SAMPLERATE };
+    PolyBLEPOscillator *osc          = &pbOscillator;
 
-    Envelope ampEnvelope = {.atk = 10,
-                            .dec = 10,
-                            .rel = 10,
-                            .dur = 40,
-                            .sus_level = 0.6,
-                            .sus_time = 10,
-                            .gate = ENV_OFF,
-                            .env_pos = 0,
-                            .sr = SAMPLERATE};
-    Envelope* env = &ampEnvelope;
+    Envelope  ampEnvelope = { .atk       = 10,
+                              .dec       = 10,
+                              .rel       = 10,
+                              .dur       = 40,
+                              .sus_level = 0.6,
+                              .sus_time  = 10,
+                              .gate      = ENV_OFF,
+                              .env_pos   = 0,
+                              .sr        = SAMPLERATE };
+    Envelope *env         = &ampEnvelope;
     updateEnvelope(env, 150, 200, 0.4, 150, 650);
 
-    SubSynth subs = {.osc = osc, .env = env};
-    SubSynth* subsynth = &subs;
+    SubSynth  subs     = { .osc = osc, .env = env };
+    SubSynth *subsynth = &subs;
+
+    SeqStep  zeroStep1 = { .active = false };
+    SeqStep *sequence1 = (SeqStep *) linearAlloc(16);
+    for (int i = 0; i < 16; i++) {
+        sequence1[i] = zeroStep1;
+    }
+    Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 8 };
 
     ndspWaveBuf waveBuf[2];
     memset(waveBuf, 0, sizeof(waveBuf));
     waveBuf[0].data_vaddr = &audioBuffer[0];
-    waveBuf[0].nsamples = SAMPLESPERBUF;
+    waveBuf[0].nsamples   = SAMPLESPERBUF;
     waveBuf[1].data_vaddr = &audioBuffer[SAMPLESPERBUF];
-    waveBuf[1].nsamples = SAMPLESPERBUF;
+    waveBuf[1].nsamples   = SAMPLESPERBUF;
 
     fillBufferWithZeros(audioBuffer, SAMPLESPERBUF * NCHANNELS);
 
@@ -130,16 +138,16 @@ int main(int argc, char** argv) {
     ////////////////////////////////////////
 
     // TRACK 2 ///////////////////////////////////////////
-    int error = 0;
-    OggOpusFile* opusFile = op_open_file(PATH, &error);
+    int          error    = 0;
+    OggOpusFile *opusFile = op_open_file(PATH, &error);
 
-    OpusSampler opSampler = {.audiofile = opusFile,
-                             .start_position = 0,
-                             .playback_mode = LOOP,
-                             .samples_per_buf = OPUSSAMPLESPERFBUF,
-                             .samplerate = OPUSSAMPLERATE};
+    OpusSampler opSampler = { .audiofile       = opusFile,
+                              .start_position  = 0,
+                              .playback_mode   = LOOP,
+                              .samples_per_buf = OPUSSAMPLESPERFBUF,
+                              .samplerate      = OPUSSAMPLERATE };
 
-    OpusSampler* sampler = &opSampler;
+    OpusSampler *sampler = &opSampler;
 
     ndspChnReset(1);
     ndspChnSetInterp(1, NDSP_INTERP_LINEAR);
@@ -153,20 +161,20 @@ int main(int argc, char** argv) {
 
     ndspChnSetMix(1, mix2);
 
-    NdspBiquad biquadFilter2 = {.cutoff_freq = (float)notefreq[cf2],
-                                .filter_type = NDSP_BIQUAD_NONE,
-                                .update_params = false,
-                                .id = 1};
-    NdspBiquad* filter2 = &biquadFilter2;
+    NdspBiquad  biquadFilter2 = { .cutoff_freq   = (float) notefreq[cf2],
+                                  .filter_type   = NDSP_BIQUAD_NONE,
+                                  .update_params = false,
+                                  .id            = 1 };
+    NdspBiquad *filter2       = &biquadFilter2;
 
     // We set up two wave buffers and alternate between the two,
 
     ndspWaveBuf waveBuf2[2];
     memset(waveBuf2, 0, sizeof(waveBuf2));
     waveBuf2[0].data_vaddr = &audioBuffer2[0];
-    waveBuf2[0].nsamples = OPUSSAMPLESPERFBUF;
+    waveBuf2[0].nsamples   = OPUSSAMPLESPERFBUF;
     waveBuf2[1].data_vaddr = &audioBuffer2[OPUSSAMPLESPERFBUF];
-    waveBuf2[1].nsamples = OPUSSAMPLESPERFBUF;
+    waveBuf2[1].nsamples   = OPUSSAMPLESPERFBUF;
 
     fillBufferWithZeros(audioBuffer2, OPUSSAMPLESPERFBUF * NCHANNELS);
 
@@ -196,7 +204,6 @@ int main(int argc, char** argv) {
         printf("\x1b[12;1Hplayback mode = %s         ", isLooping(sampler) ? "LOOP" : "ONE SHOT");
         printf("\x1b[16;1Hfilter = %s         ", ndsp_biquad_filter_names[filter2->filter_type]);
         printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf2]);
-
     } else {
         printf("ERROR: Invalid active track\n");
     }
@@ -216,7 +223,8 @@ int main(int argc, char** argv) {
 
         ///////////////////////// QUIT w/ Start ////////////////////////
 
-        if (kHeld & KEY_START) break;
+        if (kHeld & KEY_START)
+            break;
 
         //////////////////////// CONTROLS ////////////////////////
 
@@ -284,14 +292,14 @@ int main(int argc, char** argv) {
                 if (cf < 0) {
                     cf = ARRAY_SIZE(notefreq) - 1;
                 }
-                filter->cutoff_freq = (float)notefreq[cf];
+                filter->cutoff_freq   = (float) notefreq[cf];
                 filter->update_params = true;
             } else if (kDown & KEY_UP) {
                 cf++;
                 if (cf >= ARRAY_SIZE(notefreq)) {
                     cf = 0;
                 }
-                filter->cutoff_freq = (float)notefreq[cf];
+                filter->cutoff_freq   = (float) notefreq[cf];
                 filter->update_params = true;
             }
 
@@ -311,7 +319,7 @@ int main(int argc, char** argv) {
             if (kDown & KEY_R) {
                 if (!isLooping(sampler)) {
                     // Restart playback if looping was disabled and playback stopped
-                    s_seekRequested = true;
+                    s_seekRequested        = true;
                     sampler->playback_mode = LOOP;
                 } else if (isLooping(sampler)) {
                     sampler->playback_mode = ONE_SHOT;
@@ -322,23 +330,23 @@ int main(int argc, char** argv) {
 
             if (kDown & KEY_Y) {
                 sampler->start_position = 0;
-                s_seekRequested = true;
+                s_seekRequested         = true;
             }
 
             if (kDown & KEY_X) {
                 sampler->start_position = op_pcm_total(opusFile, -1) / 4;
-                s_seekRequested = true;
+                s_seekRequested         = true;
             }
 
             if (kDown & KEY_A) {
                 sampler->start_position =
-                    op_pcm_total(opusFile, -1) / 2;  // Get total samples and divide by 2
+                    op_pcm_total(opusFile, -1) / 2; // Get total samples and divide by 2
                 s_seekRequested = true;
             }
 
             if (kDown & KEY_B) {
                 sampler->start_position = (op_pcm_total(opusFile, -1) * 3) / 4;
-                s_seekRequested = true;
+                s_seekRequested         = true;
             }
 
             printf("\x1b[11;1Hstart pos = %llu         ", sampler->start_position);
@@ -366,14 +374,14 @@ int main(int argc, char** argv) {
                 if (cf2 < 0) {
                     cf2 = ARRAY_SIZE(notefreq) - 1;
                 }
-                filter2->cutoff_freq = (float)notefreq[cf2];
+                filter2->cutoff_freq   = (float) notefreq[cf2];
                 filter2->update_params = true;
             } else if (kDown & KEY_UP) {
                 cf2++;
                 if (cf2 >= ARRAY_SIZE(notefreq)) {
                     cf2 = 0;
                 }
-                filter2->cutoff_freq = (float)notefreq[cf2];
+                filter2->cutoff_freq   = (float) notefreq[cf2];
                 filter2->update_params = true;
             }
 
@@ -407,11 +415,12 @@ int main(int argc, char** argv) {
             fillBlock2 = !fillBlock2;
         }
         bool shouldUpdateSeq = update_clock(clock);
-        // if (shouldUpdateSeq) {
-        //     updateSequencer
-        // }
+        if (shouldUpdateSeq) {
+            printf("\x1b[24;1H Steps: %d",
+                   (clock->barBeats->steps % (STEPS_PER_BEAT * clock->barBeats->beats_per_bar)));
+        }
 
-        printf("\x1b[25;1H%d.%d.%d | %s", clock->barBeats->bar, clock->barBeats->beat,
+        printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);
     }
 

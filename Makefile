@@ -164,9 +164,6 @@ endif
 .PHONY: all clean
 
 #---------------------------------------------------------------------------------
-format:
-	find . -name '*.c' -o -name '*.h' | xargs clang-format -i
-#---------------------------------------------------------------------------------
 all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES) #$(OUTPUT).cia
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
@@ -182,8 +179,11 @@ ifneq ($(DEPSDIR),$(BUILD))
 $(DEPSDIR):
 	@mkdir -p $@
 endif
-
 #---------------------------------------------------------------------------------
+format:
+	@find . -name '*.c' -o -name '*.h' | xargs clang-format -i
+#---------------------------------------------------------------------------------
+
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)

@@ -1,60 +1,58 @@
 #include "samplers.h"
 
-#include <string.h>
-
 #include "audio_utils.h"
+
+#include <string.h>
 
 const char *opusStrError(int error) {
     switch (error) {
-        case OP_FALSE:
-            return "OP_FALSE: A request did not succeed.";
-        case OP_HOLE:
-            return "OP_HOLE: There was a hole in the page sequence numbers.";
-        case OP_EREAD:
-            return "OP_EREAD: An underlying read, seek or tell operation "
-                   "failed.";
-        case OP_EFAULT:
-            return "OP_EFAULT: A NULL pointer was passed where none was "
-                   "expected, or an internal library error was encountered.";
-        case OP_EIMPL:
-            return "OP_EIMPL: The stream used a feature which is not "
-                   "implemented.";
-        case OP_EINVAL:
-            return "OP_EINVAL: One or more parameters to a function were "
-                   "invalid.";
-        case OP_ENOTFORMAT:
-            return "OP_ENOTFORMAT: This is not a valid Ogg Opus stream.";
-        case OP_EBADHEADER:
-            return "OP_EBADHEADER: A required header packet was not properly "
-                   "formatted.";
-        case OP_EVERSION:
-            return "OP_EVERSION: The ID header contained an unrecognised "
-                   "version number.";
-        case OP_EBADPACKET:
-            return "OP_EBADPACKET: An audio packet failed to decode properly.";
-        case OP_EBADLINK:
-            return "OP_EBADLINK: We failed to find data we had seen before or "
-                   "the stream was sufficiently corrupt that seeking is "
-                   "impossible.";
-        case OP_ENOSEEK:
-            return "OP_ENOSEEK: An operation that requires seeking was "
-                   "requested on an unseekable stream.";
-        case OP_EBADTIMESTAMP:
-            return "OP_EBADTIMESTAMP: The first or last granule position of a "
-                   "link failed basic validity checks.";
-        default:
-            return "Unknown error.";
+    case OP_FALSE:
+        return "OP_FALSE: A request did not succeed.";
+    case OP_HOLE:
+        return "OP_HOLE: There was a hole in the page sequence numbers.";
+    case OP_EREAD:
+        return "OP_EREAD: An underlying read, seek or tell operation "
+               "failed.";
+    case OP_EFAULT:
+        return "OP_EFAULT: A NULL pointer was passed where none was "
+               "expected, or an internal library error was encountered.";
+    case OP_EIMPL:
+        return "OP_EIMPL: The stream used a feature which is not "
+               "implemented.";
+    case OP_EINVAL:
+        return "OP_EINVAL: One or more parameters to a function were "
+               "invalid.";
+    case OP_ENOTFORMAT:
+        return "OP_ENOTFORMAT: This is not a valid Ogg Opus stream.";
+    case OP_EBADHEADER:
+        return "OP_EBADHEADER: A required header packet was not properly "
+               "formatted.";
+    case OP_EVERSION:
+        return "OP_EVERSION: The ID header contained an unrecognised "
+               "version number.";
+    case OP_EBADPACKET:
+        return "OP_EBADPACKET: An audio packet failed to decode properly.";
+    case OP_EBADLINK:
+        return "OP_EBADLINK: We failed to find data we had seen before or "
+               "the stream was sufficiently corrupt that seeking is "
+               "impossible.";
+    case OP_ENOSEEK:
+        return "OP_ENOSEEK: An operation that requires seeking was "
+               "requested on an unseekable stream.";
+    case OP_EBADTIMESTAMP:
+        return "OP_EBADTIMESTAMP: The first or last granule position of a "
+               "link failed basic validity checks.";
+    default:
+        return "Unknown error.";
     }
 };
 
 void setSample(OpusSampler *sampler, char *path) {
     int error = 0;
-    OggOpusFile *opusFile = op_open_file(path, &error);
-    if (error) {
-        printf("Failed to open file: error %d (%s)\n", error, opusStrError(error));
-        return;
+    if (sampler->audiofile) {
+        op_free(sampler->audiofile);
     }
-    sampler->audiofile = opusFile;
+    sampler->audiofile = op_open_file(path, &error);
 };
 
 bool isLooping(OpusSampler *sampler) {
@@ -66,12 +64,12 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
     // Setup timer for performance stats
     TickCounter timer;
     osTickCounterStart(&timer);
-#endif  // DEBUG
+#endif // DEBUG
 
     // Decode samples until our waveBuf is full
     int totalSamples = 0;
     while (totalSamples < sampler->samples_per_buf) {
-        int16_t *buffer = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
+        int16_t     *buffer     = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
         const size_t bufferSize = (sampler->samples_per_buf - totalSamples) * NCHANNELS;
 
         // Decode bufferSize samples from opusFile_ into buffer,
@@ -109,7 +107,7 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
     osTickCounterUpdate(&timer);
     printf("fillBuffer %lfms in %lfms\n", totalSamples * 1000.0 / SAMPLE_RATE,
            osTickCounterRead(&timer));
-#endif  // DEBUG
+#endif // DEBUG
 
     return;
 };

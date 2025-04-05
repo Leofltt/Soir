@@ -1,11 +1,33 @@
 ---
-BasedOnStyle: Google
+# .clang-format for C
+
+Language: C
+BasedOnStyle: LLVM
+
 IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignTrailingComments: true
+
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+
+BreakBeforeBraces: Attach
+
 ColumnLimit: 100
-PointerAlignment: Left 
+
+SpaceBeforeParens: ControlStatements  # if (), while (), etc.
+SpacesInParentheses: false
+SpaceAfterCStyleCast: true
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+Cpp11BracedListStyle: false
 SortIncludes: true
-IncludeBlocks: Regroup  
-BreakBeforeBraces: Attach 
-AllowShortFunctionsOnASingleLine: InlineOnly
+IncludeBlocks: Regroup
+
 ---
 

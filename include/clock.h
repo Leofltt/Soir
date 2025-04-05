@@ -3,8 +3,9 @@
 
 #include <3ds/types.h>
 
+#define MAXSUBDIVBEAT 8
 // note resolution (I'd recc 2 * 3 * maxSubDivisionNeeded, ex. 4 for 16th notes)
-#define STEPS_PER_BEAT (2 * 3 * 4)
+#define STEPS_PER_BEAT (2 * 3 * MAXSUBDIVBEAT)
 
 typedef enum { STOPPED = 0, PLAYING = 1, PAUSED = 2 } ClockStatus;
 
