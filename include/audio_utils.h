@@ -15,14 +15,7 @@
 #define MAX_AMP_PCM16 0x7FFF
 #define BYTESPERSAMPLE 4
 
-#define SAMPLERATE 32000
-#define SAMPLESPERBUF (SAMPLERATE * 120 / 1000)
-#define NCHANNELS 2
-
-#define OPUSSAMPLERATE 48000
-#define OPUSSAMPLESPERFBUF (OPUSSAMPLERATE * 120 / 1000)
-
-#define K_INT16_MAX (float)MAX_AMP_PCM16
+#define K_INT16_MAX (float) MAX_AMP_PCM16
 #define K_INT16_MAX_PLUS1 (K_INT16_MAX + 1.)
 #define K_FACTOR (1. / K_INT16_MAX_PLUS1)
 #define K_INT16_MIN ((-1.) * K_INT16_MAX_PLUS1)
@@ -33,6 +26,6 @@ extern s16 floatToInt16(float x);
 
 extern float int16ToFloat(s16 x);
 
-extern void fillBufferWithZeros(void* audioBuffer, size_t size);
+extern void fillBufferWithZeros(void *audioBuffer, size_t size);
 
-#endif  // AUDIO_UTILS_H
+#endif // AUDIO_UTILS_H

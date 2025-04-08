@@ -1,3 +1,6 @@
+#ifndef UI_CONSTANTS_H
+#define UI_CONSTANTS_H
+
 #include <citro2d.h>
 
 // fonts
@@ -20,6 +23,10 @@
 #define SCREEN_HEIGHT 240 // same for both screens
 
 // main view components dimensions
-#define HOME_TOOLBAR_WIDTH 100 
-#define HOME_TRACKBAR_WIDTH 300
-#define HOME_TRACKBAR_HEIGHT 20
+#define HOME_TOOLBAR_WIDTH 100
+#define HOME_TRACKS_WIDTH 300
+#define HOME_TRACKS_HEIGHT 15
+#define HOME_TRACKS_SPACER_W 6
+#define HOME_TRACKS_HEADER_W 18
+
+#endif // UI_CONSTANTS_H

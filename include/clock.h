@@ -9,7 +9,7 @@
 
 typedef enum { STOPPED = 0, PLAYING = 1, PAUSED = 2 } ClockStatus;
 
-extern const char* clockStatusName[];
+extern const char *clockStatusName[];
 
 typedef struct {
     int bar;
@@ -20,20 +20,20 @@ typedef struct {
 } MusicalTime;
 
 typedef struct {
-    float bpm;
-    float ticks_per_beat;
-    float ticks;
-    int ticks_per_step;
-    ClockStatus status;
-    MusicalTime* barBeats;
+    float        bpm;
+    float        ticks_per_beat;
+    float        ticks;
+    int          ticks_per_step;
+    ClockStatus  status;
+    MusicalTime *barBeats;
 } Clock;
 
-extern void setBpm(Clock* clock, float bpm);
-extern bool updateClock(Clock* clock);
-extern void resetClock(Clock* clock);
-extern void stopClock(Clock* clock);
-extern void pauseClock(Clock* clock);
-extern void startClock(Clock* clock);
-extern void resetBarBeats(Clock* clock);
+extern void setBpm(Clock *clock, float bpm);
+extern bool updateClock(Clock *clock);
+extern void resetClock(Clock *clock);
+extern void stopClock(Clock *clock);
+extern void pauseClock(Clock *clock);
+extern void startClock(Clock *clock);
+extern void resetBarBeats(Clock *clock);
 
-#endif  // CLOCK_H
+#endif // CLOCK_H

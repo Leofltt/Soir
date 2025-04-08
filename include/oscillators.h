@@ -3,4 +3,4 @@
 
 #include "polybleposc.h"
 
-#endif  // OSCILLATORS_H
+#endif // OSCILLATORS_H

@@ -4,9 +4,9 @@
 #include <3ds/types.h>
 
 typedef struct {
-    int id;
-    u16 format;
+    int   id;
+    u16   format;
     float samplerate;
 } AudioChannel;
 
-#endif  // AUDIOCHANNEL_H
+#endif // AUDIOCHANNEL_H

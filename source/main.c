@@ -1,5 +1,5 @@
-#include "audio_utils.h"
 #include "clock.h"
+#include "engine_constants.h"
 #include "envelope.h"
 #include "filters.h"
 #include "oscillators.h"
@@ -7,6 +7,7 @@
 #include "sequencer.h"
 #include "synth.h"
 #include "ui_constants.h"
+#include "views.h"
 
 #include <3ds.h>
 #include <citro2d.h>
@@ -441,10 +442,9 @@ int main(int argc, char **argv) {
         C2D_TargetClear(topScreen, CLR_BLACK); // Clear screen to black
         C2D_SceneBegin(topScreen);
 
-        C2D_DrawRectangle(0, 0, 0, HOME_TOOLBAR_WIDTH, SCREEN_HEIGHT, CLR_DARK_GRAY, CLR_DARK_GRAY,
-                          CLR_DARK_GRAY, CLR_DARK_GRAY);
-        C2D_DrawRectangle(HOME_TOOLBAR_WIDTH, 0, 0, HOME_TRACKBAR_WIDTH, HOME_TRACKBAR_HEIGHT,
-                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        draw_toolbar();  // Draw the toolbar
+        draw_trackbar(); // Draw the trackbar
+
         C3D_FrameEnd(0);
     }
 
