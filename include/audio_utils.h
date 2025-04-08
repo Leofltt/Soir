@@ -29,9 +29,9 @@
 
 extern float clamp(float d, float min, float max);
 
-extern s16 float_to_int16(float x);
+extern s16 floatToInt16(float x);
 
-extern float int16_to_float(s16 x);
+extern float int16ToFloat(s16 x);
 
 extern void fillBufferWithZeros(void* audioBuffer, size_t size);
 

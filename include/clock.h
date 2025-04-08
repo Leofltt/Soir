@@ -28,12 +28,12 @@ typedef struct {
     MusicalTime* barBeats;
 } Clock;
 
-extern void set_bpm(Clock* clock, float bpm);
-extern bool update_clock(Clock* clock);
-extern void reset_clock(Clock* clock);
-extern void stop_clock(Clock* clock);
-extern void pause_clock(Clock* clock);
-extern void start_clock(Clock* clock);
-extern void reset_barBeats(Clock* clock);
+extern void setBpm(Clock* clock, float bpm);
+extern bool updateClock(Clock* clock);
+extern void resetClock(Clock* clock);
+extern void stopClock(Clock* clock);
+extern void pauseClock(Clock* clock);
+extern void startClock(Clock* clock);
+extern void resetBarBeats(Clock* clock);
 
 #endif  // CLOCK_H

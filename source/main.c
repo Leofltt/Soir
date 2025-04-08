@@ -6,8 +6,10 @@
 #include "samplers.h"
 #include "sequencer.h"
 #include "synth.h"
+#include "ui_constants.h"
 
 #include <3ds.h>
+#include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,10 +26,16 @@ static const char *PATH = "romfs:/samples/bibop.opus"; // Path to Opus file to p
 
 int main(int argc, char **argv) {
     gfxInitDefault();
+    romfsInit();
+    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    C2D_Prepare();
 
-    PrintConsole topScreen;
-    consoleInit(GFX_TOP, &topScreen);
-    consoleSelect(&topScreen);
+    PrintConsole bottomScreen;
+    consoleInit(GFX_BOTTOM, &bottomScreen);
+    consoleSelect(&bottomScreen);
+
+    C3D_RenderTarget *topScreen = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 
     // Enable N3DS 804MHz operation, where available
     osSetSpeedupEnable(true);
@@ -44,7 +52,6 @@ int main(int argc, char **argv) {
     bool fillBlock  = false;
     bool fillBlock2 = false;
 
-    romfsInit();
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
 
@@ -74,7 +81,7 @@ int main(int argc, char **argv) {
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
-    set_bpm(clock, 120.0f);
+    setBpm(clock, 120.0f);
 
     // TRACK 1 ///////////////////////////////////////////
     ndspChnReset(0);
@@ -122,7 +129,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         sequence1[i] = zeroStep1;
     }
-    Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 8 };
+    // Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 8 };
 
     ndspWaveBuf waveBuf[2];
     memset(waveBuf, 0, sizeof(waveBuf));
@@ -210,12 +217,12 @@ int main(int argc, char **argv) {
 
     printf("\x1b[30;16HSTART: exit.");
 
-    start_clock(clock);
+    startClock(clock);
 
     while (aptMainLoop()) {
-        gfxSwapBuffers();
-        gfxFlushBuffers();
-        gspWaitForVBlank();
+        // gfxSwapBuffers();
+        // gfxFlushBuffers();
+        // gspWaitForVBlank();
         hidScanInput();
 
         u32 kDown = hidKeysDown();
@@ -307,7 +314,7 @@ int main(int argc, char **argv) {
             printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf]);
 
             if (filter->update_params) {
-                update_ndspbiquad(*filter);
+                updateNdspbiquad(*filter);
                 filter->update_params = false;
             }
         }
@@ -390,11 +397,12 @@ int main(int argc, char **argv) {
             printf("\x1b[17;1Hcf = %i Hz          ", notefreq[cf2]);
 
             if (filter2->update_params) {
-                update_ndspbiquad(*filter2);
+                updateNdspbiquad(*filter2);
                 filter2->update_params = false;
             }
         }
 
+        // Fill DSP Bufs for each track
         /////////////////////////////////////////////////////////////////
 
         if (waveBuf[fillBlock].status == NDSP_WBUF_DONE) {
@@ -414,14 +422,30 @@ int main(int argc, char **argv) {
             stream_offset2 += waveBuf2[fillBlock2].nsamples;
             fillBlock2 = !fillBlock2;
         }
-        bool shouldUpdateSeq = update_clock(clock);
-        if (shouldUpdateSeq) {
-            printf("\x1b[24;1H Steps: %d",
-                   (clock->barBeats->steps % (STEPS_PER_BEAT * clock->barBeats->beats_per_bar)));
-        }
+
+        // CLOCK STUFF
+        //////////////////////////////////////////////////
+
+        bool shouldUpdateSeq = updateClock(clock);
+        // if (shouldUpdateSeq) {
+        //     printf("\x1b[24;1H Steps: %d",
+        //            (clock->barBeats->steps % (STEPS_PER_BEAT * clock->barBeats->beats_per_bar)));
+        // }
 
         printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);
+
+        // top screen rendering stuff
+        //////////////////////////////////////////////////
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_TargetClear(topScreen, CLR_BLACK); // Clear screen to black
+        C2D_SceneBegin(topScreen);
+
+        C2D_DrawRectangle(0, 0, 0, HOME_TOOLBAR_WIDTH, SCREEN_HEIGHT, CLR_DARK_GRAY, CLR_DARK_GRAY,
+                          CLR_DARK_GRAY, CLR_DARK_GRAY);
+        C2D_DrawRectangle(HOME_TOOLBAR_WIDTH, 0, 0, HOME_TRACKBAR_WIDTH, HOME_TRACKBAR_HEIGHT,
+                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        C3D_FrameEnd(0);
     }
 
     //////// TRACK 1 //////////////////
@@ -437,7 +461,8 @@ int main(int argc, char **argv) {
     /////////////////////////////
 
     ndspExit();
-
+    C2D_Fini();
+    C3D_Fini();
     romfsExit();
     gfxExit();
     return 0;

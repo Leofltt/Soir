@@ -13,7 +13,7 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
         env_value       = fmaxf(0.0f, fminf(1.0f, env_value));
         next_sam *= env_value;
         next_sam *= synthvol;
-        s16 sample = float_to_int16(next_sam);
+        s16 sample = floatToInt16(next_sam);
         dest[i]    = (sample << 16) | (sample & 0xffff);
     }
 

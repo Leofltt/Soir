@@ -1,5 +1,4 @@
 ---
-# .clang-format for C
 
 Language: C
 BasedOnStyle: LLVM
@@ -20,7 +19,7 @@ BreakBeforeBraces: Attach
 
 ColumnLimit: 100
 
-SpaceBeforeParens: ControlStatements  # if (), while (), etc.
+SpaceBeforeParens: ControlStatements 
 SpacesInParentheses: false
 SpaceAfterCStyleCast: true
 

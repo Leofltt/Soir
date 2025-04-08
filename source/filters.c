@@ -5,7 +5,7 @@
 const char *ndsp_biquad_filter_names[] = { "None",      "Low-Pass", "High-Pass",
                                            "Band-Pass", "Notch",    "Peaking" };
 
-void update_ndspbiquad(NdspBiquad filter) {
+void updateNdspbiquad(NdspBiquad filter) {
     switch (filter.filter_type) {
     default:
         ndspChnIirBiquadSetEnable(filter.id, false);

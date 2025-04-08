@@ -5,7 +5,7 @@
 
 const char *clockStatusName[] = { "Stopped", "Playing", "Paused" };
 
-void reset_barBeats(Clock *clock) {
+void resetBarBeats(Clock *clock) {
     if (clock->barBeats) {
         clock->barBeats->bar       = 0;
         clock->barBeats->beat      = 0;
@@ -14,32 +14,32 @@ void reset_barBeats(Clock *clock) {
     }
 }
 
-void reset_clock(Clock *clock) {
+void resetClock(Clock *clock) {
     uint64_t now = svcGetSystemTick();
     clock->ticks = now;
 };
-void stop_clock(Clock *clock) {
+void stopClock(Clock *clock) {
     clock->status = STOPPED;
-    reset_barBeats(clock);
+    resetBarBeats(clock);
 };
-void pause_clock(Clock *clock) {
+void pauseClock(Clock *clock) {
     clock->status = PAUSED;
 };
-void start_clock(Clock *clock) {
+void startClock(Clock *clock) {
     clock->status = PLAYING;
-    reset_clock(clock);
+    resetClock(clock);
 };
 
-void set_bpm(Clock *clock, float bpm) {
+void setBpm(Clock *clock, float bpm) {
     if (clock && clock->bpm != bpm) {
         clock->bpm            = bpm;
         clock->ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
         clock->ticks_per_step = clock->ticks_per_beat / STEPS_PER_BEAT;
-        reset_clock(clock);
+        resetClock(clock);
     }
 }
 
-bool update_clock(Clock *clock) {
+bool updateClock(Clock *clock) {
     if (!clock || clock->status != PLAYING) {
         return false;
     }

@@ -7,12 +7,12 @@ float clamp(float d, float min, float max) {
     return t > max ? max : t;
 };
 
-s16 float_to_int16(float x) {
+s16 floatToInt16(float x) {
     s16 converted = (s16) clamp(x * K_INT16_MAX_PLUS1, K_INT16_MIN, K_INT16_MAX);
     return converted;
 };
 
-float int16_to_float(s16 x) {
+float int16ToFloat(s16 x) {
     float converted = ((float) x) * K_FACTOR;
     return converted;
 };

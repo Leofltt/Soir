@@ -61,6 +61,5 @@ float polyBLEP(PolyBLEPOscillator *osc, float t) {
         return t * t + t + t + 1.0f;
     }
 
-    // If phase is within a valid range, polyblep value is zero
     return 0.0f;
 };

@@ -21,6 +21,6 @@ typedef struct {
     int id;
 } NdspBiquad;
 
-extern void update_ndspbiquad(NdspBiquad filter);
+extern void updateNdspbiquad(NdspBiquad filter);
 
 #endif  // FILTERS_H
