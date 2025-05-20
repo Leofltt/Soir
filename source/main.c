@@ -5,6 +5,7 @@
 #include "oscillators.h"
 #include "samplers.h"
 #include "sequencer.h"
+#include "session_controller.h"
 #include "synth.h"
 #include "ui_constants.h"
 #include "views.h"
@@ -31,6 +32,8 @@ int main(int argc, char **argv) {
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
+
+    Session session = { VIEW_MAIN };
 
     PrintConsole bottomScreen;
     consoleInit(GFX_BOTTOM, &bottomScreen);
@@ -221,9 +224,6 @@ int main(int argc, char **argv) {
     startClock(clock);
 
     while (aptMainLoop()) {
-        // gfxSwapBuffers();
-        // gfxFlushBuffers();
-        // gspWaitForVBlank();
         hidScanInput();
 
         u32 kDown = hidKeysDown();
@@ -442,8 +442,20 @@ int main(int argc, char **argv) {
         C2D_TargetClear(topScreen, CLR_BLACK); // Clear screen to black
         C2D_SceneBegin(topScreen);
 
-        draw_toolbar();  // Draw the toolbar
-        draw_trackbar(); // Draw the trackbar
+        switch (session.main_screen_view) {
+        case VIEW_MAIN:
+            drawMainView();
+            break;
+        case VIEW_SETTINGS:
+            // Draw settings view
+            break;
+        case VIEW_ABOUT:
+            // Draw about view
+            break;
+        default:
+            drawMainView();
+            break;
+        }
 
         C3D_FrameEnd(0);
     }

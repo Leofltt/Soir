@@ -1,7 +1,8 @@
 #ifndef VIEWS_H
 #define VIEWS_H
 
-extern void draw_toolbar();
-extern void draw_trackbar();
+extern void drawToolbar();
+extern void drawTrackbar();
+extern void drawMainView();
 
 #endif // VIEWS_H
