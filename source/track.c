@@ -5,7 +5,7 @@
 #include <3ds.h>
 
 void initializeTrack(Track *track) {
-    float rate      = track->instrument_type == SYNTHESISER ? SAMPLERATE : OPUSSAMPLESPERFBUF;
+    float rate      = track->instrument_type == SYNTHESISER ? SAMPLERATE : OPUSSAMPLERATE;
     u32   n_samples = track->instrument_type == SYNTHESISER ? SAMPLESPERBUF : OPUSSAMPLESPERFBUF;
     ndspChnReset(track->chan_id);
     ndspChnSetInterp(track->chan_id, NDSP_INTERP_LINEAR);
