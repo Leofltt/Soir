@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     C3D_RenderTarget *topScreen = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 
     // Enable N3DS 804MHz operation, where available
-    osSetSpeedupEnable(true);
+    // osSetSpeedupEnable(true);
 
     // u32 kDownOld = 0, kHeldOld = 0, kUpOld = 0; //In these variables there will be information
     // about keys detected in the previous frame
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
-    setBpm(clock, 120.0f);
+    setBpm(clock, 60.0f);
 
     // TRACK 1 ///////////////////////////////////////////
     ndspChnReset(0);
@@ -132,8 +132,11 @@ int main(int argc, char **argv) {
     SeqStep *sequence1 = (SeqStep *) linearAlloc(16);
     for (int i = 0; i < 16; i++) {
         sequence1[i] = zeroStep1;
+        if (i % 4 == 0 || i == 0) {
+            sequence1[i].active = true; // Activate every 4th step
+        }
     }
-    // Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 8 };
+    Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 4 };
 
     ndspWaveBuf waveBuf[2];
     memset(waveBuf, 0, sizeof(waveBuf));
@@ -154,7 +157,7 @@ int main(int argc, char **argv) {
 
     OpusSampler opSampler = { .audiofile       = opusFile,
                               .start_position  = 0,
-                              .playback_mode   = LOOP,
+                              .playback_mode   = ONE_SHOT,
                               .samples_per_buf = OPUSSAMPLESPERFBUF,
                               .samplerate      = OPUSSAMPLERATE };
 
@@ -218,6 +221,7 @@ int main(int argc, char **argv) {
     } else {
         printf("ERROR: Invalid active track\n");
     }
+    
 
     printf("\x1b[30;16HSTART: exit.");
 
@@ -428,13 +432,27 @@ int main(int argc, char **argv) {
         //////////////////////////////////////////////////
 
         bool shouldUpdateSeq = updateClock(clock);
-        // if (shouldUpdateSeq) {
-        //     printf("\x1b[24;1H Steps: %d",
-        //            (clock->barBeats->steps % (STEPS_PER_BEAT * clock->barBeats->beats_per_bar)));
-        // }
+        if (shouldUpdateSeq) {
+            int seq1_steps_per_beat = seq1.n_steps / seq1.n_beats;
+            int seq1_modulo = STEPS_PER_BEAT / seq1_steps_per_beat;
+            if (clock->barBeats->deltaStep % seq1_modulo == 0) {
+                SeqStep step = updateSequencer(&seq1);
+                printf("\x1b[27;1HCurrent sequencer step: %d", seq1.cur_step);
+                printf("\x1b[28;1HStep active: %s", step.active ? "true" : "false");
+                if (step.active) {
+                    // Trigger the synth envelope
+                    triggerEnvelope(subsynth->env);
+                }
+            }
+
+        }
 
         printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);
+
+        for(int i = 0; i < seq1.n_steps; i++) {
+            printf("\x1b[29;%dH%d", i, seq1.steps[i].active ? 1 : 0);
+        }
 
         // top screen rendering stuff
         //////////////////////////////////////////////////

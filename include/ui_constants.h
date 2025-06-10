@@ -23,10 +23,10 @@
 #define SCREEN_HEIGHT 240 // same for both screens
 
 // main view components dimensions
-#define HOME_TOOLBAR_WIDTH 100
-#define HOME_TRACKS_WIDTH 300
-#define HOME_TRACKS_HEIGHT 15
-#define HOME_TRACKS_SPACER_W 6
-#define HOME_TRACKS_HEADER_W 18
+#define HOME_TRACKS_WIDTH 100
+#define HOME_STEPS_WIDTH (TOP_SCREEN_WIDTH - HOME_TRACKS_WIDTH)  // 300
+#define HOME_STEPS_HEIGHT 15
+#define HOME_STEPS_SPACER_W 4  
+#define HOME_STEPS_HEADER_W 14
 
 #endif // UI_CONSTANTS_H
