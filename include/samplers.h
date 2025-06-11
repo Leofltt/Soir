@@ -1,6 +1,8 @@
 #ifndef SAMPLERS_H
 #define SAMPLERS_H
 
+#include "envelope.h"
+
 #include <3ds.h>
 #include <opusfile.h>
 
@@ -12,6 +14,7 @@ typedef struct {
     int64_t      start_position;
     size_t       samples_per_buf;
     float        samplerate;
+    Envelope    *env;
 } OpusSampler;
 
 extern const char *opusStrError(int error);

@@ -1,5 +1,6 @@
 #include "samplers.h"
 
+#include "audio_utils.h"
 #include "engine_constants.h"
 
 #include <string.h>
@@ -86,6 +87,22 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
                 op_raw_seek(sampler->audiofile, 0);
             }
             return;
+        }
+
+        for (int i = 0; i < samples; i++) {
+            float env_value = nextEnvelopeSample(sampler->env);
+            env_value       = fmaxf(0.0f, fminf(1.0f, env_value));
+
+            int sample_idx = (totalSamples + i) * NCHANNELS;
+
+            float left_sam  = int16ToFloat(waveBuf_->data_pcm16[sample_idx]);
+            float right_sam = int16ToFloat(waveBuf_->data_pcm16[sample_idx + 1]);
+
+            left_sam *= env_value;
+            right_sam *= env_value;
+
+            waveBuf_->data_pcm16[sample_idx]     = floatToInt16(left_sam);
+            waveBuf_->data_pcm16[sample_idx + 1] = floatToInt16(right_sam);
         }
 
         totalSamples += samples;

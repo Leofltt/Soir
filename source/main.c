@@ -7,6 +7,7 @@
 #include "sequencer.h"
 #include "session_controller.h"
 #include "synth.h"
+#include "track_parameters.h"
 #include "ui_constants.h"
 #include "views.h"
 
@@ -106,34 +107,48 @@ int main(int argc, char **argv) {
                                  .id            = 0 };
     NdspBiquad *filter       = &biquadFilter;
 
-    PolyBLEPOscillator  pbOscillator = { .frequency  = pcfreq[note],
-                                         .samplerate = SAMPLERATE,
-                                         .waveform   = SINE,
-                                         .phase      = 0.,
-                                         .phase_inc  = pcfreq[note] * M_TWOPI / SAMPLERATE };
-    PolyBLEPOscillator *osc          = &pbOscillator;
+    PolyBLEPOscillator *osc = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator));
+    if (!osc) {
+        // Handle allocation failure
+        return 1;
+    }
+    *osc = (PolyBLEPOscillator) { .frequency  = pcfreq[note],
+                                  .samplerate = SAMPLERATE,
+                                  .waveform   = SINE,
+                                  .phase      = 0.,
+                                  .phase_inc  = pcfreq[note] * M_TWOPI / SAMPLERATE };
 
-    Envelope  ampEnvelope = { .atk       = 10,
-                              .dec       = 10,
-                              .rel       = 10,
-                              .dur       = 40,
-                              .sus_level = 0.6,
-                              .sus_time  = 10,
-                              .gate      = ENV_OFF,
-                              .env_pos   = 0,
-                              .sr        = SAMPLERATE };
-    Envelope *env         = &ampEnvelope;
-    updateEnvelope(env, 150, 200, 0.4, 150, 650);
+    Envelope *env = (Envelope *) linearAlloc(sizeof(Envelope));
+    if (!env) {
+        linearFree(osc);
+        return 1;
+    }
+    *env = defaultEnvelopeStruct(SAMPLERATE);
+    updateEnvelope(env, 150, 200, 0.6, 150, 600); // to initialize the envelope
 
-    SubSynth  subs     = { .osc = osc, .env = env };
-    SubSynth *subsynth = &subs;
+    SubSynth *subsynth = (SubSynth *) linearAlloc(sizeof(SubSynth));
+    if (!subsynth) {
+        linearFree(osc);
+        linearFree(env);
+        return 1;
+    }
+    *subsynth = (SubSynth) { .osc = osc, .env = env };
 
-    SeqStep  zeroStep1 = { .active = false };
-    SeqStep *sequence1 = (SeqStep *) linearAlloc(16);
+    SeqStep          zeroStep1 = { .active = false };
+    SeqStep         *sequence1 = (SeqStep *) linearAlloc(16);
+    TrackParameters *trackParamsArray =
+        (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
+    SubSynthParameters *subsynthParamsArray =
+        (SubSynthParameters *) linearAlloc(16 * sizeof(SubSynthParameters));
     for (int i = 0; i < 16; i++) {
-        sequence1[i] = zeroStep1;
+        subsynthParamsArray[i] = defaultSubSynthParameters();
+        trackParamsArray[i]    = defaultTrackParameters(0, &subsynthParamsArray[i]);
+        sequence1[i]           = zeroStep1;
+        sequence1[i].data      = &trackParamsArray[i];
         if (i % 4 == 0 || i == 0) {
             sequence1[i].active = true; // Activate every 4th step
+            ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
+                midiToHertz(i + 48);
         }
     }
     Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 4 };
@@ -155,11 +170,16 @@ int main(int argc, char **argv) {
     int          error    = 0;
     OggOpusFile *opusFile = op_open_file(PATH, &error);
 
+    Envelope  ampEnvelope1 = defaultEnvelopeStruct(OPUSSAMPLERATE);
+    Envelope *env1         = &ampEnvelope1;
+    // updateEnvelope(env1, 150, 200, 0.6, 150, 600);
+
     OpusSampler opSampler = { .audiofile       = opusFile,
                               .start_position  = 0,
                               .playback_mode   = ONE_SHOT,
                               .samples_per_buf = OPUSSAMPLESPERFBUF,
-                              .samplerate      = OPUSSAMPLERATE };
+                              .samplerate      = OPUSSAMPLERATE,
+                              .env             = env1 };
 
     OpusSampler *sampler = &opSampler;
 
@@ -221,7 +241,6 @@ int main(int argc, char **argv) {
     } else {
         printf("ERROR: Invalid active track\n");
     }
-    
 
     printf("\x1b[30;16HSTART: exit.");
 
@@ -431,26 +450,35 @@ int main(int argc, char **argv) {
         // CLOCK STUFF
         //////////////////////////////////////////////////
 
-        bool shouldUpdateSeq = updateClock(clock);
+        bool shouldUpdateSeq =
+            updateClock(clock); // it should update the seqs if the steps moved forward
+
         if (shouldUpdateSeq) {
             int seq1_steps_per_beat = seq1.n_steps / seq1.n_beats;
-            int seq1_modulo = STEPS_PER_BEAT / seq1_steps_per_beat;
+            int seq1_modulo         = STEPS_PER_BEAT / seq1_steps_per_beat;
             if (clock->barBeats->deltaStep % seq1_modulo == 0) {
                 SeqStep step = updateSequencer(&seq1);
                 printf("\x1b[27;1HCurrent sequencer step: %d", seq1.cur_step);
-                printf("\x1b[28;1HStep active: %s", step.active ? "true" : "false");
-                if (step.active) {
-                    // Trigger the synth envelope
-                    triggerEnvelope(subsynth->env);
+                printf("\x1b[28;1HStep active: %s", step.active ? "true." : "   .");
+                if (step.active && step.data && step.data->instrument_data) {
+                    SubSynthParameters *subsynthParams =
+                        (SubSynthParameters *) step.data->instrument_data;
+                    if (subsynthParams) {
+                        setWaveform(subsynth->osc, subsynthParams->osc_waveform);
+                        setOscFrequency(subsynth->osc, subsynthParams->osc_freq);
+                        updateEnvelope(subsynth->env, subsynthParams->env_atk,
+                                       subsynthParams->env_dec, subsynthParams->env_sus_level,
+                                       subsynthParams->env_rel, subsynthParams->env_dur);
+                        triggerEnvelope(subsynth->env);
+                    }
                 }
             }
-
         }
 
         printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);
 
-        for(int i = 0; i < seq1.n_steps; i++) {
+        for (int i = 0; i < seq1.n_steps; i++) {
             printf("\x1b[29;%dH%d", i, seq1.steps[i].active ? 1 : 0);
         }
 
@@ -481,7 +509,21 @@ int main(int argc, char **argv) {
     //////// TRACK 1 //////////////////
     ndspChnReset(0);
     linearFree(audioBuffer);
-    linearFree((subsynth->env)->env_buffer);
+    cleanupSequencer(&seq1);
+    linearFree(trackParamsArray);
+    linearFree(subsynthParamsArray);
+    if (subsynth) {
+        if (subsynth->env) {
+            if (subsynth->env->env_buffer) {
+                linearFree(subsynth->env->env_buffer);
+            }
+            linearFree(subsynth->env);
+        }
+        if (subsynth->osc) {
+            linearFree(subsynth->osc);
+        }
+        linearFree(subsynth);
+    }
     ////////////////////////////////////
 
     //////// TRACK 2 //////////////////

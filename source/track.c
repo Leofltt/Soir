@@ -1,12 +1,13 @@
 #include "track.h"
+
 #include "audio_utils.h"
 #include "engine_constants.h"
 
 #include <3ds.h>
 
 void initializeTrack(Track *track) {
-    float rate      = track->instrument_type == SYNTHESISER ? SAMPLERATE : OPUSSAMPLERATE;
-    u32   n_samples = track->instrument_type == SYNTHESISER ? SAMPLESPERBUF : OPUSSAMPLESPERFBUF;
+    float rate      = track->instrument_type == OPUS_SAMPLER ? OPUSSAMPLERATE : SAMPLERATE;
+    u32   n_samples = track->instrument_type == OPUS_SAMPLER ? OPUSSAMPLESPERFBUF : SAMPLESPERBUF;
     ndspChnReset(track->chan_id);
     ndspChnSetInterp(track->chan_id, NDSP_INTERP_LINEAR);
     ndspChnSetRate(track->chan_id, rate);

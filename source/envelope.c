@@ -2,12 +2,37 @@
 
 #include <3ds.h>
 
+Envelope defaultEnvelopeStruct(float sample_rate) {
+    Envelope env = { .atk         = 10,
+                     .dec         = 10,
+                     .rel         = 300,
+                     .dur         = 400,
+                     .sus_level   = 0.8,
+                     .sus_time    = 80,
+                     .gate        = ENV_OFF,
+                     .env_pos     = 0,
+                     .sr          = sample_rate,
+                     .env_buffer  = NULL,
+                     .buffer_size = 0 };
+
+    size_t initial_size = (size_t) (env.dur * env.sr * 0.001);
+    env.env_buffer      = (float *) linearAlloc(initial_size * sizeof(float));
+    if (env.env_buffer) {
+        env.buffer_size = initial_size;
+    }
+    return env;
+};
+
 void triggerEnvelope(Envelope *env) {
     env->env_pos = 0;
     env->gate    = ENV_ON;
 };
 
 void renderEnvBuffer(Envelope *env) {
+    if (!env || !env->env_buffer) {
+        return;
+    }
+
     int   x = 0;
     float y = 0.;
 
@@ -82,17 +107,25 @@ bool updateRelease(Envelope *env, int release) {
 };
 
 bool updateDuration(Envelope *env, int dur_ms) {
-    int  new_dur = dur_ms * env->sr * 0.001;
-    bool updated = false;
-    if (env->dur != new_dur) {
-        env->dur = new_dur;
-        if (env->env_buffer)
-            linearFree(env->env_buffer);
-        env->env_buffer = (float *) linearAlloc(new_dur);
-        updated         = true;
+    size_t new_size = (size_t) (dur_ms * env->sr * 0.001);
+    bool   updated  = false;
+
+    if (env->dur != dur_ms) {
+        if (new_size > env->buffer_size) {
+            float *new_buffer = (float *) linearAlloc(new_size * sizeof(float));
+            if (new_buffer) {
+                if (env->env_buffer) {
+                    linearFree(env->env_buffer);
+                }
+                env->env_buffer  = new_buffer;
+                env->buffer_size = new_size;
+            }
+        }
+        env->dur = dur_ms;
+        updated  = true;
     }
     return updated;
-};
+}
 
 void updateEnvelope(Envelope *env, int attack, int decay, float sustain, int release, int dur_ms) {
     updateAttack(env, attack);
@@ -104,29 +137,33 @@ void updateEnvelope(Envelope *env, int attack, int decay, float sustain, int rel
 };
 
 float nextEnvelopeSample(Envelope *env) {
-    float env_value;
+    if (!env || !env->env_buffer || env->env_pos >= env->buffer_size) {
+        return 0.0f;
+    }
 
+    float env_value;
     switch (env->gate) {
     case ENV_OFF: {
         env_value = 0.;
         break;
     }
     case ENV_ON: {
-        env_value = env->env_buffer[env->env_pos];
-        env->env_pos++;
+        if (env->env_pos < env->dur) {
+            env_value = env->env_buffer[env->env_pos];
+            env->env_pos++;
+        } else {
+            env_value    = 0.;
+            env->gate    = ENV_OFF;
+            env->env_pos = 0;
+        }
         break;
     }
     default: {
         env->gate    = ENV_OFF;
         env_value    = 0.;
-        env->env_pos = 0.;
+        env->env_pos = 0;
         break;
     }
     }
-    int next_pos = env->env_pos;
-
-    if (next_pos >= env->dur) {
-        env->gate = ENV_OFF;
-    }
     return env_value;
-};
+}

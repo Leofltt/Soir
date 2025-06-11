@@ -2,25 +2,26 @@
 #define SEQUENCER_H
 
 #include "clock.h"
+#include "track_parameters.h"
 
 #define MAXSEQUENCELENGTH                                                                          \
     (STEPS_PER_BEAT * MAXSUBDIVBEAT) // 384, should be more than enough for most use cases
 
 typedef struct {
-    bool  active;
-    void *data;
+    bool             active;
+    TrackParameters *data;
 } SeqStep;
 
 typedef struct {
-    // int chan_id;
-    int      n_steps;
+    size_t   n_steps;
     int      n_beats;
-    int      cur_step;
+    size_t   cur_step;
     SeqStep *steps;
 } Sequencer;
 
-extern void    updateSeqLength(Sequencer *seq, int newLength);
+extern void    updateSeqLength(Sequencer *seq, size_t newLength);
 extern SeqStep updateSequencer(Sequencer *seq);
 extern void    setSteps(Sequencer *seq, SeqStep *steps);
+extern void    cleanupSequencer(Sequencer *seq);
 
 #endif // SEQUENCER_H

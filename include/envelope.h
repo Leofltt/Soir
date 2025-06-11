@@ -7,9 +7,10 @@ typedef enum { ENV_ON = 1, ENV_OFF = 0 } EnvGate;
 
 typedef struct {
     EnvGate gate;
-    int     env_pos;
+    size_t  env_pos; // Changed from int to size_t
     float  *env_buffer;
     float   sr;
+    size_t  buffer_size; // Added to track allocated buffer size
 
     // Env params
     int   atk;
@@ -19,6 +20,8 @@ typedef struct {
     int   rel;
     int   dur;
 } Envelope;
+
+extern Envelope defaultEnvelopeStruct(float sample_rate);
 
 extern void triggerEnvelope(Envelope *env);
 

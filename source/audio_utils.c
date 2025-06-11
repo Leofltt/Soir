@@ -27,3 +27,7 @@ void fillBufferWithZeros(void *audioBuffer, size_t size) {
 
     DSP_FlushDataCache(audioBuffer, size);
 };
+
+float midiToHertz(int midiNote) {
+    return FREQ_A4 * powf(2.0f, (midiNote - MIDI_A4) / 12.0f);
+}

@@ -1,13 +1,13 @@
-#ifndef FM_OSC_H 
+#ifndef FM_OSC_H
+#include "envelope.h"
 #include "polybleposc.h"
-#include "envelope.h" 
 
 typedef struct {
-  PolyBLEPOscillator *carrier;
-  PolyBLEPOscillator *modulator;
-  Envelope *modEnvelope;
-  float modIndex;
-  float modDepth;
+    PolyBLEPOscillator *carrier;
+    PolyBLEPOscillator *modulator;
+    Envelope           *modEnvelope;
+    float               modIndex;
+    float               modDepth;
 } FMOperator;
 
 extern void setFMOscFrequency(FMOperator *osc, float frequency);
