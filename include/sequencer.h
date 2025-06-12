@@ -1,6 +1,12 @@
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
+#endif
+
 #include "clock.h"
 #include "track_parameters.h"
 

@@ -3,8 +3,13 @@
 
 #include "envelope.h"
 
-#include <3ds.h>
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
 #include <opusfile.h>
+#include <3ds/ndsp/ndsp.h>
+#endif
 
 typedef enum { ONE_SHOT = 0, LOOP = 1 } PlaybackMode;
 

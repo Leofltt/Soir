@@ -1,6 +1,11 @@
 #include "envelope.h"
 
-#include <3ds.h>
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
+#include <3ds/allocator/linear.h>  // Updated path
+#endif
 
 Envelope defaultEnvelopeStruct(float sample_rate) {
     Envelope env = { .atk         = 10,

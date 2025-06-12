@@ -1,7 +1,11 @@
 #ifndef CLOCK_H
 #define CLOCK_H
 
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
 #include <3ds/types.h>
+#endif
 
 #define MAXSUBDIVBEAT 8
 // note resolution (I'd recc 2 * 3 * maxSubDivisionNeeded, ex. 4 for 16th notes)

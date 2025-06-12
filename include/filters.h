@@ -1,7 +1,11 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
 #include <3ds/types.h>
+#endif
 
 typedef enum {
     NDSP_BIQUAD_NONE     = 0,

@@ -1,7 +1,11 @@
 #ifndef ENVELOPE_H
 #define ENVELOPE_H
 
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
 #include <3ds/types.h>
+#endif
 
 typedef enum { ENV_ON = 1, ENV_OFF = 0 } EnvGate;
 

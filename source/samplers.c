@@ -1,3 +1,13 @@
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
+#include <3ds/allocator/linear.h>
+#include <3ds/ndsp/ndsp.h>
+#include <3ds/services/dsp.h>
+#include <3ds/ndsp/channel.h>  // Added for ndspChnWaveBufAdd
+#endif
+
 #include "samplers.h"
 
 #include "audio_utils.h"

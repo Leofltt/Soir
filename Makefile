@@ -204,6 +204,36 @@ $(GFXBUILD)/%.bcfnt :		%.ttf
 	@mkbcfnt -o $(GFXBUILD)/$*.bcfnt $<
 
 #---------------------------------------------------------------------------------
+# test target
+#---------------------------------------------------------------------------------
+TEST_BUILD := build/tests
+TEST_SOURCES := tests
+TEST_OBJECTS := $(TEST_BUILD)/test_runner.o \
+                $(TEST_BUILD)/test_sequencer.o \
+                $(TEST_BUILD)/test_envelope.o \
+                $(TEST_BUILD)/unity.o
+
+#---------------------------------------------------------------------------------
+.PHONY: test test-clean
+#---------------------------------------------------------------------------------
+test: $(TEST_BUILD) $(TEST_OBJECTS)
+	$(CC) -o $(TEST_BUILD)/test_runner $(TEST_OBJECTS) -DTESTING
+	./$(TEST_BUILD)/test_runner
+
+$(TEST_BUILD):
+	@mkdir -p $@
+
+$(TEST_BUILD)/unity.o: tests/unity/unity.c
+	$(CC) -c $< -o $@ -I tests/unity
+
+$(TEST_BUILD)/%.o: tests/%.c
+	$(CC) -c $< -o $@ -I include -I tests/unity -DTESTING
+
+test-clean:
+	@rm -rf $(TEST_BUILD)
+
+
+#---------------------------------------------------------------------------------
 else
 
 #---------------------------------------------------------------------------------

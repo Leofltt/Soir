@@ -1,7 +1,11 @@
 #ifndef AUDIO_UTILS_H
 #define AUDIO_UTILS_H
 
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
 #include <3ds/types.h>
+#endif
 #include <math.h>
 
 #ifndef M_PI

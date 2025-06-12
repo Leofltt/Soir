@@ -1,6 +1,13 @@
-#include "synth.h"
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
+#include <3ds/ndsp/ndsp.h>
+#include <3ds/services/dsp.h>
+#endif
 
-#include <3ds.h>
+#include "synth.h"
+#include "audio_utils.h"
 
 void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth, float synthvol,
                              int chan_id) {

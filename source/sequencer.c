@@ -1,6 +1,11 @@
-#include "sequencer.h"
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/types.h>
+#include <3ds/allocator/linear.h>  // Updated path
+#endif
 
-#include <3ds.h>
+#include "sequencer.h"
 
 void updateSeqLength(Sequencer *seq, size_t newLength) { // Changed from int
     if (!seq || newLength == 0 || newLength > MAXSEQUENCELENGTH || newLength == seq->n_steps) {
