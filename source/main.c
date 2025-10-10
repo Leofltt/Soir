@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
-    setBpm(clock, 60.0f);
+    setBpm(clock, 143.0f);
 
     // TRACK 1 ///////////////////////////////////////////
     ndspChnReset(0);
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     *env = defaultEnvelopeStruct(SAMPLERATE);
-    updateEnvelope(env, 150, 200, 0.6, 150, 600); // to initialize the envelope
+    updateEnvelope(env, 250, 500, 0.6, 150, 1500); // to initialize the envelope
 
     SubSynth *subsynth = (SubSynth *) linearAlloc(sizeof(SubSynth));
     if (!subsynth) {
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
         if (i % 4 == 0 || i == 0) {
             sequence1[i].active = true; // Activate every 4th step
             ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
-                midiToHertz(i + 48);
+                midiToHertz(i + 69);
         }
     }
     Sequencer seq1 = { .cur_step = 0, .n_steps = 16, .steps = sequence1, .n_beats = 4 };
@@ -464,6 +464,7 @@ int main(int argc, char **argv) {
                     SubSynthParameters *subsynthParams =
                         (SubSynthParameters *) step.data->instrument_data;
                     if (subsynthParams) {
+                        printf("\x1b[22;1HFreq: %f", subsynthParams->osc_freq);
                         setWaveform(subsynth->osc, subsynthParams->osc_waveform);
                         setOscFrequency(subsynth->osc, subsynthParams->osc_freq);
                         updateEnvelope(subsynth->env, subsynthParams->env_atk,
