@@ -27,14 +27,15 @@ void pauseClock(Clock *clock) {
 };
 void startClock(Clock *clock) {
     clock->status = PLAYING;
+    resetBarBeats(clock);
     resetClock(clock);
 };
 
 void setBpm(Clock *clock, float bpm) {
     if (clock && clock->bpm != bpm) {
         clock->bpm            = bpm;
-        clock->ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
-        clock->ticks_per_step = clock->ticks_per_beat / STEPS_PER_BEAT;
+        float ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
+        clock->ticks_per_step = ticks_per_beat / STEPS_PER_BEAT;
         resetClock(clock);
     }
 }
@@ -48,13 +49,12 @@ bool updateClock(Clock *clock) {
     bool     shouldUpdateStepSequencer = (now - clock->ticks >= clock->ticks_per_step);
 
     if (shouldUpdateStepSequencer) {
-        clock->ticks = now;
-        // step = (step + 1) % (STEPS_PER_BEAT * BEATS_PER_BAR);  // Loop through steps
+        clock->ticks += clock->ticks_per_step;
 
         // update musical time
         clock->barBeats->steps += 1;
         int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
-        clock->barBeats->bar       = floor(totBeats / clock->barBeats->beats_per_bar);
+        clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
         clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
         clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
     }

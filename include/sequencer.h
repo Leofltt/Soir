@@ -19,8 +19,8 @@ typedef struct {
 } SeqStep;
 
 typedef struct {
-    size_t   n_steps;
     int      n_beats;
+    int      steps_per_beat;
     size_t   cur_step;
     SeqStep *steps;
 } Sequencer;

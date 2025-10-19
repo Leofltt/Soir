@@ -24,7 +24,7 @@ SpaceAfterCStyleCast: true
 
 KeepEmptyLinesAtTheStartOfBlocks: false
 Cpp11BracedListStyle: false
-SortIncludes: true
+SortIncludes: false 
 IncludeBlocks: Regroup
 
 ---

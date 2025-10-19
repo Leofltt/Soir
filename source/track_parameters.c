@@ -1,4 +1,5 @@
 #include "track_parameters.h"
+#include "synth.h"
 
 SubSynthParameters defaultSubSynthParameters() {
     SubSynthParameters params = { .env_atk       = 50,

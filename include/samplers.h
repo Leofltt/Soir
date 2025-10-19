@@ -20,6 +20,8 @@ typedef struct {
     size_t       samples_per_buf;
     float        samplerate;
     Envelope    *env;
+    bool         seek_requested;
+    bool         finished;
 } OpusSampler;
 
 extern const char *opusStrError(int error);

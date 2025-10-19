@@ -2,23 +2,24 @@
 #include "../tests/mock_3ds.h"
 #else
 #include <3ds/types.h>
-#include <3ds/allocator/linear.h>  // Updated path
+#include <3ds/allocator/linear.h> // Updated path
 #endif
 
 #include "sequencer.h"
 
 void updateSeqLength(Sequencer *seq, size_t newLength) { // Changed from int
-    if (!seq || newLength == 0 || newLength > MAXSEQUENCELENGTH || newLength == seq->n_steps) {
+    if (!seq || newLength == 0 || newLength > MAXSEQUENCELENGTH || newLength == (seq->n_beats * seq->steps_per_beat)) {
         return;
     }
 
-    SeqStep *old_steps = (SeqStep *) linearAlloc(seq->n_steps * sizeof(SeqStep));
+    size_t old_n_steps = seq->n_beats * seq->steps_per_beat;
+    SeqStep *old_steps = (SeqStep *) linearAlloc(old_n_steps * sizeof(SeqStep));
     if (!old_steps) {
         return;
     }
 
     // Backup current steps
-    for (size_t i = 0; i < seq->n_steps; i++) { // Changed from int
+    for (size_t i = 0; i < old_n_steps; i++) { // Changed from int
         old_steps[i] = seq->steps[i];
     }
 
@@ -31,20 +32,20 @@ void updateSeqLength(Sequencer *seq, size_t newLength) { // Changed from int
 
     // Copy and extend if needed
     for (size_t i = 0; i < newLength; i++) { // Changed from int
-        new_steps[i] = (i < seq->n_steps) ? old_steps[i] : old_steps[seq->n_steps - 1];
+        new_steps[i] = (i < old_n_steps) ? old_steps[i] : old_steps[old_n_steps - 1];
     }
 
     linearFree(old_steps);
     linearFree(seq->steps);
     seq->steps   = new_steps;
-    seq->n_steps = newLength;
+    seq->n_beats = newLength / seq->steps_per_beat;
     seq->cur_step %= newLength;
 }
 
 void setSteps(Sequencer *seq, SeqStep *steps) {
     if (!seq || !steps)
         return;
-    for (size_t i = 0; i < seq->n_steps; i++) { // Changed from int
+    for (size_t i = 0; i < (seq->n_beats * seq->steps_per_beat); i++) { // Changed from int
         seq->steps[i] = steps[i];
     }
 }
@@ -54,8 +55,9 @@ SeqStep updateSequencer(Sequencer *seq) {
         return (SeqStep) { .active = false, .data = NULL };
     }
 
-    seq->cur_step = (seq->cur_step + 1) % seq->n_steps;
-    return seq->steps[seq->cur_step];
+    SeqStep current_step = seq->steps[seq->cur_step];
+    seq->cur_step        = (seq->cur_step + 1) % (seq->n_beats * seq->steps_per_beat);
+    return current_step;
 }
 
 void cleanupSequencer(Sequencer *seq) {
@@ -63,7 +65,7 @@ void cleanupSequencer(Sequencer *seq) {
         return;
 
     if (seq->steps) {
-        for (size_t i = 0; i < seq->n_steps; i++) {
+        for (size_t i = 0; i < (seq->n_beats * seq->steps_per_beat); i++) {
             if (seq->steps[i].data) {
                 // Note: don't free data here as it's owned by trackParamsArray
                 seq->steps[i].data = NULL;
@@ -73,7 +75,6 @@ void cleanupSequencer(Sequencer *seq) {
         seq->steps = NULL;
     }
 
-    seq->n_steps  = 0;
     seq->cur_step = 0;
     seq->n_beats  = 0;
 }

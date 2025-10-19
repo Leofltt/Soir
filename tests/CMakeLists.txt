@@ -15,7 +15,6 @@ add_executable(test_runner
     test_sequencer.c
     test_track_parameters.c
     test_envelope.c
-    # Add your source files that don't depend on 3DS
     ../source/sequencer.c
     ../source/track_parameters.c
     ../source/envelope.c
