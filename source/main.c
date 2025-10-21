@@ -19,9 +19,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <3ds/thread.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#define STACK_SIZE (4 * 1024)
+
 static const char *PATH = "romfs:/samples/bibop.opus";
+
+static Track tracks[2];
+static LightLock clock_lock;
+static LightLock tracks_lock;
+static volatile bool should_exit = false;
+
+static Thread clock_thread;
+static Thread audio_thread;
+
+void clock_thread_func(void *arg);
+void audio_thread_func(void *arg);
 
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
@@ -41,8 +55,7 @@ int main(int argc, char **argv) {
 
     C3D_RenderTarget *topScreen = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
 
-    int   active_track = 0;
-    Track tracks[2];
+    int active_track = 0;
 
     u32 *audioBuffer1                         = NULL;
     PolyBLEPOscillator *osc                   = NULL;
@@ -252,6 +265,28 @@ int main(int argc, char **argv) {
     printf("\x1b[5;1Hleft/right: change filter type\n");
     printf("\x1b[6;1Hup/down: change filter frequency\n");
 
+    LightLock_Init(&clock_lock);
+    LightLock_Init(&tracks_lock);
+
+    s32 main_prio;
+    svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
+
+    clock_thread =
+        threadCreate(clock_thread_func, clock, STACK_SIZE, main_prio - 1, -2, true);
+    if (clock_thread == NULL) {
+        printf("Failed to create clock thread\n");
+        ret = 1;
+        goto cleanup;
+    }
+
+    audio_thread =
+        threadCreate(audio_thread_func, NULL, STACK_SIZE, main_prio - 2, -2, true);
+    if (audio_thread == NULL) {
+        printf("Failed to create audio thread\n");
+        ret = 1;
+        goto cleanup;
+    }
+
     startClock(clock);
 
     while (aptMainLoop()) {
@@ -268,15 +303,8 @@ int main(int argc, char **argv) {
             printf("\x1b[3;16HActive Track: %i\n", active_track);
         }
 
+        LightLock_Lock(&tracks_lock);
         Track *current_track = &tracks[active_track];
-
-        // // Clear previous track-specific info
-        // for (int i = 7; i <= 12; i++) {
-        //     printf("\x1b[%d;1H                                        ", i);
-        // }
-        // for (int i = 16; i <= 17; i++) {
-        //     printf("\x1b[%d;1H                                        ", i);
-        // }
 
         if (current_track->instrument_type == SUB_SYNTH) {
             SubSynth *current_synth = (SubSynth *) current_track->instrument_data;
@@ -305,7 +333,6 @@ int main(int argc, char **argv) {
             printf("\x1b[12;1Hwaveform = %s         ",
                    waveform_names[current_synth->osc->waveform]);
 
-            // FILTER
             if (kDown & KEY_LEFT) {
                 current_track->filter.filter_type =
                     (current_track->filter.filter_type > NDSP_BIQUAD_NONE)
@@ -365,7 +392,6 @@ int main(int argc, char **argv) {
             printf("\x1b[12;1Hplayback mode = %s         ",
                    isLooping(current_sampler) ? "LOOP" : "ONE SHOT");
 
-            // FILTER
             if (kDown & KEY_LEFT) {
                 current_track->filter.filter_type =
                     (current_track->filter.filter_type > NDSP_BIQUAD_NONE)
@@ -400,35 +426,14 @@ int main(int argc, char **argv) {
             updateNdspbiquad(current_track->filter);
             current_track->filter.update_params = false;
         }
+        LightLock_Unlock(&tracks_lock);
 
-        // Fill DSP Bufs for each track
-        if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
-            fillSubSynthAudiobuffer(&tracks[0].waveBuf[tracks[0].fillBlock],
-                                    tracks[0].waveBuf[tracks[0].fillBlock].nsamples,
-                                    (SubSynth *) tracks[0].instrument_data, 1, 0);
-            tracks[0].fillBlock = !tracks[0].fillBlock;
-        }
-
-        if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
-            OpusSampler *s = (OpusSampler *) tracks[1].instrument_data;
-            if (s->seek_requested) {
-                s->seek_requested = false;
-                op_pcm_seek(s->audiofile, s->start_position);
-            }
-            fillSamplerAudiobuffer(&tracks[1].waveBuf[tracks[1].fillBlock],
-                                   tracks[1].waveBuf[tracks[1].fillBlock].nsamples, s, 1);
-            tracks[1].fillBlock = !tracks[1].fillBlock;
-        }
-
-        // CLOCK STUFF
-        bool shouldUpdateSeq = updateClock(clock);
-        if (shouldUpdateSeq) {
-            updateTrack(&tracks[0], clock);
-            updateTrack(&tracks[1], clock);
-        }
-
+        LightLock_Lock(&clock_lock);
         printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
                clock->barBeats->deltaStep, clockStatusName[clock->status]);
+        LightLock_Unlock(&clock_lock);
+
+        LightLock_Lock(&tracks_lock);
         if (tracks[1].sequencer) {
             printf("\x1b[28;1H");
             for (int i = 0; i < (tracks[1].sequencer->n_beats * tracks[1].sequencer->steps_per_beat); i++) {
@@ -449,8 +454,8 @@ int main(int argc, char **argv) {
                 }
             }
         }
+        LightLock_Unlock(&tracks_lock);
 
-        // top screen rendering stuff
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
@@ -472,7 +477,16 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
-    // Cleanup
+    should_exit = true;
+
+    printf("Waiting for clock thread to exit...\n");
+    threadJoin(clock_thread, U64_MAX);
+    threadFree(clock_thread);
+
+    printf("Waiting for audio thread to exit...\n");
+    threadJoin(audio_thread, U64_MAX);
+    threadFree(audio_thread);
+
     resetTrack(&tracks[0]);
     resetTrack(&tracks[1]);
 
@@ -531,4 +545,75 @@ cleanup:
     romfsExit();
     gfxExit();
     return ret;
+}
+
+void clock_thread_func(void *arg) {
+    Clock *clock = (Clock *) arg;
+    while (!should_exit) {
+        svcSleepThread(1000);
+        
+        LightLock_Lock(&clock_lock);
+        bool shouldUpdate = updateClock(clock);
+        LightLock_Unlock(&clock_lock);
+
+        if (shouldUpdate) {
+            LightLock_Lock(&tracks_lock);
+            updateTrack(&tracks[0], clock);
+            updateTrack(&tracks[1], clock);
+            LightLock_Unlock(&tracks_lock);
+        }
+    }
+    threadExit(0);
+}
+
+void audio_thread_func(void *arg) {
+    while (!should_exit) {
+        bool fill_track0 = false;
+        bool fill_track1 = false;
+        ndspWaveBuf *waveBuf0 = NULL;
+        SubSynth *subsynth0 = NULL;
+        ndspWaveBuf *waveBuf1 = NULL;
+        OpusSampler *sampler1 = NULL;
+        bool seek_requested1 = false;
+        s64 start_position1 = 0;
+
+        LightLock_Lock(&tracks_lock);
+        fill_track0 = tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE;
+        if (fill_track0) {
+            waveBuf0 = &tracks[0].waveBuf[tracks[0].fillBlock];
+            subsynth0 = (SubSynth *) tracks[0].instrument_data;
+        }
+
+        fill_track1 = tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE;
+        if (fill_track1) {
+            waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
+            sampler1 = (OpusSampler *) tracks[1].instrument_data;
+            if (sampler1->seek_requested) {
+                seek_requested1 = true;
+                start_position1 = sampler1->start_position;
+                sampler1->seek_requested = false;
+            }
+        }
+        LightLock_Unlock(&tracks_lock);
+
+        if (fill_track0) {
+            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
+            LightLock_Lock(&tracks_lock);
+            tracks[0].fillBlock = !tracks[0].fillBlock;
+            LightLock_Unlock(&tracks_lock);
+        }
+
+        if (fill_track1) {
+            if (seek_requested1) {
+                op_pcm_seek(sampler1->audiofile, start_position1);
+            }
+            fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
+            LightLock_Lock(&tracks_lock);
+            tracks[1].fillBlock = !tracks[1].fillBlock;
+            LightLock_Unlock(&tracks_lock);
+        }
+
+        svcSleepThread(1000000); // 1ms
+    }
+    threadExit(0);
 }
