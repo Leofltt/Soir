@@ -90,7 +90,7 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
     int totalSamples = 0;
     while (totalSamples < sampler->samples_per_buf) {
         int16_t     *buffer     = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
-        const size_t bufferSize = (sampler->samples_per_buf - totalSamples) * NCHANNELS;
+        const size_t bufferSize = (sampler->samples_per_buf - totalSamples);
 
         // Decode bufferSize samples from opusFile_ into buffer,
         // storing the number of samples that were decoded (or error)
@@ -106,6 +106,7 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
                     memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
                            (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
                 }
+                totalSamples = sampler->samples_per_buf;
                 break;
             }
         }

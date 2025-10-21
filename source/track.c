@@ -24,6 +24,7 @@ static void updateOpusSamplerFromSequence(OpusSampler *sampler, OpusSamplerParam
     if (!sampler || !params)
         return;
 
+    sampler->audiofile      = params->audiofile;
     sampler->start_position = params->start_position;
     sampler->playback_mode  = params->playback_mode;
     sampler->seek_requested = true;

@@ -22,7 +22,7 @@
 #include <3ds/thread.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-#define STACK_SIZE (4 * 1024)
+#define STACK_SIZE (64 * 1024)
 
 static const char *PATH = "romfs:/samples/bibop.opus";
 
@@ -103,7 +103,6 @@ int main(int argc, char **argv) {
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer1) {
-        printf("Failed to allocate audioBuffer1\n");
         ret = 1;
         goto cleanup;
     }
@@ -111,7 +110,6 @@ int main(int argc, char **argv) {
 
     osc = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator));
     if (!osc) {
-        printf("Failed to allocate osc\n");
         ret = 1;
         goto cleanup;
     }
@@ -123,7 +121,6 @@ int main(int argc, char **argv) {
 
     env = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env) {
-        printf("Failed to allocate env\n");
         ret = 1;
         goto cleanup;
     }
@@ -132,7 +129,6 @@ int main(int argc, char **argv) {
 
     subsynth = (SubSynth *) linearAlloc(sizeof(SubSynth));
     if (!subsynth) {
-        printf("Failed to allocate subsynth\n");
         ret = 1;
         goto cleanup;
     }
@@ -141,19 +137,16 @@ int main(int argc, char **argv) {
 
     sequence1 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
     if (!sequence1) {
-        printf("Failed to allocate sequence1\n");
         ret = 1;
         goto cleanup;
     }
     trackParamsArray1 = (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
     if (!trackParamsArray1) {
-        printf("Failed to allocate trackParamsArray1\n");
         ret = 1;
         goto cleanup;
     }
     subsynthParamsArray = (SubSynthParameters *) linearAlloc(16 * sizeof(SubSynthParameters));
     if (!subsynthParamsArray) {
-        printf("Failed to allocate subsynthParamsArray\n");
         ret = 1;
         goto cleanup;
     }
@@ -162,15 +155,14 @@ int main(int argc, char **argv) {
         trackParamsArray1[i]   = defaultTrackParameters(0, &subsynthParamsArray[i]);
         sequence1[i]           = (SeqStep) { .active = false };
         sequence1[i].data      = &trackParamsArray1[i];
-        if (i % 4 == 0 || i == 0) {
-            sequence1[i].active = true;
-            ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
-                midiToHertz(i + 69);
-        }
+        // if (i % 4 == 0 || i == 0) {
+        //     sequence1[i].active = true;
+        //     ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
+        //         midiToHertz(i + 69);
+        // }
     }
     seq1 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq1) {
-        printf("Failed to allocate seq1\n");
         ret = 1;
         goto cleanup;
     }
@@ -181,14 +173,12 @@ int main(int argc, char **argv) {
     int error;
     opusFile = op_open_file(PATH, &error);
     if (error != 0 || !opusFile) {
-        printf("Failed to open opus file: %d\n", error);
         ret = 1;
         goto cleanup;
     }
 
     audioBuffer2 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer2) {
-        printf("Failed to allocate audioBuffer2\n");
         ret = 1;
         goto cleanup;
     }
@@ -196,7 +186,6 @@ int main(int argc, char **argv) {
 
     env1 = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env1) {
-        printf("Failed to allocate env1\n");
         ret = 1;
         goto cleanup;
     }
@@ -205,7 +194,6 @@ int main(int argc, char **argv) {
 
     sampler = (OpusSampler *) linearAlloc(sizeof(OpusSampler));
     if (!sampler) {
-        printf("Failed to allocate sampler\n");
         ret = 1;
         goto cleanup;
     }
@@ -221,20 +209,17 @@ int main(int argc, char **argv) {
 
     sequence2 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
     if (!sequence2) {
-        printf("Failed to allocate sequence2\n");
         ret = 1;
         goto cleanup;
     }
     trackParamsArray2 = (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
     if (!trackParamsArray2) {
-        printf("Failed to allocate trackParamsArray2\n");
         ret = 1;
         goto cleanup;
     }
     opusSamplerParamsArray =
         (OpusSamplerParameters *) linearAlloc(16 * sizeof(OpusSamplerParameters));
     if (!opusSamplerParamsArray) {
-        printf("Failed to allocate opusSamplerParamsArray\n");
         ret = 1;
         goto cleanup;
     }
@@ -243,17 +228,16 @@ int main(int argc, char **argv) {
         trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
         sequence2[i]              = (SeqStep) { .active = false };
         sequence2[i].data         = &trackParamsArray2[i];
-        // if (i % 4 == 2) {
+        if (i % 4 == 2) {
 
             
-        //     sequence2[i].active = true;
-        //     ((OpusSamplerParameters *) (sequence2[i].data->instrument_data))->start_position =
-        //         (i / 4) * (op_pcm_total(opusFile, -1) / 4);
-        // }
+            sequence2[i].active = true;
+            ((OpusSamplerParameters *) (sequence2[i].data->instrument_data))->start_position =
+                (i / 4) * (op_pcm_total(opusFile, -1) / 4);
+        }
     }
     seq2 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq2) {
-        printf("Failed to allocate seq2\n");
         ret = 1;
         goto cleanup;
     }
@@ -597,50 +581,27 @@ void clock_thread_func(void *arg) {
 
 void audio_thread_func(void *arg) {
     while (!should_exit) {
-        bool fill_track0 = false;
-        bool fill_track1 = false;
-        ndspWaveBuf *waveBuf0 = NULL;
-        SubSynth *subsynth0 = NULL;
-        ndspWaveBuf *waveBuf1 = NULL;
-        OpusSampler *sampler1 = NULL;
-        bool seek_requested1 = false;
-        s64 start_position1 = 0;
-
         LightLock_Lock(&tracks_lock);
-        fill_track0 = tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE;
-        if (fill_track0) {
-            waveBuf0 = &tracks[0].waveBuf[tracks[0].fillBlock];
-            subsynth0 = (SubSynth *) tracks[0].instrument_data;
+
+        if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
+            ndspWaveBuf *waveBuf0 = &tracks[0].waveBuf[tracks[0].fillBlock];
+            SubSynth *subsynth0 = (SubSynth *) tracks[0].instrument_data;
+            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
+            tracks[0].fillBlock = !tracks[0].fillBlock;
         }
 
-        fill_track1 = tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE;
-        if (fill_track1) {
-            waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
-            sampler1 = (OpusSampler *) tracks[1].instrument_data;
+        if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
+            ndspWaveBuf *waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
+            OpusSampler *sampler1 = (OpusSampler *) tracks[1].instrument_data;
             if (sampler1->seek_requested) {
-                seek_requested1 = true;
-                start_position1 = sampler1->start_position;
+                op_pcm_seek(sampler1->audiofile, sampler1->start_position);
                 sampler1->seek_requested = false;
             }
-        }
-        LightLock_Unlock(&tracks_lock);
-
-        if (fill_track0) {
-            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
-            LightLock_Lock(&tracks_lock);
-            tracks[0].fillBlock = !tracks[0].fillBlock;
-            LightLock_Unlock(&tracks_lock);
-        }
-
-        if (fill_track1) {
-            if (seek_requested1) {
-                op_pcm_seek(sampler1->audiofile, start_position1);
-            }
             fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
-            LightLock_Lock(&tracks_lock);
             tracks[1].fillBlock = !tracks[1].fillBlock;
-            LightLock_Unlock(&tracks_lock);
         }
+
+        LightLock_Unlock(&tracks_lock);
 
         svcSleepThread(1000000); // 1ms
     }
