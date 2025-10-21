@@ -1,5 +1,6 @@
 #ifdef TESTING
 #include "../tests/mock_3ds.h"
+#include <stdlib.h> // For malloc/free mock
 #else
 #include <3ds/types.h>
 #include <3ds/allocator/linear.h> // Updated path
@@ -55,9 +56,8 @@ SeqStep updateSequencer(Sequencer *seq) {
         return (SeqStep) { .active = false, .data = NULL };
     }
 
-    SeqStep current_step = seq->steps[seq->cur_step];
-    seq->cur_step        = (seq->cur_step + 1) % (seq->n_beats * seq->steps_per_beat);
-    return current_step;
+    seq->cur_step = (seq->cur_step + 1) % (seq->n_beats * seq->steps_per_beat);
+    return seq->steps[seq->cur_step];
 }
 
 void cleanupSequencer(Sequencer *seq) {

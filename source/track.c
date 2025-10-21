@@ -3,8 +3,10 @@
 #include "engine_constants.h"
 #include "synth.h"
 #include "track_parameters.h"
+#ifndef TESTING
 #include <3ds/ndsp/ndsp.h>
 #include <3ds/types.h>
+#endif
 #include <math.h>
 #include <string.h>
 

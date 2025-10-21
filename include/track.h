@@ -6,7 +6,9 @@
 #include "sequencer.h"
 #include "track_parameters.h"
 
+#ifndef TESTING
 #include <3ds.h>
+#endif
 
 typedef enum { SUB_SYNTH = 0, OPUS_SAMPLER = 1, FM_SYNTH = 2 } InstrumentType;
 

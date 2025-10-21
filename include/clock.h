@@ -25,7 +25,9 @@ typedef struct {
 
 typedef struct {
     float        bpm;
-    int          manual_tick_counter;
+    u64          last_tick_time;
+    u64          time_accumulator;
+    u64          ticks_per_step;
     ClockStatus  status;
     MusicalTime *barBeats;
 } Clock;

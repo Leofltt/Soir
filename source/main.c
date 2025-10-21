@@ -92,7 +92,9 @@ int main(int argc, char **argv) {
     // CLOCK //////////////////////////
     MusicalTime mt    = { .bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4 };
     Clock       cl    = { .bpm = 120.0f,
-                          .manual_tick_counter = 0,
+                          .last_tick_time = 0,
+                          .time_accumulator = 0,
+                          .ticks_per_step = 0,
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
@@ -172,7 +174,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq1 = (Sequencer) { .cur_step = 0, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
+    *seq1 = (Sequencer) { .cur_step = 15, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -255,7 +257,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
+    *seq2 = (Sequencer) { .cur_step = 15, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
     tracks[1].sequencer = seq2;
 
     printf("\x1b[1;1HL: switch selected track\n");
