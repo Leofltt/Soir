@@ -38,7 +38,7 @@ void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
 
 int main(int argc, char **argv) {
-    osSetSpeedupEnable(true);
+    // osSetSpeedupEnable(true);
     gfxInitDefault();
     romfsInit();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -91,14 +91,12 @@ int main(int argc, char **argv) {
 
     // CLOCK //////////////////////////
     MusicalTime mt    = { .bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4 };
-    Clock       cl    = { .bpm            = 120.0f,
-                          .ticks_per_beat = (60.0f / 120.0f),
-                          .ticks          = 0,
-                          .ticks_per_step = 0,
+    Clock       cl    = { .bpm = 120.0f,
+                          .manual_tick_counter = 0,
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
-    setBpm(clock, 120.0f);
+    setBpm(clock, 30.0f);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -303,65 +301,85 @@ int main(int argc, char **argv) {
             printf("\x1b[3;16HActive Track: %i\n", active_track);
         }
 
+        InstrumentType current_instrument_type;
         LightLock_Lock(&tracks_lock);
-        Track *current_track = &tracks[active_track];
+        current_instrument_type = tracks[active_track].instrument_type;
+        LightLock_Unlock(&tracks_lock);
 
-        if (current_track->instrument_type == SUB_SYNTH) {
-            SubSynth *current_synth = (SubSynth *) current_track->instrument_data;
+        if (current_instrument_type == SUB_SYNTH) {
             printf("\x1b[7;1HX/B: change Synth frequency\n");
             printf("\x1b[8;1HY: trigger a note\n");
             printf("\x1b[9;1HA: switch Synth waveform\n");
 
             if (kDown & KEY_Y) {
-                triggerEnvelope(current_synth->env);
+                LightLock_Lock(&tracks_lock);
+                triggerEnvelope(((SubSynth *) tracks[active_track].instrument_data)->env);
+                LightLock_Unlock(&tracks_lock);
             }
 
             if (kDown & KEY_A) {
                 wf = (wf + 1) % 4;
-                setWaveform(current_synth->osc, wf);
+                LightLock_Lock(&tracks_lock);
+                setWaveform(((SubSynth *) tracks[active_track].instrument_data)->osc, wf);
+                LightLock_Unlock(&tracks_lock);
             }
 
             if (kDown & KEY_B) {
                 note = (note > 0) ? note - 1 : ARRAY_SIZE(pcfreq) - 1;
-                setOscFrequency(current_synth->osc, pcfreq[note]);
+                LightLock_Lock(&tracks_lock);
+                setOscFrequency(((SubSynth *) tracks[active_track].instrument_data)->osc, pcfreq[note]);
+                LightLock_Unlock(&tracks_lock);
             } else if (kDown & KEY_X) {
                 note = (note < ARRAY_SIZE(pcfreq) - 1) ? note + 1 : 0;
-                setOscFrequency(current_synth->osc, pcfreq[note]);
+                LightLock_Lock(&tracks_lock);
+                setOscFrequency(((SubSynth *) tracks[active_track].instrument_data)->osc, pcfreq[note]);
+                LightLock_Unlock(&tracks_lock);
             }
 
             printf("\x1b[11;1Hnote = %i Hz        ", pcfreq[note]);
+            LightLock_Lock(&tracks_lock);
             printf("\x1b[12;1Hwaveform = %s         ",
-                   waveform_names[current_synth->osc->waveform]);
+                   waveform_names[((SubSynth *) tracks[active_track].instrument_data)->osc->waveform]);
+            LightLock_Unlock(&tracks_lock);
 
             if (kDown & KEY_LEFT) {
-                current_track->filter.filter_type =
-                    (current_track->filter.filter_type > NDSP_BIQUAD_NONE)
-                        ? current_track->filter.filter_type - 1
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.filter_type =
+                    (tracks[active_track].filter.filter_type > NDSP_BIQUAD_NONE)
+                        ? tracks[active_track].filter.filter_type - 1
                         : NDSP_BIQUAD_PEAK;
-                current_track->filter.update_params = true;
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             } else if (kDown & KEY_RIGHT) {
-                current_track->filter.filter_type =
-                    (current_track->filter.filter_type < NDSP_BIQUAD_PEAK)
-                        ? current_track->filter.filter_type + 1
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.filter_type =
+                    (tracks[active_track].filter.filter_type < NDSP_BIQUAD_PEAK)
+                        ? tracks[active_track].filter.filter_type + 1
                         : NDSP_BIQUAD_NONE;
-                current_track->filter.update_params = true;
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             }
 
             if (kDown & KEY_DOWN) {
-                cf                                  = (cf > 0) ? cf - 1 : ARRAY_SIZE(notefreq) - 1;
-                current_track->filter.cutoff_freq   = (float) notefreq[cf];
-                current_track->filter.update_params = true;
+                cf = (cf > 0) ? cf - 1 : ARRAY_SIZE(notefreq) - 1;
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.cutoff_freq   = (float) notefreq[cf];
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             } else if (kDown & KEY_UP) {
-                cf                                  = (cf < ARRAY_SIZE(notefreq) - 1) ? cf + 1 : 0;
-                current_track->filter.cutoff_freq   = (float) notefreq[cf];
-                current_track->filter.update_params = true;
+                cf = (cf < ARRAY_SIZE(notefreq) - 1) ? cf + 1 : 0;
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.cutoff_freq   = (float) notefreq[cf];
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             }
 
-        } else if (current_track->instrument_type == OPUS_SAMPLER) {
-            OpusSampler *current_sampler = (OpusSampler *) current_track->instrument_data;
+        } else if (current_instrument_type == OPUS_SAMPLER) {
             printf("\x1b[7;1HY/X/A/B: change Sampler sample start position\n");
             printf("\x1b[8;1HR: change Sampler playback mode\n");
 
+            LightLock_Lock(&tracks_lock);
+            OpusSampler *current_sampler = (OpusSampler *) tracks[active_track].instrument_data;
             if (kDown & KEY_R) {
                 if (!isLooping(current_sampler)) {
                     current_sampler->seek_requested = true;
@@ -391,46 +409,55 @@ int main(int argc, char **argv) {
             printf("\x1b[11;1Hstart pos = %llu         ", current_sampler->start_position);
             printf("\x1b[12;1Hplayback mode = %s         ",
                    isLooping(current_sampler) ? "LOOP" : "ONE SHOT");
+            LightLock_Unlock(&tracks_lock);
 
             if (kDown & KEY_LEFT) {
-                current_track->filter.filter_type =
-                    (current_track->filter.filter_type > NDSP_BIQUAD_NONE)
-                        ? current_track->filter.filter_type - 1
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.filter_type =
+                    (tracks[active_track].filter.filter_type > NDSP_BIQUAD_NONE)
+                        ? tracks[active_track].filter.filter_type - 1
                         : NDSP_BIQUAD_PEAK;
-                current_track->filter.update_params = true;
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             } else if (kDown & KEY_RIGHT) {
-                current_track->filter.filter_type =
-                    (current_track->filter.filter_type < NDSP_BIQUAD_PEAK)
-                        ? current_track->filter.filter_type + 1
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.filter_type =
+                    (tracks[active_track].filter.filter_type < NDSP_BIQUAD_PEAK)
+                        ? tracks[active_track].filter.filter_type + 1
                         : NDSP_BIQUAD_NONE;
-                current_track->filter.update_params = true;
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             }
 
             if (kDown & KEY_DOWN) {
-                cf2                               = (cf2 > 0) ? cf2 - 1 : ARRAY_SIZE(notefreq) - 1;
-                current_track->filter.cutoff_freq = (float) notefreq[cf2];
-                current_track->filter.update_params = true;
+                cf2 = (cf2 > 0) ? cf2 - 1 : ARRAY_SIZE(notefreq) - 1;
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.cutoff_freq = (float) notefreq[cf2];
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             } else if (kDown & KEY_UP) {
-                cf2                               = (cf2 < ARRAY_SIZE(notefreq) - 1) ? cf2 + 1 : 0;
-                current_track->filter.cutoff_freq = (float) notefreq[cf2];
-                current_track->filter.update_params = true;
+                cf2 = (cf2 < ARRAY_SIZE(notefreq) - 1) ? cf2 + 1 : 0;
+                LightLock_Lock(&tracks_lock);
+                tracks[active_track].filter.cutoff_freq = (float) notefreq[cf2];
+                tracks[active_track].filter.update_params = true;
+                LightLock_Unlock(&tracks_lock);
             }
         }
 
+        LightLock_Lock(&tracks_lock);
         printf("\x1b[16;1Hfilter = %s         ",
-               ndsp_biquad_filter_names[current_track->filter.filter_type]);
-        int current_cf = (current_track->instrument_type == SUB_SYNTH) ? cf : cf2;
+               ndsp_biquad_filter_names[tracks[active_track].filter.filter_type]);
+        int current_cf = (tracks[active_track].instrument_type == SUB_SYNTH) ? cf : cf2;
         printf("\x1b[17;1Hcf = %i Hz          ", notefreq[current_cf]);
 
-        if (current_track->filter.update_params) {
-            updateNdspbiquad(current_track->filter);
-            current_track->filter.update_params = false;
+        if (tracks[active_track].filter.update_params) {
+            updateNdspbiquad(tracks[active_track].filter);
+            tracks[active_track].filter.update_params = false;
         }
         LightLock_Unlock(&tracks_lock);
 
         LightLock_Lock(&clock_lock);
-        printf("\x1b[25;1H%d.%d.%d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1,
-               clock->barBeats->deltaStep, clockStatusName[clock->status]);
+        printf("\x1b[25;1H%d.%d | st: %d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1, clock->barBeats->steps, clockStatusName[clock->status]);
         LightLock_Unlock(&clock_lock);
 
         LightLock_Lock(&tracks_lock);
@@ -550,8 +577,6 @@ cleanup:
 void clock_thread_func(void *arg) {
     Clock *clock = (Clock *) arg;
     while (!should_exit) {
-        svcSleepThread(1000);
-        
         LightLock_Lock(&clock_lock);
         bool shouldUpdate = updateClock(clock);
         LightLock_Unlock(&clock_lock);
@@ -562,6 +587,8 @@ void clock_thread_func(void *arg) {
             updateTrack(&tracks[1], clock);
             LightLock_Unlock(&tracks_lock);
         }
+
+        svcSleepThread(1000000); // 1ms
     }
     threadExit(0);
 }

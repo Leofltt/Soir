@@ -104,7 +104,7 @@ void updateTrack(Track *track, Clock *clock) {
     int clock_steps_per_seq_step = STEPS_PER_BEAT / track->sequencer->steps_per_beat;
     if (clock_steps_per_seq_step == 0) return;
 
-    if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
+    if (clock->barBeats->steps % clock_steps_per_seq_step == 0) {
         SeqStep step = updateSequencer(track->sequencer);
         if (step.active && step.data) {
             updateTrackParameters(track, step.data);

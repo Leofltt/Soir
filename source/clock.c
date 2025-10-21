@@ -15,8 +15,7 @@ void resetBarBeats(Clock *clock) {
 }
 
 void resetClock(Clock *clock) {
-    uint64_t now = svcGetSystemTick();
-    clock->ticks = now;
+    clock->manual_tick_counter = 0;
 };
 void stopClock(Clock *clock) {
     clock->status = STOPPED;
@@ -31,25 +30,23 @@ void startClock(Clock *clock) {
     resetClock(clock);
 };
 
+// This function is temporarily disabled for diagnostic purposes.
 void setBpm(Clock *clock, float bpm) {
-    if (clock && clock->bpm != bpm) {
-        clock->bpm            = bpm;
-        float ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
-        clock->ticks_per_step = ticks_per_beat / STEPS_PER_BEAT;
-        resetClock(clock);
-    }
+    // Empty.
 }
 
+// This is a temporary, manual clock for diagnostic purposes.
+// It ignores system time and triggers a step after a fixed number of calls.
 bool updateClock(Clock *clock) {
     if (!clock || clock->status != PLAYING) {
         return false;
     }
 
-    uint64_t now                       = svcGetSystemTick();
-    bool     shouldUpdateStepSequencer = (now - clock->ticks >= clock->ticks_per_step);
+    clock->manual_tick_counter++;
 
-    if (shouldUpdateStepSequencer) {
-        clock->ticks += clock->ticks_per_step;
+    // The clock thread polls every 1ms. Let's trigger a step every ~21ms (for ~120 BPM).
+    if (clock->manual_tick_counter >= 21) {
+        clock->manual_tick_counter = 0;
 
         // update musical time
         clock->barBeats->steps += 1;
@@ -57,6 +54,9 @@ bool updateClock(Clock *clock) {
         clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
         clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
         clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+
+        return true;
     }
-    return shouldUpdateStepSequencer;
+
+    return false;
 }
