@@ -3,17 +3,17 @@
 #ifdef TESTING
 #include "../tests/mock_3ds.h"
 #else
+#include <3ds/allocator/linear.h> // Updated path
 #include <3ds/types.h>
-#include <3ds/allocator/linear.h>  // Updated path
 #endif
 
 Envelope defaultEnvelopeStruct(float sample_rate) {
-    Envelope env = { .atk         = 10,
-                     .dec         = 10,
-                     .rel         = 300,
-                     .dur         = 400,
+    Envelope env = { .atk         = 50,
+                     .dec         = 300,
+                     .rel         = 100,
+                     .dur         = 1000,
                      .sus_level   = 0.8,
-                     .sus_time    = 80,
+                     .sus_time    = 550,
                      .gate        = ENV_OFF,
                      .env_pos     = 0,
                      .sr          = sample_rate,
@@ -133,10 +133,10 @@ bool updateDuration(Envelope *env, int dur_ms) {
 }
 
 void updateEnvelope(Envelope *env, int attack, int decay, float sustain, int release, int dur_ms) {
+    updateDuration(env, dur_ms);
     updateAttack(env, attack);
     updateDecay(env, decay);
     updateRelease(env, release);
-    updateDuration(env, dur_ms);
     updateSustain(env, sustain);
     renderEnvBuffer(env);
 };
@@ -153,7 +153,7 @@ float nextEnvelopeSample(Envelope *env) {
         break;
     }
     case ENV_ON: {
-        if (env->env_pos < env->dur) {
+        if (env->env_pos < env->buffer_size) {
             env_value = env->env_buffer[env->env_pos];
             env->env_pos++;
         } else {

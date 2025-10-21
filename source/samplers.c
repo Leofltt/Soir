@@ -4,8 +4,8 @@
 #include <3ds/types.h>
 #include <3ds/allocator/linear.h>
 #include <3ds/ndsp/ndsp.h>
+#include <3ds/ndsp/channel.h> // Added for ndspChnWaveBufAdd
 #include <3ds/services/dsp.h>
-#include <3ds/ndsp/channel.h>  // Added for ndspChnWaveBufAdd
 #endif
 
 #include "samplers.h"
@@ -77,6 +77,15 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
     osTickCounterStart(&timer);
 #endif // DEBUG
 
+    if (sampler->playback_mode == ONE_SHOT && sampler->finished) {
+        memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
+        waveBuf_->nsamples = sampler->samples_per_buf;
+        DSP_FlushDataCache(waveBuf_->data_pcm16,
+                           sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
+        ndspChnWaveBufAdd(chan_id, waveBuf_);
+        return;
+    }
+
     // Decode samples until our waveBuf is full
     int totalSamples = 0;
     while (totalSamples < sampler->samples_per_buf) {
@@ -87,16 +96,18 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
         // storing the number of samples that were decoded (or error)
         const int samples = op_read_stereo(sampler->audiofile, buffer, bufferSize);
         if (samples <= 0) {
-            if (!isLooping(sampler)) {
-                // If loop is off and no more samples are available, fill buffers with zeros
-                for (size_t i = totalSamples; i < sampler->samples_per_buf; ++i) {
-                    int16_t *bufferPtr = waveBuf_->data_pcm16 + (i * NCHANNELS);
-                    memset(bufferPtr, 0, NCHANNELS * sizeof(int16_t));
-                }
-            } else {
+            if (isLooping(sampler)) {
                 op_raw_seek(sampler->audiofile, 0);
+                continue;
+            } else {
+                sampler->finished = true;
+                op_raw_seek(sampler->audiofile, sampler->start_position); // Reset for next trigger
+                if (totalSamples < sampler->samples_per_buf) {
+                    memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
+                           (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
+                }
+                break;
             }
-            return;
         }
 
         for (int i = 0; i < samples; i++) {

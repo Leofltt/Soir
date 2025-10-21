@@ -1,9 +1,9 @@
 #ifndef MOCK_3DS_H
 #define MOCK_3DS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 // Mock 3DS types
 typedef int8_t   s8;
@@ -16,7 +16,7 @@ typedef int64_t  s64;
 typedef uint64_t u64;
 typedef float    f32;
 typedef double   f64;
-typedef s32     Result;  // Added Result type
+typedef s32      Result; // Added Result type
 
 // Mock memory allocation functions
 #ifndef linearAlloc
@@ -30,29 +30,30 @@ typedef s32     Result;  // Added Result type
 #define TOP_SCREEN_WIDTH 400
 #define BOTTOM_SCREEN_WIDTH 320
 
-// Mock NDSP types and constants
-typedef enum {
-    NDSP_FORMAT_STEREO_PCM16 = 0,
-    NDSP_FORMAT_MONO_PCM16,
-    NDSP_WBUF_DONE
-} NDSPFormats;
+#include <stdint.h>
+#include <stddef.h>
 
-typedef enum {
-    NDSP_INTERP_NONE = 0,
-    NDSP_INTERP_LINEAR
-} NDSPInterpType;
+// Define basic 3DS types for the test environment
+#define SYSCLOCK_ARM11 268111856
+typedef uint64_t u64;
+typedef uint32_t u32;
+typedef int32_t Result;
 
+// Mock for ndsp
 typedef struct {
-    u16* data_pcm16;
+    // Define necessary fields for ndspWaveBuf mock
+    u32 *data_vaddr;
     u32 nsamples;
-    NDSPFormats format;
-    NDSPInterpType interp;
-    u32 status;
 } ndspWaveBuf;
 
-// Function declarations only
-void DSP_FlushDataCache(void* addr, size_t size);
-Result ndspChnWaveBufAdd(int channel, ndspWaveBuf* waveBuf);
+void DSP_FlushDataCache(void *addr, size_t size);
+Result ndspChnWaveBufAdd(int channel, ndspWaveBuf *waveBuf);
+
+// Mock for system ticks
+extern u64 mock_system_tick;
+void mock_set_system_tick(u64 ticks);
+void mock_advance_system_tick(u64 ticks);
+u64 svcGetSystemTick(void);
 
 // Memory allocation macros
 #ifndef linearAlloc

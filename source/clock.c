@@ -1,7 +1,12 @@
 #include "clock.h"
 
+#ifndef TESTING
 #include <3ds/os.h>
+#endif
 #include <math.h>
+
+// We use scaled integers to avoid floating point errors. 8 bits of fractional precision.
+#define CLOCK_RESOLUTION_SHIFT 8
 
 const char *clockStatusName[] = { "Stopped", "Playing", "Paused" };
 
@@ -15,8 +20,8 @@ void resetBarBeats(Clock *clock) {
 }
 
 void resetClock(Clock *clock) {
-    uint64_t now = svcGetSystemTick();
-    clock->ticks = now;
+    clock->last_tick_time = svcGetSystemTick();
+    clock->time_accumulator = 0;
 };
 void stopClock(Clock *clock) {
     clock->status = STOPPED;
@@ -27,14 +32,19 @@ void pauseClock(Clock *clock) {
 };
 void startClock(Clock *clock) {
     clock->status = PLAYING;
+    resetBarBeats(clock);
     resetClock(clock);
 };
 
 void setBpm(Clock *clock, float bpm) {
     if (clock && clock->bpm != bpm) {
-        clock->bpm            = bpm;
-        clock->ticks_per_beat = SYSCLOCK_ARM11 * 60.0 / bpm;
-        clock->ticks_per_step = clock->ticks_per_beat / STEPS_PER_BEAT;
+        clock->bpm = bpm;
+        // Use double for intermediate calculation for precision
+        double ticks_per_beat = (double)SYSCLOCK_ARM11 * 60.0 / bpm;
+        double ticks_per_step_f = ticks_per_beat / STEPS_PER_BEAT;
+
+        // Scale up to maintain fractional precision with integers
+        clock->ticks_per_step = (u64)(ticks_per_step_f * (1 << CLOCK_RESOLUTION_SHIFT));
         resetClock(clock);
     }
 }
@@ -44,19 +54,25 @@ bool updateClock(Clock *clock) {
         return false;
     }
 
-    uint64_t now                       = svcGetSystemTick();
-    bool     shouldUpdateStepSequencer = (now - clock->ticks >= clock->ticks_per_step);
+    u64 now = svcGetSystemTick();
+    u64 delta_ticks = now - clock->last_tick_time;
+    clock->last_tick_time = now;
 
-    if (shouldUpdateStepSequencer) {
-        clock->ticks = now;
-        // step = (step + 1) % (STEPS_PER_BEAT * BEATS_PER_BAR);  // Loop through steps
+    // Scale up delta_ticks before adding to the accumulator
+    clock->time_accumulator += (delta_ticks << CLOCK_RESOLUTION_SHIFT);
+
+    if (clock->time_accumulator >= clock->ticks_per_step) {
+        clock->time_accumulator -= clock->ticks_per_step;
 
         // update musical time
         clock->barBeats->steps += 1;
         int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
-        clock->barBeats->bar       = floor(totBeats / clock->barBeats->beats_per_bar);
+        clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
         clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
         clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+
+        return true;
     }
-    return shouldUpdateStepSequencer;
+
+    return false;
 }

@@ -9,7 +9,7 @@
 
 #define MAXSUBDIVBEAT 8
 // note resolution (I'd recc 2 * 3 * maxSubDivisionNeeded, ex. 4 for 16th notes)
-#define STEPS_PER_BEAT (2 * 3 * MAXSUBDIVBEAT)
+#define STEPS_PER_BEAT (3 * MAXSUBDIVBEAT)
 
 typedef enum { STOPPED = 0, PLAYING = 1, PAUSED = 2 } ClockStatus;
 
@@ -25,9 +25,9 @@ typedef struct {
 
 typedef struct {
     float        bpm;
-    float        ticks_per_beat;
-    float        ticks;
-    int          ticks_per_step;
+    u64          last_tick_time;
+    u64          time_accumulator;
+    u64          ticks_per_step;
     ClockStatus  status;
     MusicalTime *barBeats;
 } Clock;
