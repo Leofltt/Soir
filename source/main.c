@@ -158,18 +158,13 @@ int main(int argc, char **argv) {
         trackParamsArray1[i]   = defaultTrackParameters(0, &subsynthParamsArray[i]);
         sequence1[i]           = (SeqStep) { .active = false };
         sequence1[i].data      = &trackParamsArray1[i];
-        if (i % 8 == 0 || i == 0) {
-            sequence1[i].active = true;
-            ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
-                midiToHertz(i + 69);
-        }
     }
     seq1 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq1) {
         ret = 1;
         goto cleanup;
     }
-    *seq1 = (Sequencer) { .cur_step = 15, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
+    *seq1 = (Sequencer) { .cur_step = 0, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -231,20 +226,13 @@ int main(int argc, char **argv) {
         trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
         sequence2[i]              = (SeqStep) { .active = false };
         sequence2[i].data         = &trackParamsArray2[i];
-        if (i % 4 == 2) {
-
-            
-            sequence2[i].active = true;
-            ((OpusSamplerParameters *) (sequence2[i].data->instrument_data))->start_position =
-                (i / 4) * (op_pcm_total(opusFile, -1) / 4);
-        }
     }
     seq2 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq2) {
         ret = 1;
         goto cleanup;
     }
-    *seq2 = (Sequencer) { .cur_step = 15, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
+    *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
     tracks[1].sequencer = seq2;
 
     LightLock_Init(&clock_lock);
@@ -322,22 +310,55 @@ int main(int argc, char **argv) {
         }
 
         if (kDown & KEY_A) {
-            if (selected_col > 0) {
+            if (selected_row == 0 && selected_col == 0) {
+                LightLock_Lock(&clock_lock);
+                if (clock->status == PLAYING) {
+                    pauseClock(clock);
+                } else if (clock->status == PAUSED) {
+                    resumeClock(clock);
+                } else {
+                    startClock(clock);
+                }
+                LightLock_Unlock(&clock_lock);
+            } else if (selected_col > 0) {
                 int step_index = selected_col - 1;
                 LightLock_Lock(&tracks_lock);
                 if (selected_row == 0) { // Header row
                     for (int i = 0; i < N_TRACKS; i++) {
                         if (tracks[i].sequencer && tracks[i].sequencer->steps) {
-                            tracks[i].sequencer->steps[step_index].active = !tracks[i].sequencer->steps[step_index].active;
+                            tracks[i].sequencer->steps[step_index].active =
+                                !tracks[i].sequencer->steps[step_index].active;
                         }
                     }
                 } else { // Track row
                     int track_index = selected_row - 1;
-                    if (track_index < N_TRACKS && tracks[track_index].sequencer && tracks[track_index].sequencer->steps) {
-                        tracks[track_index].sequencer->steps[step_index].active = !tracks[track_index].sequencer->steps[step_index].active;
+                    if (track_index < N_TRACKS &&
+                        tracks[track_index].sequencer &&
+                        tracks[track_index].sequencer->steps) {
+                        tracks[track_index].sequencer->steps[step_index].active =
+                            !tracks[track_index].sequencer->steps[step_index].active;
                     }
                 }
                 LightLock_Unlock(&tracks_lock);
+            }
+        }
+
+        if (kDown & KEY_X) {
+            if (selected_row == 0 && selected_col == 0) {
+                LightLock_Lock(&clock_lock);
+                if (clock->status == PLAYING || clock->status == PAUSED) {
+                    stopClock(clock);
+                    LightLock_Lock(&tracks_lock);
+                    for (int i = 0; i < N_TRACKS; i++) {
+                        if (tracks[i].sequencer) {
+                            tracks[i].sequencer->cur_step = 0;
+                        }
+                    }
+                    LightLock_Unlock(&tracks_lock);
+                } else {
+                    startClock(clock);
+                }
+                LightLock_Unlock(&clock_lock);
             }
         }
 

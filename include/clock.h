@@ -37,6 +37,7 @@ extern bool updateClock(Clock *clock);
 extern void resetClock(Clock *clock);
 extern void stopClock(Clock *clock);
 extern void pauseClock(Clock *clock);
+extern void resumeClock(Clock *clock);
 extern void startClock(Clock *clock);
 extern void resetBarBeats(Clock *clock);
 

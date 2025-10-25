@@ -29,6 +29,7 @@ void test_updateClock_should_not_tick_if_not_enough_time_has_passed(void) {
     Clock clock = { .barBeats = &mt };
     setBpm(&clock, 120.0f);
     startClock(&clock);
+    clock.time_accumulator = 0; // Override priming for this test
 
     double unscaled_ticks_per_step_f = get_unscaled_ticks_per_step_f(120.0f);
 
@@ -45,6 +46,7 @@ void test_updateClock_should_tick_and_update_musical_time(void) {
     Clock clock = { .barBeats = &mt };
     setBpm(&clock, 120.0f);
     startClock(&clock);
+    clock.time_accumulator = 0; // Override priming for this test
 
     double unscaled_ticks_per_step_f = get_unscaled_ticks_per_step_f(120.0f);
 
@@ -62,6 +64,7 @@ void test_updateClock_accumulator_handles_remainder(void) {
     Clock clock = { .barBeats = &mt };
     setBpm(&clock, 120.0f);
     startClock(&clock);
+    clock.time_accumulator = 0; // Override priming for this test
 
     double unscaled_ticks_per_step_f = get_unscaled_ticks_per_step_f(120.0f);
 

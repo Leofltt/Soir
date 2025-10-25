@@ -102,7 +102,7 @@ void drawTrackbar(Clock *clock, Track *tracks) {
     }
 }
 
-void drawTracksSequencers(Track *tracks) {
+void drawTracksSequencers(Track *tracks, int cur_step) {
     float track_height = SCREEN_HEIGHT / 13;
     for (int i = 0; i < N_TRACKS; i++) {
         if (tracks[i].sequencer) {
@@ -114,7 +114,7 @@ void drawTracksSequencers(Track *tracks) {
                 float w = HOME_STEPS_HEADER_W;
                 float h = track_height - 2;
 
-                if (j == tracks[i].sequencer->cur_step) {
+                if (j == cur_step) {
                     C2D_DrawRectangle(x - 1, y - 1, 0, w + 2, h + 2, CLR_RED, CLR_RED, CLR_RED, CLR_RED);
                 }
 
@@ -153,10 +153,27 @@ static void drawSelectionOverlay(int row, int col) {
 void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col) {
     int cur_step = -1; // Default to no active step
     if (tracks && tracks[0].sequencer) {
-        cur_step = tracks[0].sequencer->cur_step;
+        int steps_per_beat = tracks[0].sequencer->steps_per_beat;
+        int total_steps = tracks[0].sequencer->n_beats * steps_per_beat;
+
+        if (clock->status == PLAYING) {
+            if (steps_per_beat > 0) {
+                int clock_steps_per_seq_step = STEPS_PER_BEAT / steps_per_beat;
+                if (clock_steps_per_seq_step > 0 && total_steps > 0) {
+                    cur_step = ((clock->barBeats->steps > 0 ? clock->barBeats->steps - 1 : 0) / clock_steps_per_seq_step) % total_steps;
+                }
+            }
+        } else if (clock->status == PAUSED) {
+            if (total_steps > 0) {
+                cur_step = (tracks[0].sequencer->cur_step + total_steps - 1) % total_steps;
+            }
+        } else { // STOPPED
+            cur_step = tracks[0].sequencer->cur_step;
+        }
     }
+
     drawStepsBar(cur_step);
     drawTrackbar(clock, tracks);
-    drawTracksSequencers(tracks);
+    drawTracksSequencers(tracks, cur_step);
     drawSelectionOverlay(selected_row, selected_col);
 }

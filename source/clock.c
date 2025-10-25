@@ -30,10 +30,21 @@ void stopClock(Clock *clock) {
 void pauseClock(Clock *clock) {
     clock->status = PAUSED;
 };
+
+void resumeClock(Clock *clock) {
+    if (clock->status == PAUSED) {
+        clock->status         = PLAYING;
+        clock->last_tick_time = svcGetSystemTick();
+    }
+}
+
 void startClock(Clock *clock) {
     clock->status = PLAYING;
     resetBarBeats(clock);
     resetClock(clock);
+    if (clock->ticks_per_step > 0) { // Avoid issues if bpm is 0
+        clock->time_accumulator = clock->ticks_per_step;
+    }
 };
 
 void setBpm(Clock *clock, float bpm) {
@@ -65,11 +76,11 @@ bool updateClock(Clock *clock) {
         clock->time_accumulator -= clock->ticks_per_step;
 
         // update musical time
-        clock->barBeats->steps += 1;
-        int totBeats               = (clock->barBeats->steps - 1) / STEPS_PER_BEAT;
+        int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
         clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
         clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
-        clock->barBeats->deltaStep = (clock->barBeats->steps - 1) % STEPS_PER_BEAT;
+        clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+        clock->barBeats->steps++;
 
         return true;
     }
