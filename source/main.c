@@ -21,12 +21,13 @@
 #include <string.h>
 #include <3ds/thread.h>
 
+
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-#define STACK_SIZE (64 * 1024)
+#define STACK_SIZE (N_TRACKS * 32 * 1024)
 
 static const char *PATH = "romfs:/samples/bibop.opus";
 
-static Track tracks[2];
+static Track tracks[N_TRACKS];
 static LightLock clock_lock;
 static LightLock tracks_lock;
 static volatile bool should_exit = false;
@@ -155,11 +156,11 @@ int main(int argc, char **argv) {
         trackParamsArray1[i]   = defaultTrackParameters(0, &subsynthParamsArray[i]);
         sequence1[i]           = (SeqStep) { .active = false };
         sequence1[i].data      = &trackParamsArray1[i];
-        // if (i % 4 == 0 || i == 0) {
-        //     sequence1[i].active = true;
-        //     ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
-        //         midiToHertz(i + 69);
-        // }
+        if (i % 8 == 0 || i == 0) {
+            sequence1[i].active = true;
+            ((SubSynthParameters *) (sequence1[i].data->instrument_data))->osc_freq =
+                midiToHertz(i + 69);
+        }
     }
     seq1 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq1) {
@@ -574,7 +575,7 @@ void clock_thread_func(void *arg) {
             LightLock_Unlock(&tracks_lock);
         }
 
-        svcSleepThread(1000000); // 1ms
+        svcSleepThread(1000000); 
     }
     threadExit(0);
 }
@@ -603,7 +604,7 @@ void audio_thread_func(void *arg) {
 
         LightLock_Unlock(&tracks_lock);
 
-        svcSleepThread(1000000); // 1ms
+        svcSleepThread(1000000); 
     }
     threadExit(0);
 }
