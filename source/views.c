@@ -37,7 +37,7 @@ static const char* get_status_symbol(ClockStatus status) {
     }
 }
 
-void drawTrackbar(Clock *clock) {
+void drawTrackbar(Clock *clock, Track *tracks) {
     float track_height = SCREEN_HEIGHT / 13;
     for (int i = 0; i < N_TRACKS + 1; i++) {
         if (i == 0) {
@@ -78,6 +78,26 @@ void drawTrackbar(Clock *clock) {
             C2D_DrawRectangle(0, i * track_height, 0, HOME_TRACKS_WIDTH,
                               track_height - 2, // -2 for spacing
                               CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+
+            int track_idx = i - 1;
+            const char* instrument_name = "";
+            if (tracks[track_idx].instrument_type == SUB_SYNTH) {
+                instrument_name = "Synth";
+            } else if (tracks[track_idx].instrument_type == OPUS_SAMPLER) {
+                instrument_name = "Sampler";
+            }
+
+            C2D_TextBufClear(text_buf);
+            C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
+            C2D_TextOptimize(&text_obj);
+
+            float text_width, text_height;
+            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+
+            float text_x = HOME_TRACKS_WIDTH / 2.0f;
+            float text_y = (i * track_height) + (track_height - text_height) / 2.0f;
+
+            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
         }
     }
 }
@@ -104,12 +124,39 @@ void drawTracksSequencers(Track *tracks) {
     }
 }
 
-void drawMainView(Track *tracks, Clock *clock) {
+static void drawSelectionOverlay(int row, int col) {
+    float track_height = SCREEN_HEIGHT / 13;
+    float x, y, w, h;
+
+    if (col == 0) { // Track info column
+        x = 0;
+        y = row * track_height;
+        w = HOME_TRACKS_WIDTH;
+        h = track_height - 2;
+    } else { // Sequencer step column
+        int j = col - 1;
+        x = HOME_TRACKS_WIDTH + HOME_STEPS_SPACER_W * (j + 1) + HOME_STEPS_HEADER_W * j;
+        w = HOME_STEPS_HEADER_W;
+
+        if (row == 0) { // Header row for sequencer
+            y = 0;
+            h = (N_TRACKS + 1) * track_height;
+        } else { // A step in a track
+            y = row * track_height;
+            h = track_height - 2;
+        }
+    }
+
+    C2D_DrawRectangle(x, y, 0, w, h, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW);
+}
+
+void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col) {
     int cur_step = -1; // Default to no active step
     if (tracks && tracks[0].sequencer) {
         cur_step = tracks[0].sequencer->cur_step;
     }
     drawStepsBar(cur_step);
-    drawTrackbar(clock);
+    drawTrackbar(clock, tracks);
     drawTracksSequencers(tracks);
+    drawSelectionOverlay(selected_row, selected_col);
 }
