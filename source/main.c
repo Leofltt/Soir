@@ -45,6 +45,7 @@ int main(int argc, char **argv) {
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
+    initViews();
 
     int ret = 0;
 
@@ -443,10 +444,6 @@ int main(int argc, char **argv) {
         }
         LightLock_Unlock(&tracks_lock);
 
-        LightLock_Lock(&clock_lock);
-        printf("\x1b[25;1H%d.%d | st: %d | %s  ", clock->barBeats->bar, clock->barBeats->beat + 1, clock->barBeats->steps, clockStatusName[clock->status]);
-        LightLock_Unlock(&clock_lock);
-
         LightLock_Lock(&tracks_lock);
         if (tracks[1].sequencer) {
             printf("\x1b[28;1H");
@@ -476,14 +473,14 @@ int main(int argc, char **argv) {
 
         switch (session.main_screen_view) {
         case VIEW_MAIN:
-            drawMainView();
+            drawMainView(tracks, clock);
             break;
         case VIEW_SETTINGS:
             break;
         case VIEW_ABOUT:
             break;
         default:
-            drawMainView();
+            drawMainView(tracks, clock);
             break;
         }
 
@@ -553,6 +550,7 @@ cleanup:
         linearFree(trackParamsArray2);
     if (opusSamplerParamsArray)
         linearFree(opusSamplerParamsArray);
+    deinitViews();
     ndspExit();
     C2D_Fini();
     C3D_Fini();

@@ -66,10 +66,10 @@ bool updateClock(Clock *clock) {
 
         // update musical time
         clock->barBeats->steps += 1;
-        int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
+        int totBeats               = (clock->barBeats->steps - 1) / STEPS_PER_BEAT;
         clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
         clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
-        clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+        clock->barBeats->deltaStep = (clock->barBeats->steps - 1) % STEPS_PER_BEAT;
 
         return true;
     }
