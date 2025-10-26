@@ -36,9 +36,9 @@ void test_updateClock_should_not_tick_if_not_enough_time_has_passed(void) {
     // Advance time by less than one step
     mock_advance_system_tick((u64)unscaled_ticks_per_step_f - 1);
 
-    bool ticked = updateClock(&clock);
+    int ticked = updateClock(&clock);
 
-    TEST_ASSERT_FALSE(ticked);
+    TEST_ASSERT_EQUAL(0, ticked);
 }
 
 void test_updateClock_should_tick_and_update_musical_time(void) {
@@ -53,10 +53,9 @@ void test_updateClock_should_tick_and_update_musical_time(void) {
     // Advance time by exactly one step, rounding up to ensure the threshold is met.
     mock_advance_system_tick((u64)ceil(unscaled_ticks_per_step_f));
 
-    bool ticked = updateClock(&clock);
+    int ticked = updateClock(&clock);
 
-    TEST_ASSERT_TRUE(ticked);
-    TEST_ASSERT_EQUAL(1, clock.barBeats->steps);
+    TEST_ASSERT_EQUAL(1, ticked);
 }
 
 void test_updateClock_accumulator_handles_remainder(void) {
@@ -73,9 +72,8 @@ void test_updateClock_accumulator_handles_remainder(void) {
     u64 advance1 = (u64)ceil(unscaled_ticks_per_step_f * 1.5);
     mock_advance_system_tick(advance1);
 
-    bool ticked = updateClock(&clock);
-    TEST_ASSERT_TRUE(ticked);
-    TEST_ASSERT_EQUAL(1, clock.barBeats->steps);
+    int ticked = updateClock(&clock);
+    TEST_ASSERT_EQUAL(1, ticked);
 
     // --- Second Tick ---
     // Calculate the total time needed for two full steps from the beginning.
@@ -85,8 +83,7 @@ void test_updateClock_accumulator_handles_remainder(void) {
     mock_advance_system_tick(advance2);
 
     ticked = updateClock(&clock);
-    TEST_ASSERT_TRUE(ticked); // Should tick again
-    TEST_ASSERT_EQUAL(2, clock.barBeats->steps);
+    TEST_ASSERT_EQUAL(1, ticked); // Should tick again
 }
 
 void test_updateClock_does_not_tick_when_stopped(void) {
@@ -100,7 +97,7 @@ void test_updateClock_does_not_tick_when_stopped(void) {
 
     mock_advance_system_tick((u64)unscaled_ticks_per_step_f * 2);
 
-    bool ticked = updateClock(&clock);
+    int ticked = updateClock(&clock);
 
-    TEST_ASSERT_FALSE(ticked);
+    TEST_ASSERT_EQUAL(0, ticked);
 }

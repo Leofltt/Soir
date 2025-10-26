@@ -1,4 +1,5 @@
 #include "clock.h"
+#include <limits.h>
 
 #ifndef TESTING
 #include <3ds/os.h>
@@ -66,9 +67,9 @@ void setBeatsPerBar(Clock *clock, int beats) {
     }
 }
 
-bool updateClock(Clock *clock) {
+int updateClock(Clock *clock) {
     if (!clock || clock->status != PLAYING) {
-        return false;
+        return 0;
     }
 
     u64 now = svcGetSystemTick();
@@ -79,17 +80,14 @@ bool updateClock(Clock *clock) {
     clock->time_accumulator += (delta_ticks << CLOCK_RESOLUTION_SHIFT);
 
     if (clock->time_accumulator >= clock->ticks_per_step) {
-        clock->time_accumulator -= clock->ticks_per_step;
-
-        // update musical time
-        int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
-        clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
-        clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
-        clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
-        clock->barBeats->steps++;
-
-        return true;
+        if (clock->ticks_per_step == 0) {
+            return 0;  // Prevent division by zero
+        }
+        u64 num_ticks_raw = clock->time_accumulator / clock->ticks_per_step;
+        int num_ticks = (num_ticks_raw > INT_MAX) ? INT_MAX : (int)num_ticks_raw;
+        clock->time_accumulator %= clock->ticks_per_step; // Keep the remainder
+        return num_ticks;
     }
 
-    return false;
+    return 0;
 }

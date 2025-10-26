@@ -85,7 +85,6 @@ int main(int argc, char **argv) {
     TrackParameters *trackParamsArray2        = NULL;
     OpusSamplerParameters *opusSamplerParamsArray = NULL;
     Sequencer *seq2                           = NULL;
-    OggOpusFile *opusFile                     = NULL;
 
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
@@ -103,7 +102,7 @@ int main(int argc, char **argv) {
                           .status         = STOPPED,
                           .barBeats       = &mt };
     Clock      *clock = &cl;
-    setBpm(clock, 30.0f);
+    setBpm(clock, 60.0f);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -170,13 +169,6 @@ int main(int argc, char **argv) {
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
-    int error;
-    opusFile = op_open_file(PATH, &error);
-    if (error != 0 || !opusFile) {
-        ret = 1;
-        goto cleanup;
-    }
-
     audioBuffer2 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer2) {
         ret = 1;
@@ -197,7 +189,8 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler = (OpusSampler) { .audiofile       = opusFile,
+    *sampler = (OpusSampler) { .audiofile       = NULL,
+                               .path            = PATH,
                                .start_position  = 0,
                                .playback_mode   = ONE_SHOT,
                                .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -224,7 +217,7 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     for (int i = 0; i < 16; i++) {
-        opusSamplerParamsArray[i] = defaultOpusSamplerParameters(opusFile);
+        opusSamplerParamsArray[i] = defaultOpusSamplerParameters(PATH);
         trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
         sequence2[i]              = (SeqStep) { .active = false };
         sequence2[i].data         = &trackParamsArray2[i];
@@ -321,13 +314,15 @@ int main(int argc, char **argv) {
                     }
 
                     if (kDown & KEY_Y) {
-                        LightLock_Lock(&clock_lock);
-                        if (clock->status == PLAYING) {
-                            pauseClock(clock);
-                        } else if (clock->status == PAUSED) {
-                            resumeClock(clock);
+                        if (selected_row == 0 && selected_col == 0) {
+                            LightLock_Lock(&clock_lock);
+                            if (clock->status == PLAYING) {
+                                pauseClock(clock);
+                            } else if (clock->status == PAUSED) {
+                                resumeClock(clock);
+                            }
+                            LightLock_Unlock(&clock_lock);
                         }
-                        LightLock_Unlock(&clock_lock);
                     }
 
                     if (kDown & KEY_A) {
@@ -484,11 +479,9 @@ int main(int argc, char **argv) {
 cleanup:
     should_exit = true;
 
-    printf("Waiting for clock thread to exit...\n");
     threadJoin(clock_thread, U64_MAX);
     threadFree(clock_thread);
 
-    printf("Waiting for audio thread to exit...\n");
     threadJoin(audio_thread, U64_MAX);
     threadFree(audio_thread);
 
@@ -557,15 +550,24 @@ void clock_thread_func(void *arg) {
     Clock *clock = (Clock *) arg;
     while (!should_exit) {
         LightLock_Lock(&clock_lock);
-        bool shouldUpdate = updateClock(clock);
-        LightLock_Unlock(&clock_lock);
+        int ticks_to_process = updateClock(clock);
 
-        if (shouldUpdate) {
+        if (ticks_to_process > 0) {
             LightLock_Lock(&tracks_lock);
-            updateTrack(&tracks[0], clock);
-            updateTrack(&tracks[1], clock);
+            for (int i = 0; i < ticks_to_process; i++) {
+                // update musical time for one tick
+                int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
+                clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
+                clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
+                clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
+                clock->barBeats->steps++;
+
+                updateTrack(&tracks[0], clock);
+                updateTrack(&tracks[1], clock);
+            }
             LightLock_Unlock(&tracks_lock);
         }
+        LightLock_Unlock(&clock_lock);
 
         svcSleepThread(1000000); 
     }
@@ -578,19 +580,13 @@ void audio_thread_func(void *arg) {
 
         if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
             ndspWaveBuf *waveBuf0 = &tracks[0].waveBuf[tracks[0].fillBlock];
-            SubSynth *subsynth0 = (SubSynth *) tracks[0].instrument_data;
-            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
+            fillSubSynthAudiobuffer(&tracks[0], waveBuf0, waveBuf0->nsamples, 1);
             tracks[0].fillBlock = !tracks[0].fillBlock;
         }
 
         if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
             ndspWaveBuf *waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
-            OpusSampler *sampler1 = (OpusSampler *) tracks[1].instrument_data;
-            if (sampler1->seek_requested) {
-                op_pcm_seek(sampler1->audiofile, sampler1->start_position);
-                sampler1->seek_requested = false;
-            }
-            fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
+            fillSamplerAudiobuffer(&tracks[1], waveBuf1, waveBuf1->nsamples);
             tracks[1].fillBlock = !tracks[1].fillBlock;
         }
 

@@ -3,7 +3,10 @@
 
 #include "clock.h"
 #include "filters.h"
+#include "event_queue.h"
 #include "sequencer.h"
+#include "synth.h"
+#include "ui_constants.h"
 #include "track_parameters.h"
 
 #ifndef TESTING
@@ -24,6 +27,7 @@ typedef struct Track {
     bool           is_soloed;
     bool           fillBlock;
     Sequencer     *sequencer;
+    EventQueue     event_queue;
 
 } Track;
 

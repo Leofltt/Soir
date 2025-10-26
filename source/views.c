@@ -159,16 +159,12 @@ void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_co
         int steps_per_beat = tracks[0].sequencer->steps_per_beat;
         int total_steps = tracks[0].sequencer->n_beats * steps_per_beat;
 
-        if (clock->status == PLAYING) {
+        if (clock->status == PLAYING || clock->status == PAUSED) {
             if (steps_per_beat > 0) {
                 int clock_steps_per_seq_step = STEPS_PER_BEAT / steps_per_beat;
                 if (clock_steps_per_seq_step > 0 && total_steps > 0) {
                     cur_step = ((clock->barBeats->steps > 0 ? clock->barBeats->steps - 1 : 0) / clock_steps_per_seq_step) % total_steps;
                 }
-            }
-        } else if (clock->status == PAUSED) {
-            if (total_steps > 0) {
-                cur_step = (tracks[0].sequencer->cur_step + total_steps - 1) % total_steps;
             }
         } else { // STOPPED
             cur_step = tracks[0].sequencer->cur_step;
@@ -186,6 +182,18 @@ void drawSettingsView(Clock *clock, int selected_option) {
     const char* options[] = { "BPM", "Beats per Bar", "Back" };
     int num_options = sizeof(options) / sizeof(options[0]);
 
+    // Menu box
+    float menu_width = 300;
+    float menu_height = 100;
+    float menu_x = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_y = (SCREEN_HEIGHT - menu_height) / 2;
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK, CLR_BLACK);
+    // Border
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+
     for (int i = 0; i < num_options; i++) {
         C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
         u32 color = (i == selected_option) ? CLR_YELLOW : CLR_WHITE;
@@ -193,9 +201,9 @@ void drawSettingsView(Clock *clock, int selected_option) {
         C2D_TextBufClear(text_buf);
         char text[64];
         if (i == 0) {
-            snprintf(text, sizeof(text), "%s: %.0f", options[i], clock->bpm);
+            snprintf(text, sizeof(text), "%s %.0f", options[i], clock->bpm);
         } else if (i == 1) {
-            snprintf(text, sizeof(text), "%s: %d", options[i], clock->barBeats->beats_per_bar);
+            snprintf(text, sizeof(text), "%s %d", options[i], clock->barBeats->beats_per_bar);
         } else {
             snprintf(text, sizeof(text), "%s", options[i]);
         }
@@ -204,12 +212,12 @@ void drawSettingsView(Clock *clock, int selected_option) {
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.7f, 0.7f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
 
-        float text_x = (TOP_SCREEN_WIDTH - text_width) / 2;
-        float text_y = (SCREEN_HEIGHT / 2) - 30 + (i * 30);
+        float text_x = menu_x + (menu_width - text_width) / 2;
+        float text_y = menu_y + 20 + (i * 25);
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.7f, 0.7f, color);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
     }
 }
 

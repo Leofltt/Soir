@@ -8,9 +8,33 @@
 
 #include "audio_utils.h"
 #include "synth.h"
+#include "track.h"
 
-void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth, float synthvol,
-                             int chan_id) {
+static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *params) {
+    if (!synth || !params)
+        return;
+
+    setWaveform(synth->osc, params->osc_waveform);
+    setOscFrequency(synth->osc, params->osc_freq);
+    updateEnvelope(synth->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
+    triggerEnvelope(synth->env);
+}
+
+void fillSubSynthAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t size, float synthvol) {
+    if (!track || !track->instrument_data) {
+        return;
+    }
+
+    SubSynth *subsynth = (SubSynth *) track->instrument_data;
+    Event e;
+    while (event_queue_pop(&track->event_queue, &e)) {
+        if (e.type == NOTE_ON) {
+            if (e.params.instrument_data) {
+                updateSubSynthFromSequence(subsynth, (SubSynthParameters *) e.params.instrument_data);
+            }
+        }
+    }
+
     u32 *dest = (u32 *) waveBuf->data_pcm16;
 
     for (int i = 0; i < size; i++) {
@@ -25,5 +49,5 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
     }
 
     DSP_FlushDataCache(waveBuf->data_pcm16, size);
-    ndspChnWaveBufAdd(chan_id, waveBuf);
+    ndspChnWaveBufAdd(track->chan_id, waveBuf);
 };

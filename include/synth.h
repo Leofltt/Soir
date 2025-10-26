@@ -1,18 +1,21 @@
 #ifndef SYNTH_H
 #define SYNTH_H
 
-#include "audio_utils.h"
 #include "envelope.h"
 #include "oscillators.h"
+#include "track_parameters.h"
 
+#ifndef TESTING
 #include <3ds.h>
+#endif
 
-typedef struct {
-    Envelope           *env;
+typedef struct SubSynth {
     PolyBLEPOscillator *osc;
+    Envelope           *env;
 } SubSynth;
 
-extern void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth,
-                                    float synthvol, int chan_id);
+struct Track;
+
+extern void fillSubSynthAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t size, float synthvol);
 
 #endif // SYNTH_H
