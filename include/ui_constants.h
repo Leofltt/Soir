@@ -4,9 +4,9 @@
 #include <citro2d.h>
 
 // fonts
-#define FONTPATH_2197BLOCK "romfs:/2197Block.bcfnt"
-#define FONTPATH_2197HEAVY "romfs:/2197Heavy.bcfnt"
-#define FONTPATH_F500ANGULAR "romfs:/F500Angular.bcfnt"
+#define FONTPATH_2197BLOCK "romfs:/gfx/2197Block.bcfnt"
+#define FONTPATH_2197HEAVY "romfs:/gfx/2197Heavy.bcfnt"
+#define FONTPATH_F500ANGULAR "romfs:/gfx/F500Angular.bcfnt"
 
 // colors
 #define CLR_BLACK C2D_Color32(0, 0, 0, 0xFF)

@@ -33,6 +33,7 @@ typedef struct {
 } Clock;
 
 extern void setBpm(Clock *clock, float bpm);
+extern void setBeatsPerBar(Clock *clock, int beats);
 extern bool updateClock(Clock *clock);
 extern void resetClock(Clock *clock);
 extern void stopClock(Clock *clock);

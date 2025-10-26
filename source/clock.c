@@ -48,7 +48,7 @@ void startClock(Clock *clock) {
 };
 
 void setBpm(Clock *clock, float bpm) {
-    if (clock && clock->bpm != bpm) {
+    if (clock && clock->bpm != bpm && bpm >= 20 && bpm <= 200) {
         clock->bpm = bpm;
         // Use double for intermediate calculation for precision
         double ticks_per_beat = (double)SYSCLOCK_ARM11 * 60.0 / bpm;
@@ -57,6 +57,12 @@ void setBpm(Clock *clock, float bpm) {
         // Scale up to maintain fractional precision with integers
         clock->ticks_per_step = (u64)(ticks_per_step_f * (1 << CLOCK_RESOLUTION_SHIFT));
         resetClock(clock);
+    }
+}
+
+void setBeatsPerBar(Clock *clock, int beats) {
+    if (clock && clock->barBeats && beats >= 2 && beats <= 16) {
+        clock->barBeats->beats_per_bar = beats;
     }
 }
 

@@ -10,5 +10,7 @@ extern void drawStepsBar(int cur_step);
 extern void drawTrackbar(Clock *clock, Track *tracks);
 extern void drawTracksSequencers(Track *tracks, int cur_step);
 extern void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col);
+extern void drawSettingsView(Clock *clock, int selected_option);
+extern void drawQuitMenu(const char* options[], int num_options, int selected_option);
 
 #endif // VIEWS_H

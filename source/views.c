@@ -5,16 +5,19 @@
 #include <stdio.h>
 
 static C2D_Font font_angular;
+static C2D_Font font_heavy;
 static C2D_TextBuf text_buf;
 static C2D_Text text_obj;
 
 void initViews() {
     font_angular = C2D_FontLoad(FONTPATH_F500ANGULAR);
+    font_heavy = C2D_FontLoad(FONTPATH_2197HEAVY);
     text_buf = C2D_TextBufNew(128);
 }
 
 void deinitViews() {
     C2D_FontFree(font_angular);
+    C2D_FontFree(font_heavy);
     C2D_TextBufDelete(text_buf);
 }
 
@@ -176,4 +179,72 @@ void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_co
     drawTrackbar(clock, tracks);
     drawTracksSequencers(tracks, cur_step);
     drawSelectionOverlay(selected_row, selected_col);
+}
+
+void drawSettingsView(Clock *clock, int selected_option) {
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128));
+    const char* options[] = { "BPM", "Beats per Bar", "Back" };
+    int num_options = sizeof(options) / sizeof(options[0]);
+
+    for (int i = 0; i < num_options; i++) {
+        C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
+        u32 color = (i == selected_option) ? CLR_YELLOW : CLR_WHITE;
+
+        C2D_TextBufClear(text_buf);
+        char text[64];
+        if (i == 0) {
+            snprintf(text, sizeof(text), "%s: %.0f", options[i], clock->bpm);
+        } else if (i == 1) {
+            snprintf(text, sizeof(text), "%s: %d", options[i], clock->barBeats->beats_per_bar);
+        } else {
+            snprintf(text, sizeof(text), "%s", options[i]);
+        }
+
+        C2D_TextFontParse(&text_obj, current_font, text_buf, text);
+        C2D_TextOptimize(&text_obj);
+
+        float text_width, text_height;
+        C2D_TextGetDimensions(&text_obj, 0.7f, 0.7f, &text_width, &text_height);
+
+        float text_x = (TOP_SCREEN_WIDTH - text_width) / 2;
+        float text_y = (SCREEN_HEIGHT / 2) - 30 + (i * 30);
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.7f, 0.7f, color);
+    }
+}
+
+void drawQuitMenu(const char* options[], int num_options, int selected_option) {
+    // Dim background
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128));
+
+    // Menu box
+    float menu_width = 150;
+    float menu_height = 80;
+    float menu_x = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_y = (SCREEN_HEIGHT - menu_height) / 2;
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK, CLR_BLACK);
+    // Border
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+
+
+    // Menu options
+    for (int i = 0; i < num_options; i++) {
+        C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
+        u32 color = (i == selected_option) ? CLR_YELLOW : CLR_WHITE;
+
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, current_font, text_buf, options[i]);
+        C2D_TextOptimize(&text_obj);
+
+        float text_width, text_height;
+        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+
+        float text_x = menu_x + (menu_width - text_width) / 2;
+        float text_y = menu_y + 20 + (i * 25);
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
+    }
 }
