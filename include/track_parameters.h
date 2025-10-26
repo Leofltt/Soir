@@ -1,61 +1,50 @@
 #ifndef TRACK_PARAMETERS_H
 #define TRACK_PARAMETERS_H
 
-#ifdef TESTING
-#include "../tests/mock_3ds.h"
-#else
-#include <3ds/types.h>
-#include <opusfile.h>
-#endif
+#include "filters.h"
+#include "polybleposc.h"
+#include "samplers.h"
 
-// Forward-declare the instrument-specific parameter structs
-struct SubSynthParameters;
-struct OpusSamplerParameters;
+// a poor attempt at serialisable track parameters for each step
 
-typedef struct TrackParameters {
-    int   track_id;
+typedef struct {
+    int            track_id;
+    float          volume; // volume and pan together determine mix[0] and mix[1]
+    float          pan;
+    float          ndsp_filter_cutoff;
+    NdspFilterType ndsp_filter_type;
+    // float          reverb_level;
+    // float          delay_level;
     bool  is_muted;
     bool  is_soloed;
-    float volume;
-    float pan;
-    int   ndsp_filter_type;
-    float ndsp_filter_cutoff;
-    // This pointer is not owned by the struct. The caller is responsible for
-    // managing the memory.
-    void *instrument_data; // Pointer to one of the specific param structs below
+    void *instrument_data;
 } TrackParameters;
 
-typedef struct SubSynthParameters {
-    int   osc_waveform;
-    float osc_freq;
-    float env_atk;
-    float env_dec;
-    float env_sus_level;
-    float env_sus_time;
-    float env_rel;
-    float env_dur;
+typedef struct {
+    int      env_atk;
+    int      env_dec;
+    int      env_sus_time;
+    float    env_sus_level;
+    int      env_rel;
+    int      env_dur;
+    float    osc_freq;
+    Waveform osc_waveform;
 } SubSynthParameters;
 
-typedef enum {
-    ONE_SHOT,
-    LOOP,
-} PlaybackMode;
-
-typedef struct OpusSamplerParameters {
-    const char *path;
+typedef struct {
+    int          env_atk;
+    int          env_dec;
+    int          env_sus_time;
+    float        env_sus_level;
+    int          env_rel;
+    int          env_dur;
+    OggOpusFile *audiofile;
     PlaybackMode playback_mode;
     int64_t      start_position;
-    float env_atk;
-    float env_dec;
-    float env_sus_level;
-    float env_sus_time;
-    float env_rel;
-    float env_dur;
 } OpusSamplerParameters;
 
-
-extern TrackParameters defaultTrackParameters(int track_id, void *instrument_data);
-extern SubSynthParameters defaultSubSynthParameters();
-extern OpusSamplerParameters defaultOpusSamplerParameters(const char *path);
+extern SubSynthParameters    defaultSubSynthParameters();
+extern OpusSamplerParameters defaultOpusSamplerParameters(OggOpusFile *audiofile);
+extern TrackParameters       defaultTrackParameters(int track_id, void *instrument_data);
 
 #endif // TRACK_PARAMETERS_H

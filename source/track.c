@@ -10,7 +10,28 @@
 #include <math.h>
 #include <string.h>
 
+static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *params) {
+    if (!synth || !params)
+        return;
 
+    setWaveform(synth->osc, params->osc_waveform);
+    setOscFrequency(synth->osc, params->osc_freq);
+    updateEnvelope(synth->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
+    triggerEnvelope(synth->env);
+}
+
+static void updateOpusSamplerFromSequence(OpusSampler *sampler, OpusSamplerParameters *params) {
+    if (!sampler || !params)
+        return;
+
+    sampler->audiofile      = params->audiofile;
+    sampler->start_position = params->start_position;
+    sampler->playback_mode  = params->playback_mode;
+    sampler->seek_requested = true;
+    sampler->finished       = false;
+    updateEnvelope(sampler->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
+    triggerEnvelope(sampler->env);
+}
 
 void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,
                      u32 num_samples, u32 *audio_buffer) {
@@ -22,7 +43,6 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
     track->fillBlock       = false;
     track->sequencer       = NULL;
     track->instrument_data = NULL;
-    event_queue_init(&track->event_queue);
 
     ndspChnReset(track->chan_id);
     ndspChnSetInterp(track->chan_id, NDSP_INTERP_LINEAR);
@@ -91,8 +111,20 @@ void updateTrack(Track *track, Clock *clock) {
         SeqStep step = updateSequencer(track->sequencer);
         if (step.active && step.data) {
             updateTrackParameters(track, step.data);
-            Event e = { .type = NOTE_ON, .params = *step.data };
-            event_queue_push(&track->event_queue, e);
+            if (track->instrument_type == SUB_SYNTH) {
+                SubSynthParameters *subsynthParams = (SubSynthParameters *) step.data->instrument_data;
+                SubSynth           *ss             = (SubSynth *) track->instrument_data;
+                if (subsynthParams && ss) {
+                    updateSubSynthFromSequence(ss, subsynthParams);
+                }
+            } else if (track->instrument_type == OPUS_SAMPLER) {
+                OpusSamplerParameters *opusSamplerParams =
+                    (OpusSamplerParameters *) step.data->instrument_data;
+                OpusSampler *s = (OpusSampler *) track->instrument_data;
+                if (opusSamplerParams && s) {
+                    updateOpusSamplerFromSequence(s, opusSamplerParams);
+                }
+            }
         }
     }
 }

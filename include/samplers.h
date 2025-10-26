@@ -2,27 +2,35 @@
 #define SAMPLERS_H
 
 #include "envelope.h"
-#include "track_parameters.h"
-#include <opusfile.h>
 
-#ifndef TESTING
-#include <3ds.h>
+#ifdef TESTING
+#include "../tests/mock_3ds.h"
+#else
+#include <3ds/ndsp/ndsp.h>
+#include <3ds/types.h>
+#include <opusfile.h>
 #endif
 
-typedef struct OpusSampler {
+typedef enum { ONE_SHOT = 0, LOOP = 1 } PlaybackMode;
+
+typedef struct {
     OggOpusFile *audiofile;
-    const char *path;
-    Envelope    *env;
+    PlaybackMode playback_mode;
     int64_t      start_position;
     size_t       samples_per_buf;
     float        samplerate;
-    PlaybackMode playback_mode;
+    Envelope    *env;
     bool         seek_requested;
     bool         finished;
 } OpusSampler;
 
-struct Track;
+extern const char *opusStrError(int error);
 
-extern void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t size);
+extern void setSample(OpusSampler *sampler, char *path);
+
+extern bool isLooping(OpusSampler *sampler);
+
+extern void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler,
+                                   int chan_id);
 
 #endif // SAMPLERS_H

@@ -9,7 +9,6 @@
 #endif
 
 #include "samplers.h"
-#include "track.h"
 
 #include "audio_utils.h"
 #include "engine_constants.h"
@@ -65,48 +64,13 @@ void setSample(OpusSampler *sampler, char *path) {
         op_free(sampler->audiofile);
     }
     sampler->audiofile = op_open_file(path, &error);
-    sampler->path = path;
 };
 
 bool isLooping(OpusSampler *sampler) {
     return sampler->playback_mode == LOOP;
 }
 
-static void updateOpusSamplerFromSequence(OpusSampler *sampler, OpusSamplerParameters *params) {
-    if (!sampler || !params)
-        return;
-
-    if (strcmp(sampler->path, params->path) != 0) {
-        if (sampler->audiofile) {
-            op_free(sampler->audiofile);
-        }
-        int error;
-        sampler->audiofile = op_open_file(params->path, &error);
-        sampler->path = params->path;
-    }
-
-    sampler->start_position = params->start_position;
-    sampler->playback_mode  = params->playback_mode;
-    sampler->seek_requested = true;
-    sampler->finished       = false;
-    updateEnvelope(sampler->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
-    triggerEnvelope(sampler->env);
-}
-
-void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t size) {
-    if (!track || !track->instrument_data) {
-        return;
-    }
-    OpusSampler *sampler = (OpusSampler *) track->instrument_data;
-    Event e;
-    while (event_queue_pop(&track->event_queue, &e)) {
-        if (e.type == NOTE_ON) {
-            if (e.params.instrument_data) {
-                updateOpusSamplerFromSequence(sampler, (OpusSamplerParameters *) e.params.instrument_data);
-            }
-        }
-    }
-
+void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler, int chan_id) {
 #ifdef DEBUG
     // Setup timer for performance stats
     TickCounter timer;
@@ -114,18 +78,18 @@ void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t si
 #endif // DEBUG
 
     if (sampler->playback_mode == ONE_SHOT && sampler->finished) {
-        memset(waveBuf->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
-        waveBuf->nsamples = sampler->samples_per_buf;
-        DSP_FlushDataCache(waveBuf->data_pcm16,
+        memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
+        waveBuf_->nsamples = sampler->samples_per_buf;
+        DSP_FlushDataCache(waveBuf_->data_pcm16,
                            sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
-        ndspChnWaveBufAdd(track->chan_id, waveBuf);
+        ndspChnWaveBufAdd(chan_id, waveBuf_);
         return;
     }
 
     // Decode samples until our waveBuf is full
     int totalSamples = 0;
     while (totalSamples < sampler->samples_per_buf) {
-        int16_t     *buffer     = waveBuf->data_pcm16 + (totalSamples * NCHANNELS);
+        int16_t     *buffer     = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
         const size_t bufferSize = (sampler->samples_per_buf - totalSamples);
 
         // Decode bufferSize samples from opusFile_ into buffer,
@@ -139,7 +103,7 @@ void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t si
                 sampler->finished = true;
                 op_raw_seek(sampler->audiofile, sampler->start_position); // Reset for next trigger
                 if (totalSamples < sampler->samples_per_buf) {
-                    memset(waveBuf->data_pcm16 + (totalSamples * NCHANNELS), 0,
+                    memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
                            (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
                 }
                 totalSamples = sampler->samples_per_buf;
@@ -153,14 +117,14 @@ void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t si
 
             int sample_idx = (totalSamples + i) * NCHANNELS;
 
-            float left_sam  = int16ToFloat(waveBuf->data_pcm16[sample_idx]);
-            float right_sam = int16ToFloat(waveBuf->data_pcm16[sample_idx + 1]);
+            float left_sam  = int16ToFloat(waveBuf_->data_pcm16[sample_idx]);
+            float right_sam = int16ToFloat(waveBuf_->data_pcm16[sample_idx + 1]);
 
             left_sam *= env_value;
             right_sam *= env_value;
 
-            waveBuf->data_pcm16[sample_idx]     = floatToInt16(left_sam);
-            waveBuf->data_pcm16[sample_idx + 1] = floatToInt16(right_sam);
+            waveBuf_->data_pcm16[sample_idx]     = floatToInt16(left_sam);
+            waveBuf_->data_pcm16[sample_idx + 1] = floatToInt16(right_sam);
         }
 
         totalSamples += samples;
@@ -173,9 +137,9 @@ void fillSamplerAudiobuffer(struct Track *track, ndspWaveBuf *waveBuf, size_t si
     }
 
     // Pass samples to NDSP
-    waveBuf->nsamples = totalSamples;
-    DSP_FlushDataCache(waveBuf->data_pcm16, totalSamples * NCHANNELS * sizeof(int16_t));
-    ndspChnWaveBufAdd(track->chan_id, waveBuf);
+    waveBuf_->nsamples = totalSamples;
+    DSP_FlushDataCache(waveBuf_->data_pcm16, totalSamples * NCHANNELS * sizeof(int16_t));
+    ndspChnWaveBufAdd(chan_id, waveBuf_);
 
 #ifdef DEBUG
     // Print timing info

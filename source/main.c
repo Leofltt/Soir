@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
     SeqStep *sequence2                        = NULL;
     TrackParameters *trackParamsArray2        = NULL;
     OpusSamplerParameters *opusSamplerParamsArray = NULL;
+    OggOpusFile *opusFile                     = NULL;
     Sequencer *seq2                           = NULL;
 
     ndspInit();
@@ -169,6 +170,13 @@ int main(int argc, char **argv) {
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
+    int error;
+    opusFile = op_open_file(PATH, &error);
+    if (error != 0 || !opusFile) {
+        ret = 1;
+        goto cleanup;
+    }
+
     audioBuffer2 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer2) {
         ret = 1;
@@ -189,8 +197,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler = (OpusSampler) { .audiofile       = NULL,
-                               .path            = PATH,
+    *sampler = (OpusSampler) { .audiofile       = opusFile,
                                .start_position  = 0,
                                .playback_mode   = ONE_SHOT,
                                .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -217,7 +224,7 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     for (int i = 0; i < 16; i++) {
-        opusSamplerParamsArray[i] = defaultOpusSamplerParameters(PATH);
+        opusSamplerParamsArray[i] = defaultOpusSamplerParameters(opusFile);
         trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
         sequence2[i]              = (SeqStep) { .active = false };
         sequence2[i].data         = &trackParamsArray2[i];
@@ -504,10 +511,7 @@ cleanup:
         linearFree(ss);
     }
     if (tracks[0].sequencer) {
-        cleanupSequencer(tracks[0].sequencer);
-        if (tracks[0].sequencer->steps) {
-            linearFree(tracks[0].sequencer->steps);
-        }
+        linearFree(tracks[0].sequencer->steps);
         linearFree(tracks[0].sequencer);
     }
     if (trackParamsArray1)
@@ -527,16 +531,14 @@ cleanup:
         linearFree(s);
     }
     if (tracks[1].sequencer) {
-        cleanupSequencer(tracks[1].sequencer);
-        if (tracks[1].sequencer->steps) {
-            linearFree(tracks[1].sequencer->steps);
-        }
+        linearFree(tracks[1].sequencer->steps);
         linearFree(tracks[1].sequencer);
     }
     if (trackParamsArray2)
         linearFree(trackParamsArray2);
     if (opusSamplerParamsArray)
         linearFree(opusSamplerParamsArray);
+
     deinitViews();
     ndspExit();
     C2D_Fini();
@@ -580,13 +582,19 @@ void audio_thread_func(void *arg) {
 
         if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
             ndspWaveBuf *waveBuf0 = &tracks[0].waveBuf[tracks[0].fillBlock];
-            fillSubSynthAudiobuffer(&tracks[0], waveBuf0, waveBuf0->nsamples, 1);
+            SubSynth *subsynth0 = (SubSynth *) tracks[0].instrument_data;
+            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
             tracks[0].fillBlock = !tracks[0].fillBlock;
         }
 
         if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
             ndspWaveBuf *waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
-            fillSamplerAudiobuffer(&tracks[1], waveBuf1, waveBuf1->nsamples);
+            OpusSampler *sampler1 = (OpusSampler *) tracks[1].instrument_data;
+            if (sampler1->seek_requested) {
+                op_pcm_seek(sampler1->audiofile, sampler1->start_position);
+                sampler1->seek_requested = false;
+            }
+            fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
             tracks[1].fillBlock = !tracks[1].fillBlock;
         }
 
