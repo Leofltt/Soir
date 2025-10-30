@@ -9,8 +9,7 @@
 #include "audio_utils.h"
 #include "synth.h"
 
-void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth, float synthvol,
-                             int chan_id) {
+void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth, float synthvol) {
     u32 *dest = (u32 *) waveBuf->data_pcm16;
 
     for (int i = 0; i < size; i++) {
@@ -25,5 +24,5 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
     }
 
     DSP_FlushDataCache(waveBuf->data_pcm16, size);
-    ndspChnWaveBufAdd(chan_id, waveBuf);
+    // REMOVED: ndspChnWaveBufAdd(chan_id, waveBuf);
 };

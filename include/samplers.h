@@ -30,7 +30,6 @@ extern void setSample(OpusSampler *sampler, char *path);
 
 extern bool isLooping(OpusSampler *sampler);
 
-extern void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler,
-                                   int chan_id);
+extern void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler);
 
 #endif // SAMPLERS_H

@@ -13,6 +13,6 @@ typedef struct {
 } SubSynth;
 
 extern void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth,
-                                    float synthvol, int chan_id);
+                                    float synthvol);
 
 #endif // SYNTH_H

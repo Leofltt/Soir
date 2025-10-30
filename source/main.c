@@ -688,42 +688,41 @@ void clock_thread_func(void *arg) {
 void audio_thread_func(void *arg) {
     while (!should_exit) {
         Event event;
+        // Process all pending events
         while (event_queue_pop(&g_event_queue, &event)) {
             processTrackEvent(&event);
         }
 
         for (int i = 0; i < N_TRACKS; i++) {
-            // Determine which buffer is currently playing and which is next to fill
-            int current_buffer_idx = !tracks[i].fillBlock;
-            int next_buffer_idx = tracks[i].fillBlock;
+            // Get the next buffer in the queue for this track
+            ndspWaveBuf *waveBuf = &tracks[i].waveBuf[tracks[i].fillBlock];
 
-            // Wait for the currently playing buffer to finish
-            svcWaitSynchronization(tracks[i].sync_handle[current_buffer_idx].handle, U64_MAX);
-            
-            // Clear the event
-            LightEvent_Clear(&tracks[i].sync_handle[current_buffer_idx]);
-
-            // Fill the next buffer
-            ndspWaveBuf *waveBuf = &tracks[i].waveBuf[next_buffer_idx];
-
-            if (tracks[i].instrument_type == SUB_SYNTH) {
-                SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
-                fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth, 1, 0);
-            } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
-                OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
-                if (sampler->seek_requested) {
-                    op_pcm_seek(sampler->audiofile, sampler->start_position);
-                    sampler->seek_requested = false;
+            // Check if the buffer is 'DONE' (i.e., finished playing)
+            // NDSP_WBUF_DONE is defined in 3ds/ndsp/ndsp.h
+            if (waveBuf->status == NDSP_WBUF_DONE) {
+                // Fill the buffer with new audio data
+                if (tracks[i].instrument_type == SUB_SYNTH) {
+                    SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
+                    fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth, 1.0f);
+                } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
+                    OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
+                    if (sampler->seek_requested) {
+                        op_pcm_seek(sampler->audiofile, sampler->start_position);
+                        sampler->seek_requested = false;
+                    }
+                    fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler);
                 }
-                fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler, 1);
+                
+                // Add the (now filled) buffer back to the NDSP queue
+                ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf);
+                
+                // Toggle fillBlock to point to the *other* buffer for the next check
+                tracks[i].fillBlock = !tracks[i].fillBlock;
             }
-            
-            // Add the filled buffer to the NDSP queue
-            ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf, &tracks[i].sync_handle[next_buffer_idx]);
-            
-            // Toggle fillBlock to switch to the other buffer for the next iteration
-            tracks[i].fillBlock = !tracks[i].fillBlock;
         }
+
+        // Sleep for 1ms to prevent busy-waiting and starving other threads
+        svcSleepThread(1000000); 
     }
     threadExit(0);
 }
