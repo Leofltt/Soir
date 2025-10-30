@@ -53,8 +53,9 @@ static void processTrackEvent(Event *event) {
     updateTrackParameters(track, &event->base_params); // Changed from event->params
 
     if (event->instrument_type == SUB_SYNTH) {
-        SubSynthParameters *subsynthParams = &event->instrument_specific_params.subsynth_params; // Changed access
-        SubSynth           *ss             = (SubSynth *) track->instrument_data;
+        SubSynthParameters *subsynthParams =
+            &event->instrument_specific_params.subsynth_params; // Changed access
+        SubSynth *ss = (SubSynth *) track->instrument_data;
         if (subsynthParams && ss) {
             setWaveform(ss->osc, subsynthParams->osc_waveform);
             setOscFrequency(ss->osc, subsynthParams->osc_freq);
@@ -64,8 +65,9 @@ static void processTrackEvent(Event *event) {
             triggerEnvelope(ss->env);
         }
     } else if (event->instrument_type == OPUS_SAMPLER) {
-        OpusSamplerParameters *opusSamplerParams = &event->instrument_specific_params.sampler_params; // Changed access
-        OpusSampler           *s                 = (OpusSampler *) track->instrument_data;
+        OpusSamplerParameters *opusSamplerParams =
+            &event->instrument_specific_params.sampler_params; // Changed access
+        OpusSampler *s = (OpusSampler *) track->instrument_data;
         if (opusSamplerParams && s) {
             s->audiofile      = opusSamplerParams->audiofile;
             s->start_position = opusSamplerParams->start_position;
@@ -408,8 +410,7 @@ int main(int argc, char **argv) {
                                         !tracks[i].sequencer->steps[step_index].active;
                                 }
                             }
-                        }
-                        else { // Track row
+                        } else { // Track row
                             int track_index = selected_row - 1;
                             if (track_index < N_TRACKS && tracks[track_index].sequencer &&
                                 tracks[track_index].sequencer->steps) {
@@ -648,29 +649,27 @@ void clock_thread_func(void *arg) {
                         continue;
                     }
 
-                    int clock_steps_per_seq_step = STEPS_PER_BEAT / track->sequencer->steps_per_beat;
+                    int clock_steps_per_seq_step =
+                        STEPS_PER_BEAT / track->sequencer->steps_per_beat;
                     if (clock_steps_per_seq_step == 0)
                         continue;
 
                     if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
                         SeqStep step = updateSequencer(track->sequencer);
                         if (step.active && step.data) {
-                            Event event = {
-                                .type          = TRIGGER_STEP,
-                                .track_id      = track_idx,
-                                .base_params   = *step.data, // Copy the base TrackParameters
-                                .instrument_type = track->instrument_type
-                            };
+                            Event event = { .type     = TRIGGER_STEP,
+                                            .track_id = track_idx,
+                                            .base_params =
+                                                *step.data, // Copy the base TrackParameters
+                                            .instrument_type = track->instrument_type };
 
                             // Copy instrument-specific parameters based on type
                             if (track->instrument_type == SUB_SYNTH) {
                                 memcpy(&event.instrument_specific_params.subsynth_params,
-                                       step.data->instrument_data,
-                                       sizeof(SubSynthParameters));
+                                       step.data->instrument_data, sizeof(SubSynthParameters));
                             } else if (track->instrument_type == OPUS_SAMPLER) {
                                 memcpy(&event.instrument_specific_params.sampler_params,
-                                       step.data->instrument_data,
-                                       sizeof(OpusSamplerParameters));
+                                       step.data->instrument_data, sizeof(OpusSamplerParameters));
                             }
                             event_queue_push(&g_event_queue, event);
                         }
@@ -712,17 +711,17 @@ void audio_thread_func(void *arg) {
                     }
                     fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler);
                 }
-                
+
                 // Add the (now filled) buffer back to the NDSP queue
                 ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf);
-                
+
                 // Toggle fillBlock to point to the *other* buffer for the next check
                 tracks[i].fillBlock = !tracks[i].fillBlock;
             }
         }
 
         // Sleep for 1ms to prevent busy-waiting and starving other threads
-        svcSleepThread(1000000); 
+        svcSleepThread(1000000);
     }
     threadExit(0);
 }
