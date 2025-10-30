@@ -26,6 +26,7 @@
 #define STACK_SIZE (N_TRACKS * 32 * 1024)
 
 static const char *PATH = "romfs:/samples/bibop.opus";
+static const char *PATHS = "sdmc:/soir/samples/bibop.opus";
 
 static Track tracks[N_TRACKS];
 static LightLock clock_lock;
@@ -39,7 +40,7 @@ void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
 
 int main(int argc, char **argv) {
-    // osSetSpeedupEnable(true);
+    // osSetSpeedupEnable(true)
     gfxInitDefault();
     romfsInit();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -49,17 +50,18 @@ int main(int argc, char **argv) {
 
     int ret = 0;
 
-    Session session = { VIEW_MAIN };
-
-    PrintConsole bottomScreen;
-    consoleInit(GFX_BOTTOM, &bottomScreen);
-    consoleSelect(&bottomScreen);
+    Session session = { .main_screen_view = VIEW_MAIN, .touch_screen_view = VIEW_TOUCH_SETTINGS };
 
     C3D_RenderTarget *topScreen = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    C3D_RenderTarget *bottomScreen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
     int selected_row = 0;
     int selected_col = 0;
     int selected_settings_option = 0;
+    int selected_touch_option = 0;
+    int selected_touch_clock_option = 0;
+    int selected_sample_row = 0;
+    int selected_sample_col = 0;
     int selectedQuitOption = 0;
 
     u64 up_timer = 0;
@@ -69,6 +71,9 @@ int main(int argc, char **argv) {
 
     const u64 HOLD_DELAY_INITIAL = 500 * 268125;
     const u64 HOLD_DELAY_REPEAT = 100 * 268125;
+
+    ScreenFocus screen_focus = FOCUS_TOP;
+    ScreenFocus previous_screen_focus = FOCUS_TOP;
 
     u32 *audioBuffer1                         = NULL;
     PolyBLEPOscillator *osc                   = NULL;
@@ -273,185 +278,315 @@ int main(int argc, char **argv) {
         u32 kHeld = hidKeysHeld();
 
         if (kDown & KEY_START) {
+            previous_screen_focus = screen_focus;
+            screen_focus = FOCUS_TOP;
             session.main_screen_view = VIEW_QUIT;
             selectedQuitOption = 0; // Reset selection when opening
         }
 
-        switch(session.main_screen_view) {
-            case VIEW_MAIN:
-                {
-                    if (kDown & KEY_UP) {
-                        selected_row = (selected_row > 0) ? selected_row - 1 : N_TRACKS;
-                        up_timer = now + HOLD_DELAY_INITIAL;
-                    } else if (kHeld & KEY_UP) {
-                        if (now >= up_timer) {
+        if (session.main_screen_view != VIEW_QUIT) {
+            if (kDown & KEY_R) {
+                if (screen_focus == FOCUS_TOP) {
+                    screen_focus = FOCUS_BOTTOM;
+                } else {
+                    screen_focus = FOCUS_TOP;
+                }
+            }
+        }
+
+        if (screen_focus == FOCUS_TOP) {
+            switch(session.main_screen_view) {
+                case VIEW_MAIN:
+                    {
+                        if (kDown & KEY_UP) {
                             selected_row = (selected_row > 0) ? selected_row - 1 : N_TRACKS;
-                            up_timer = now + HOLD_DELAY_REPEAT;
+                            up_timer = now + HOLD_DELAY_INITIAL;
+                        } else if (kHeld & KEY_UP) {
+                            if (now >= up_timer) {
+                                selected_row = (selected_row > 0) ? selected_row - 1 : N_TRACKS;
+                                up_timer = now + HOLD_DELAY_REPEAT;
+                            }
                         }
-                    }
 
-                    if (kDown & KEY_DOWN) {
-                        selected_row = (selected_row < N_TRACKS) ? selected_row + 1 : 0;
-                        down_timer = now + HOLD_DELAY_INITIAL;
-                    } else if (kHeld & KEY_DOWN) {
-                        if (now >= down_timer) {
+                        if (kDown & KEY_DOWN) {
                             selected_row = (selected_row < N_TRACKS) ? selected_row + 1 : 0;
-                            down_timer = now + HOLD_DELAY_REPEAT;
+                            down_timer = now + HOLD_DELAY_INITIAL;
+                        } else if (kHeld & KEY_DOWN) {
+                            if (now >= down_timer) {
+                                selected_row = (selected_row < N_TRACKS) ? selected_row + 1 : 0;
+                                down_timer = now + HOLD_DELAY_REPEAT;
+                            }
                         }
-                    }
 
-                    if (kDown & KEY_LEFT) {
-                        selected_col = (selected_col > 0) ? selected_col - 1 : 16;
-                        left_timer = now + HOLD_DELAY_INITIAL;
-                    } else if (kHeld & KEY_LEFT) {
-                        if (now >= left_timer) {
+                        if (kDown & KEY_LEFT) {
                             selected_col = (selected_col > 0) ? selected_col - 1 : 16;
-                            left_timer = now + HOLD_DELAY_REPEAT;
+                            left_timer = now + HOLD_DELAY_INITIAL;
+                        } else if (kHeld & KEY_LEFT) {
+                            if (now >= left_timer) {
+                                selected_col = (selected_col > 0) ? selected_col - 1 : 16;
+                                left_timer = now + HOLD_DELAY_REPEAT;
+                            }
                         }
-                    }
 
-                    if (kDown & KEY_RIGHT) {
-                        selected_col = (selected_col < 16) ? selected_col + 1 : 0;
-                        right_timer = now + HOLD_DELAY_INITIAL;
-                    } else if (kHeld & KEY_RIGHT) {
-                        if (now >= right_timer) {
+                        if (kDown & KEY_RIGHT) {
                             selected_col = (selected_col < 16) ? selected_col + 1 : 0;
-                            right_timer = now + HOLD_DELAY_REPEAT;
-                        }
-                    }
-
-                    if (kDown & KEY_Y) {
-                        if (selected_row == 0 && selected_col == 0) {
-                            LightLock_Lock(&clock_lock);
-                            if (clock->status == PLAYING) {
-                                pauseClock(clock);
-                            } else if (clock->status == PAUSED) {
-                                resumeClock(clock);
+                            right_timer = now + HOLD_DELAY_INITIAL;
+                        } else if (kHeld & KEY_RIGHT) {
+                            if (now >= right_timer) {
+                                selected_col = (selected_col < 16) ? selected_col + 1 : 0;
+                                right_timer = now + HOLD_DELAY_REPEAT;
                             }
-                            LightLock_Unlock(&clock_lock);
                         }
-                    }
 
-                    if (kDown & KEY_A) {
-                        if (selected_row == 0 && selected_col == 0) {
-                            LightLock_Lock(&clock_lock);
-                            stopClock(clock);
-                            LightLock_Unlock(&clock_lock);
-                            session.main_screen_view = VIEW_SETTINGS;
-                            selected_settings_option = 0;
-                        } else if (selected_col > 0) {
-                            int step_index = selected_col - 1;
-                            LightLock_Lock(&tracks_lock);
-                            if (selected_row == 0) { // Header row
-                                for (int i = 0; i < N_TRACKS; i++) {
-                                    if (tracks[i].sequencer && tracks[i].sequencer->steps) {
-                                        tracks[i].sequencer->steps[step_index].active =
-                                            !tracks[i].sequencer->steps[step_index].active;
-                                    }
+                        if (kDown & KEY_Y) {
+                            if (selected_row == 0 && selected_col == 0) {
+                                LightLock_Lock(&clock_lock);
+                                if (clock->status == PLAYING) {
+                                    pauseClock(clock);
+                                } else if (clock->status == PAUSED) {
+                                    resumeClock(clock);
                                 }
-                            } else { // Track row
-                                int track_index = selected_row - 1;
-                                if (track_index < N_TRACKS &&
-                                    tracks[track_index].sequencer &&
-                                    tracks[track_index].sequencer->steps) {
-                                    tracks[track_index].sequencer->steps[step_index].active =
-                                        !tracks[track_index].sequencer->steps[step_index].active;
-                                }
+                                LightLock_Unlock(&clock_lock);
                             }
-                            LightLock_Unlock(&tracks_lock);
                         }
-                    }
 
-                    if (kDown & KEY_X) {
-                        if (selected_row == 0 && selected_col == 0) {
-                            LightLock_Lock(&clock_lock);
-                            if (clock->status == PLAYING || clock->status == PAUSED) {
+                        if (kDown & KEY_A) {
+                            if (selected_row == 0 && selected_col == 0) {
+                                LightLock_Lock(&clock_lock);
                                 stopClock(clock);
+                                LightLock_Unlock(&clock_lock);
+                                session.main_screen_view = VIEW_SETTINGS;
+                                selected_settings_option = 0;
+                            } else if (selected_col > 0) {
+                                int step_index = selected_col - 1;
                                 LightLock_Lock(&tracks_lock);
-                                for (int i = 0; i < N_TRACKS; i++) {
-                                    if (tracks[i].sequencer) {
-                                        tracks[i].sequencer->cur_step = 0;
+                                if (selected_row == 0) { // Header row
+                                    for (int i = 0; i < N_TRACKS; i++) {
+                                        if (tracks[i].sequencer && tracks[i].sequencer->steps) {
+                                            tracks[i].sequencer->steps[step_index].active =
+                                                !tracks[i].sequencer->steps[step_index].active;
+                                        }
+                                    }
+                                } else { // Track row
+                                    int track_index = selected_row - 1;
+                                    if (track_index < N_TRACKS &&
+                                        tracks[track_index].sequencer &&
+                                        tracks[track_index].sequencer->steps) {
+                                        tracks[track_index].sequencer->steps[step_index].active =
+                                            !tracks[track_index].sequencer->steps[step_index].active;
                                     }
                                 }
                                 LightLock_Unlock(&tracks_lock);
                             }
-                            else {
-                                startClock(clock);
+                        }
+
+                        if (kDown & KEY_X) {
+                            if (selected_row == 0 && selected_col == 0) {
+                                LightLock_Lock(&clock_lock);
+                                if (clock->status == PLAYING || clock->status == PAUSED) {
+                                    stopClock(clock);
+                                    LightLock_Lock(&tracks_lock);
+                                    for (int i = 0; i < N_TRACKS; i++) {
+                                        if (tracks[i].sequencer) {
+                                            tracks[i].sequencer->cur_step = 0;
+                                        }
+                                    }
+                                    LightLock_Unlock(&tracks_lock);
+                                }
+                                else {
+                                    startClock(clock);
+                                }
+                                LightLock_Unlock(&clock_lock);
                             }
-                            LightLock_Unlock(&clock_lock);
                         }
                     }
-                }
-                break;
-            case VIEW_SETTINGS:
-                if (kDown & KEY_UP) {
-                    selected_settings_option = (selected_settings_option > 0) ? selected_settings_option - 1 : 2;
-                }
-                if (kDown & KEY_DOWN) {
-                    selected_settings_option = (selected_settings_option < 2) ? selected_settings_option + 1 : 0;
-                }
-                if (kDown & KEY_B) {
-                    session.main_screen_view = VIEW_MAIN;
-                }
-                if (kDown & KEY_A && selected_settings_option == 2) {
-                    session.main_screen_view = VIEW_MAIN;
-                }
-                if (kDown & KEY_LEFT) {
-                    if (selected_settings_option == 0) { // BPM
-                        setBpm(clock, clock->bpm - 1);
-                    } else if (selected_settings_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
+                    break;
+                case VIEW_SETTINGS:
+                    if (kDown & KEY_UP) {
+                        selected_settings_option = (selected_settings_option > 0) ? selected_settings_option - 1 : 2;
                     }
-                    left_timer = now + HOLD_DELAY_INITIAL;
-                } else if (kHeld & KEY_LEFT) {
-                    if (now >= left_timer) {
+                    if (kDown & KEY_DOWN) {
+                        selected_settings_option = (selected_settings_option < 2) ? selected_settings_option + 1 : 0;
+                    }
+                    if (kDown & KEY_B) {
+                        session.main_screen_view = VIEW_MAIN;
+                    }
+                    if (kDown & KEY_A && selected_settings_option == 2) {
+                        session.main_screen_view = VIEW_MAIN;
+                    }
+                    if (kDown & KEY_LEFT) {
                         if (selected_settings_option == 0) { // BPM
                             setBpm(clock, clock->bpm - 1);
                         } else if (selected_settings_option == 1) { // Beats per bar
                             setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                         }
-                        left_timer = now + HOLD_DELAY_REPEAT;
+                        left_timer = now + HOLD_DELAY_INITIAL;
+                    } else if (kHeld & KEY_LEFT) {
+                        if (now >= left_timer) {
+                            if (selected_settings_option == 0) { // BPM
+                                setBpm(clock, clock->bpm - 1);
+                            }
+                            left_timer = now + HOLD_DELAY_REPEAT;
+                        }
                     }
-                }
-                if (kDown & KEY_RIGHT) {
-                    if (selected_settings_option == 0) { // BPM
-                        setBpm(clock, clock->bpm + 1);
-                    } else if (selected_settings_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
-                    }
-                    right_timer = now + HOLD_DELAY_INITIAL;
-                } else if (kHeld & KEY_RIGHT) {
-                    if (now >= right_timer) {
+                    if (kDown & KEY_RIGHT) {
                         if (selected_settings_option == 0) { // BPM
                             setBpm(clock, clock->bpm + 1);
                         } else if (selected_settings_option == 1) { // Beats per bar
                             setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
                         }
-                        right_timer = now + HOLD_DELAY_REPEAT;
+                        right_timer = now + HOLD_DELAY_INITIAL;
+                    } else if (kHeld & KEY_RIGHT) {
+                        if (now >= right_timer) {
+                            if (selected_settings_option == 0) { // BPM
+                                setBpm(clock, clock->bpm + 1);
+                            }
+                            right_timer = now + HOLD_DELAY_REPEAT;
+                        }
                     }
-                }
-                break;
-            case VIEW_QUIT:
-                if (kDown & KEY_UP) {
-                    selectedQuitOption = (selectedQuitOption > 0) ? selectedQuitOption - 1 : numQuitMenuOptions - 1;
-                }
-                if (kDown & KEY_DOWN) {
-                    selectedQuitOption = (selectedQuitOption < numQuitMenuOptions - 1) ? selectedQuitOption + 1 : 0;
-                }
-                if (kDown & KEY_B) {
-                    session.main_screen_view = VIEW_MAIN;
-                }
-                if (kDown & KEY_A) {
-                    if (selectedQuitOption == 0) { // Quit
-                        should_break_loop = true;
-                    } else { // Cancel
+                    break;
+                case VIEW_QUIT:
+                    if (kDown & KEY_UP) {
+                        selectedQuitOption = (selectedQuitOption > 0) ? selectedQuitOption - 1 : numQuitMenuOptions - 1;
+                    }
+                    if (kDown & KEY_DOWN) {
+                        selectedQuitOption = (selectedQuitOption < numQuitMenuOptions - 1) ? selectedQuitOption + 1 : 0;
+                    }
+                    if (kDown & KEY_B) {
                         session.main_screen_view = VIEW_MAIN;
+                        screen_focus = previous_screen_focus;
                     }
-                }
-                break;
-            case VIEW_ABOUT:
-                break;
+                    if (kDown & KEY_A) {
+                        if (selectedQuitOption == 0) { // Quit
+                            should_break_loop = true;
+                        } else { // Cancel
+                            session.main_screen_view = VIEW_MAIN;
+                            screen_focus = previous_screen_focus;
+                        }
+                    }
+                    break;
+                case VIEW_ABOUT:
+                    break;
+                case VIEW_TOUCH_SETTINGS:
+                    break;
+                case VIEW_TOUCH_CLOCK_SETTINGS:
+                    break;
+                case VIEW_SAMPLE_MANAGER:
+                    break;
+            }
+        } else if (screen_focus == FOCUS_BOTTOM) {
+            switch(session.touch_screen_view) {
+                case VIEW_TOUCH_SETTINGS:
+                    if (kDown & KEY_LEFT) {
+                        selected_touch_option = (selected_touch_option > 0) ? selected_touch_option - 1 : 1;
+                    }
+                    if (kDown & KEY_RIGHT) {
+                        selected_touch_option = (selected_touch_option < 1) ? selected_touch_option + 1 : 0;
+                    }
+                    if (kDown & KEY_A && selected_touch_option == 0) {
+                        session.touch_screen_view = VIEW_TOUCH_CLOCK_SETTINGS;
+                        selected_touch_clock_option = 0;
+                    } else if (kDown & KEY_A && selected_touch_option == 1) {
+                        session.touch_screen_view = VIEW_SAMPLE_MANAGER;
+                        selected_sample_row = 0;
+                        selected_sample_col = 0;
+                    }
+                    if (kDown & KEY_Y && selected_touch_option == 0) {
+                        LightLock_Lock(&clock_lock);
+                        if (clock->status == PLAYING) {
+                            pauseClock(clock);
+                        } else if (clock->status == PAUSED) {
+                            resumeClock(clock);
+                        }
+                        LightLock_Unlock(&clock_lock);
+                    }
+                    if (kDown & KEY_X && selected_touch_option == 0) {
+                        LightLock_Lock(&clock_lock);
+                        if (clock->status == PLAYING || clock->status == PAUSED) {
+                            stopClock(clock);
+                            LightLock_Lock(&tracks_lock);
+                            for (int i = 0; i < N_TRACKS; i++) {
+                                if (tracks[i].sequencer) {
+                                    tracks[i].sequencer->cur_step = 0;
+                                }
+                            }
+                            LightLock_Unlock(&tracks_lock);
+                        } else {
+                            startClock(clock);
+                        }
+                        LightLock_Unlock(&clock_lock);
+                    }
+                    break;
+                case VIEW_TOUCH_CLOCK_SETTINGS:
+                    if (kDown & KEY_UP) {
+                        selected_touch_clock_option = (selected_touch_clock_option > 0) ? selected_touch_clock_option - 1 : 2;
+                    }
+                    if (kDown & KEY_DOWN) {
+                        selected_touch_clock_option = (selected_touch_clock_option < 2) ? selected_touch_clock_option + 1 : 0;
+                    }
+                    if (kDown & KEY_B) {
+                        session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                    }
+                    if (kDown & KEY_A && selected_touch_clock_option == 2) {
+                        session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                    }
+                    if (kDown & KEY_LEFT) {
+                        if (selected_touch_clock_option == 0) { // BPM
+                            setBpm(clock, clock->bpm - 1);
+                        } else if (selected_touch_clock_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
+                        }
+                        left_timer = now + HOLD_DELAY_INITIAL;
+                    } else if (kHeld & KEY_LEFT) {
+                        if (now >= left_timer) {
+                            if (selected_touch_clock_option == 0) { // BPM
+                                setBpm(clock, clock->bpm - 1);
+                            } else if (selected_touch_clock_option == 1) { // Beats per bar
+                                setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
+                            }
+                            left_timer = now + HOLD_DELAY_REPEAT;
+                        }
+                    }
+                    if (kDown & KEY_RIGHT) {
+                        if (selected_touch_clock_option == 0) { // BPM
+                            setBpm(clock, clock->bpm + 1);
+                        } else if (selected_touch_clock_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
+                        }
+                        right_timer = now + HOLD_DELAY_INITIAL;
+                    } else if (kHeld & KEY_RIGHT) {
+                        if (now >= right_timer) {
+                            if (selected_touch_clock_option == 0) { // BPM
+                                setBpm(clock, clock->bpm + 1);
+                            } else if (selected_touch_clock_option == 1) { // Beats per bar
+                                setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
+                            }
+                            right_timer = now + HOLD_DELAY_REPEAT;
+                        }
+                    }
+                    break;
+                case VIEW_SAMPLE_MANAGER:
+                    if (kDown & KEY_UP) {
+                        selected_sample_row = (selected_sample_row > 0) ? selected_sample_row - 1 : 2;
+                    }
+                    if (kDown & KEY_DOWN) {
+                        selected_sample_row = (selected_sample_row < 2) ? selected_sample_row + 1 : 0;
+                    }
+                    if (kDown & KEY_LEFT) {
+                        selected_sample_col = (selected_sample_col > 0) ? selected_sample_col - 1 : 3;
+                    }
+                    if (kDown & KEY_RIGHT) {
+                        selected_sample_col = (selected_sample_col < 3) ? selected_sample_col + 1 : 0;
+                    }
+                    if (kDown & KEY_B) {
+                        session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
+
 
         if (should_break_loop) {
             break;
@@ -463,22 +598,40 @@ int main(int argc, char **argv) {
 
         switch (session.main_screen_view) {
         case VIEW_MAIN:
-            drawMainView(tracks, clock, selected_row, selected_col);
+            drawMainView(tracks, clock, selected_row, selected_col, screen_focus);
             break;
         case VIEW_SETTINGS:
-            drawMainView(tracks, clock, selected_row, selected_col);
-            drawSettingsView(clock, selected_settings_option);
+            drawMainView(tracks, clock, selected_row, selected_col, screen_focus);
+            drawClockSettingsView(clock, selected_settings_option);
             break;
         case VIEW_QUIT:
-            drawMainView(tracks, clock, selected_row, selected_col);
+            drawMainView(tracks, clock, selected_row, selected_col, screen_focus);
             drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selectedQuitOption);
             break;
         case VIEW_ABOUT:
             break;
         default:
-            drawMainView(tracks, clock, selected_row, selected_col);
+            drawMainView(tracks, clock, selected_row, selected_col, screen_focus);
             break;
         }
+
+        C2D_TargetClear(bottomScreen, CLR_BLACK);
+        C2D_SceneBegin(bottomScreen);
+
+        switch (session.touch_screen_view) {
+        case VIEW_TOUCH_SETTINGS:
+            drawTouchScreenSettingsView(selected_touch_option, screen_focus);
+            break;
+        case VIEW_TOUCH_CLOCK_SETTINGS:
+            drawTouchClockSettingsView(clock, selected_touch_clock_option);
+            break;
+        case VIEW_SAMPLE_MANAGER:
+            drawSampleManagerView(selected_sample_row, selected_sample_col);
+            break;
+        default:
+            break;
+        }
+
 
         C3D_FrameEnd(0);
     }
@@ -510,14 +663,14 @@ cleanup:
         }
         linearFree(ss);
     }
+    if (subsynthParamsArray)
+        linearFree(subsynthParamsArray);
+    if (trackParamsArray1)
+        linearFree(trackParamsArray1);
     if (tracks[0].sequencer) {
         linearFree(tracks[0].sequencer->steps);
         linearFree(tracks[0].sequencer);
     }
-    if (trackParamsArray1)
-        linearFree(trackParamsArray1);
-    if (subsynthParamsArray)
-        linearFree(subsynthParamsArray);
 
     if (audioBuffer2)
         linearFree(audioBuffer2);
@@ -525,9 +678,8 @@ cleanup:
         OpusSampler *s = (OpusSampler *) tracks[1].instrument_data;
         if (s->audiofile)
             op_free(s->audiofile);
-        if (s->env) {
+        if (s->env)
             linearFree(s->env);
-        }
         linearFree(s);
     }
     if (tracks[1].sequencer) {
@@ -571,7 +723,7 @@ void clock_thread_func(void *arg) {
         }
         LightLock_Unlock(&clock_lock);
 
-        svcSleepThread(1000000); 
+        svcSleepThread(1000000);
     }
     threadExit(0);
 }
@@ -600,8 +752,7 @@ void audio_thread_func(void *arg) {
 
         LightLock_Unlock(&tracks_lock);
 
-        svcSleepThread(1000000); 
+        svcSleepThread(1000000);
     }
     threadExit(0);
 }
-
