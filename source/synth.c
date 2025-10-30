@@ -25,5 +25,4 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
     }
 
     DSP_FlushDataCache(waveBuf->data_pcm16, size);
-    // REMOVED: ndspChnWaveBufAdd(chan_id, waveBuf);
 };

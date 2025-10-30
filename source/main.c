@@ -465,6 +465,8 @@ int main(int argc, char **argv) {
                     if (now >= left_timer) {
                         if (selected_settings_option == 0) { // BPM
                             setBpm(clock, clock->bpm - 1);
+                        } else if (selected_settings_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                         }
                         left_timer = now + HOLD_DELAY_REPEAT;
                     }
@@ -472,6 +474,8 @@ int main(int argc, char **argv) {
                 if (kDown & KEY_RIGHT) {
                     if (selected_settings_option == 0) { // BPM
                         setBpm(clock, clock->bpm + 1);
+                    } else if (selected_settings_option == 1) { // Beats per bar
+                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
                     }
                     right_timer = now + HOLD_DELAY_INITIAL;
                 } else if (kHeld & KEY_RIGHT) {
@@ -512,6 +516,121 @@ int main(int argc, char **argv) {
             case VIEW_TOUCH_CLOCK_SETTINGS:
                 break;
             case VIEW_SAMPLE_MANAGER:
+                break;
+            }
+        } else if (screen_focus == FOCUS_BOTTOM) {
+            switch (session.touch_screen_view) {
+            case VIEW_TOUCH_SETTINGS:
+                if (kDown & KEY_LEFT) {
+                    selected_touch_option =
+                        (selected_touch_option > 0) ? selected_touch_option - 1 : 1;
+                }
+                if (kDown & KEY_RIGHT) {
+                    selected_touch_option =
+                        (selected_touch_option < 1) ? selected_touch_option + 1 : 0;
+                }
+                if (kDown & KEY_A && selected_touch_option == 0) {
+                    session.touch_screen_view   = VIEW_TOUCH_CLOCK_SETTINGS;
+                    selected_touch_clock_option = 0;
+                } else if (kDown & KEY_A && selected_touch_option == 1) {
+                    session.touch_screen_view = VIEW_SAMPLE_MANAGER;
+                    selected_sample_row       = 0;
+                    selected_sample_col       = 0;
+                }
+                if (kDown & KEY_Y && selected_touch_option == 0) {
+                    LightLock_Lock(&clock_lock);
+                    if (clock->status == PLAYING) {
+                        pauseClock(clock);
+                    } else if (clock->status == PAUSED) {
+                        resumeClock(clock);
+                    }
+                    LightLock_Unlock(&clock_lock);
+                }
+                if (kDown & KEY_X && selected_touch_option == 0) {
+                    LightLock_Lock(&clock_lock);
+                    if (clock->status == PLAYING || clock->status == PAUSED) {
+                        stopClock(clock);
+                        LightLock_Lock(&tracks_lock);
+                        for (int i = 0; i < N_TRACKS; i++) {
+                            if (tracks[i].sequencer) {
+                                tracks[i].sequencer->cur_step = 0;
+                            }
+                        }
+                        LightLock_Unlock(&tracks_lock);
+                    } else {
+                        startClock(clock);
+                    }
+                    LightLock_Unlock(&clock_lock);
+                }
+                break;
+            case VIEW_TOUCH_CLOCK_SETTINGS:
+                if (kDown & KEY_UP) {
+                    selected_touch_clock_option =
+                        (selected_touch_clock_option > 0) ? selected_touch_clock_option - 1 : 2;
+                }
+                if (kDown & KEY_DOWN) {
+                    selected_touch_clock_option =
+                        (selected_touch_clock_option < 2) ? selected_touch_clock_option + 1 : 0;
+                }
+                if (kDown & KEY_B) {
+                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                }
+                if (kDown & KEY_A && selected_touch_clock_option == 2) {
+                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                }
+                if (kDown & KEY_LEFT) {
+                    if (selected_touch_clock_option == 0) { // BPM
+                        setBpm(clock, clock->bpm - 1);
+                    } else if (selected_touch_clock_option == 1) { // Beats per bar
+                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
+                    }
+                    left_timer = now + HOLD_DELAY_INITIAL;
+                } else if (kHeld & KEY_LEFT) {
+                    if (now >= left_timer) {
+                        if (selected_touch_clock_option == 0) { // BPM
+                            setBpm(clock, clock->bpm - 1);
+                        } else if (selected_touch_clock_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
+                        }
+                        left_timer = now + HOLD_DELAY_REPEAT;
+                    }
+                }
+                if (kDown & KEY_RIGHT) {
+                    if (selected_touch_clock_option == 0) { // BPM
+                        setBpm(clock, clock->bpm + 1);
+                    } else if (selected_touch_clock_option == 1) { // Beats per bar
+                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
+                    }
+                    right_timer = now + HOLD_DELAY_INITIAL;
+                } else if (kHeld & KEY_RIGHT) {
+                    if (now >= right_timer) {
+                        if (selected_touch_clock_option == 0) { // BPM
+                            setBpm(clock, clock->bpm + 1);
+                        } else if (selected_touch_clock_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
+                        }
+                        right_timer = now + HOLD_DELAY_REPEAT;
+                    }
+                }
+                break;
+            case VIEW_SAMPLE_MANAGER:
+                if (kDown & KEY_UP) {
+                    selected_sample_row = (selected_sample_row > 0) ? selected_sample_row - 1 : 2;
+                }
+                if (kDown & KEY_DOWN) {
+                    selected_sample_row = (selected_sample_row < 2) ? selected_sample_row + 1 : 0;
+                }
+                if (kDown & KEY_LEFT) {
+                    selected_sample_col = (selected_sample_col > 0) ? selected_sample_col - 1 : 3;
+                }
+                if (kDown & KEY_RIGHT) {
+                    selected_sample_col = (selected_sample_col < 3) ? selected_sample_col + 1 : 0;
+                }
+                if (kDown & KEY_B) {
+                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                }
+                break;
+            default:
                 break;
             }
         }

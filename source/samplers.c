@@ -82,7 +82,6 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
         waveBuf_->nsamples = sampler->samples_per_buf;
         DSP_FlushDataCache(waveBuf_->data_pcm16,
                            sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
-        // REMOVED: ndspChnWaveBufAdd(chan_id, waveBuf_);
         return;
     }
 
@@ -139,7 +138,6 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
     // Pass samples to NDSP
     waveBuf_->nsamples = totalSamples;
     DSP_FlushDataCache(waveBuf_->data_pcm16, totalSamples * NCHANNELS * sizeof(int16_t));
-    // REMOVED: ndspChnWaveBufAdd(chan_id, waveBuf_);
 
 #ifdef DEBUG
     // Print timing info
