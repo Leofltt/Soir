@@ -3,19 +3,9 @@
 
 #include <stdbool.h>
 #include <stdatomic.h>
-#include "track_parameters.h"
+#include "event.h"
 
 #define EVENT_QUEUE_SIZE 16
-
-typedef enum { NOTE_ON, NOTE_OFF } EventType;
-
-typedef struct {
-    EventType type;
-    // The event queue does not own this pointer. The caller is responsible for
-    // ensuring the lifetime of the pointed-to data exceeds the time the event
-    // is in the queue. Can be NULL.
-    TrackParameters params;
-} Event;
 
 /**
  * @brief A thread-safe, single-producer, single-consumer (SPSC) circular event queue.

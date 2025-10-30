@@ -11,9 +11,11 @@
 #include "track_parameters.h"
 #include "ui_constants.h"
 #include "views.h"
+#include "event_queue.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
+#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
 #include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
@@ -31,6 +33,7 @@ static Track         tracks[N_TRACKS];
 static LightLock     clock_lock;
 static LightLock     tracks_lock;
 static volatile bool should_exit = false;
+static EventQueue    g_event_queue;
 
 static Thread clock_thread;
 static Thread audio_thread;
@@ -38,8 +41,49 @@ static Thread audio_thread;
 void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
 
+// Helper function to process events on the audio thread
+static void processTrackEvent(Event *event) {
+    if (!event || event->track_id >= N_TRACKS) {
+        return;
+    }
+
+    LightLock_Lock(&tracks_lock);
+
+    Track *track = &tracks[event->track_id];
+    updateTrackParameters(track, &event->base_params); // Changed from event->params
+
+    if (event->instrument_type == SUB_SYNTH) {
+        SubSynthParameters *subsynthParams = &event->instrument_specific_params.subsynth_params; // Changed access
+        SubSynth           *ss             = (SubSynth *) track->instrument_data;
+        if (subsynthParams && ss) {
+            setWaveform(ss->osc, subsynthParams->osc_waveform);
+            setOscFrequency(ss->osc, subsynthParams->osc_freq);
+            updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
+                           subsynthParams->env_sus_level, subsynthParams->env_rel,
+                           subsynthParams->env_dur);
+            triggerEnvelope(ss->env);
+        }
+    } else if (event->instrument_type == OPUS_SAMPLER) {
+        OpusSamplerParameters *opusSamplerParams = &event->instrument_specific_params.sampler_params; // Changed access
+        OpusSampler           *s                 = (OpusSampler *) track->instrument_data;
+        if (opusSamplerParams && s) {
+            s->audiofile      = opusSamplerParams->audiofile;
+            s->start_position = opusSamplerParams->start_position;
+            s->playback_mode  = opusSamplerParams->playback_mode;
+            s->seek_requested = true;
+            s->finished       = false;
+            updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
+                           opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
+                           opusSamplerParams->env_dur);
+            triggerEnvelope(s->env);
+        }
+    }
+
+    LightLock_Unlock(&tracks_lock);
+}
+
 int main(int argc, char **argv) {
-    // osSetSpeedupEnable(true)
+    osSetSpeedupEnable(true);
     gfxInitDefault();
     romfsInit();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -243,6 +287,7 @@ int main(int argc, char **argv) {
 
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
+    event_queue_init(&g_event_queue);
 
     s32 main_prio;
     svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
@@ -363,7 +408,8 @@ int main(int argc, char **argv) {
                                         !tracks[i].sequencer->steps[step_index].active;
                                 }
                             }
-                        } else { // Track row
+                        }
+                        else { // Track row
                             int track_index = selected_row - 1;
                             if (track_index < N_TRACKS && tracks[track_index].sequencer &&
                                 tracks[track_index].sequencer->steps) {
@@ -412,8 +458,6 @@ int main(int argc, char **argv) {
                 if (kDown & KEY_LEFT) {
                     if (selected_settings_option == 0) { // BPM
                         setBpm(clock, clock->bpm - 1);
-                    } else if (selected_settings_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                     }
                     left_timer = now + HOLD_DELAY_INITIAL;
                 } else if (kHeld & KEY_LEFT) {
@@ -427,8 +471,6 @@ int main(int argc, char **argv) {
                 if (kDown & KEY_RIGHT) {
                     if (selected_settings_option == 0) { // BPM
                         setBpm(clock, clock->bpm + 1);
-                    } else if (selected_settings_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
                     }
                     right_timer = now + HOLD_DELAY_INITIAL;
                 } else if (kHeld & KEY_RIGHT) {
@@ -469,121 +511,6 @@ int main(int argc, char **argv) {
             case VIEW_TOUCH_CLOCK_SETTINGS:
                 break;
             case VIEW_SAMPLE_MANAGER:
-                break;
-            }
-        } else if (screen_focus == FOCUS_BOTTOM) {
-            switch (session.touch_screen_view) {
-            case VIEW_TOUCH_SETTINGS:
-                if (kDown & KEY_LEFT) {
-                    selected_touch_option =
-                        (selected_touch_option > 0) ? selected_touch_option - 1 : 1;
-                }
-                if (kDown & KEY_RIGHT) {
-                    selected_touch_option =
-                        (selected_touch_option < 1) ? selected_touch_option + 1 : 0;
-                }
-                if (kDown & KEY_A && selected_touch_option == 0) {
-                    session.touch_screen_view   = VIEW_TOUCH_CLOCK_SETTINGS;
-                    selected_touch_clock_option = 0;
-                } else if (kDown & KEY_A && selected_touch_option == 1) {
-                    session.touch_screen_view = VIEW_SAMPLE_MANAGER;
-                    selected_sample_row       = 0;
-                    selected_sample_col       = 0;
-                }
-                if (kDown & KEY_Y && selected_touch_option == 0) {
-                    LightLock_Lock(&clock_lock);
-                    if (clock->status == PLAYING) {
-                        pauseClock(clock);
-                    } else if (clock->status == PAUSED) {
-                        resumeClock(clock);
-                    }
-                    LightLock_Unlock(&clock_lock);
-                }
-                if (kDown & KEY_X && selected_touch_option == 0) {
-                    LightLock_Lock(&clock_lock);
-                    if (clock->status == PLAYING || clock->status == PAUSED) {
-                        stopClock(clock);
-                        LightLock_Lock(&tracks_lock);
-                        for (int i = 0; i < N_TRACKS; i++) {
-                            if (tracks[i].sequencer) {
-                                tracks[i].sequencer->cur_step = 0;
-                            }
-                        }
-                        LightLock_Unlock(&tracks_lock);
-                    } else {
-                        startClock(clock);
-                    }
-                    LightLock_Unlock(&clock_lock);
-                }
-                break;
-            case VIEW_TOUCH_CLOCK_SETTINGS:
-                if (kDown & KEY_UP) {
-                    selected_touch_clock_option =
-                        (selected_touch_clock_option > 0) ? selected_touch_clock_option - 1 : 2;
-                }
-                if (kDown & KEY_DOWN) {
-                    selected_touch_clock_option =
-                        (selected_touch_clock_option < 2) ? selected_touch_clock_option + 1 : 0;
-                }
-                if (kDown & KEY_B) {
-                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
-                }
-                if (kDown & KEY_A && selected_touch_clock_option == 2) {
-                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
-                }
-                if (kDown & KEY_LEFT) {
-                    if (selected_touch_clock_option == 0) { // BPM
-                        setBpm(clock, clock->bpm - 1);
-                    } else if (selected_touch_clock_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
-                    }
-                    left_timer = now + HOLD_DELAY_INITIAL;
-                } else if (kHeld & KEY_LEFT) {
-                    if (now >= left_timer) {
-                        if (selected_touch_clock_option == 0) { // BPM
-                            setBpm(clock, clock->bpm - 1);
-                        } else if (selected_touch_clock_option == 1) { // Beats per bar
-                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
-                        }
-                        left_timer = now + HOLD_DELAY_REPEAT;
-                    }
-                }
-                if (kDown & KEY_RIGHT) {
-                    if (selected_touch_clock_option == 0) { // BPM
-                        setBpm(clock, clock->bpm + 1);
-                    } else if (selected_touch_clock_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
-                    }
-                    right_timer = now + HOLD_DELAY_INITIAL;
-                } else if (kHeld & KEY_RIGHT) {
-                    if (now >= right_timer) {
-                        if (selected_touch_clock_option == 0) { // BPM
-                            setBpm(clock, clock->bpm + 1);
-                        } else if (selected_touch_clock_option == 1) { // Beats per bar
-                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
-                        }
-                        right_timer = now + HOLD_DELAY_REPEAT;
-                    }
-                }
-                break;
-            case VIEW_SAMPLE_MANAGER:
-                if (kDown & KEY_UP) {
-                    selected_sample_row = (selected_sample_row > 0) ? selected_sample_row - 1 : 2;
-                }
-                if (kDown & KEY_DOWN) {
-                    selected_sample_row = (selected_sample_row < 2) ? selected_sample_row + 1 : 0;
-                }
-                if (kDown & KEY_LEFT) {
-                    selected_sample_col = (selected_sample_col > 0) ? selected_sample_col - 1 : 3;
-                }
-                if (kDown & KEY_RIGHT) {
-                    selected_sample_col = (selected_sample_col < 3) ? selected_sample_col + 1 : 0;
-                }
-                if (kDown & KEY_B) {
-                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
-                }
-                break;
-            default:
                 break;
             }
         }
@@ -706,7 +633,6 @@ void clock_thread_func(void *arg) {
         int ticks_to_process = updateClock(clock);
 
         if (ticks_to_process > 0) {
-            LightLock_Lock(&tracks_lock);
             for (int i = 0; i < ticks_to_process; i++) {
                 // update musical time for one tick
                 int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
@@ -715,10 +641,42 @@ void clock_thread_func(void *arg) {
                 clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
                 clock->barBeats->steps++;
 
-                updateTrack(&tracks[0], clock);
-                updateTrack(&tracks[1], clock);
+                for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
+                    Track *track = &tracks[track_idx];
+                    if (!track || !track->sequencer || !clock ||
+                        track->sequencer->steps_per_beat == 0) {
+                        continue;
+                    }
+
+                    int clock_steps_per_seq_step = STEPS_PER_BEAT / track->sequencer->steps_per_beat;
+                    if (clock_steps_per_seq_step == 0)
+                        continue;
+
+                    if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
+                        SeqStep step = updateSequencer(track->sequencer);
+                        if (step.active && step.data) {
+                            Event event = {
+                                .type          = TRIGGER_STEP,
+                                .track_id      = track_idx,
+                                .base_params   = *step.data, // Copy the base TrackParameters
+                                .instrument_type = track->instrument_type
+                            };
+
+                            // Copy instrument-specific parameters based on type
+                            if (track->instrument_type == SUB_SYNTH) {
+                                memcpy(&event.instrument_specific_params.subsynth_params,
+                                       step.data->instrument_data,
+                                       sizeof(SubSynthParameters));
+                            } else if (track->instrument_type == OPUS_SAMPLER) {
+                                memcpy(&event.instrument_specific_params.sampler_params,
+                                       step.data->instrument_data,
+                                       sizeof(OpusSamplerParameters));
+                            }
+                            event_queue_push(&g_event_queue, event);
+                        }
+                    }
+                }
             }
-            LightLock_Unlock(&tracks_lock);
         }
         LightLock_Unlock(&clock_lock);
 
@@ -729,29 +687,43 @@ void clock_thread_func(void *arg) {
 
 void audio_thread_func(void *arg) {
     while (!should_exit) {
-        LightLock_Lock(&tracks_lock);
-
-        if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
-            ndspWaveBuf *waveBuf0  = &tracks[0].waveBuf[tracks[0].fillBlock];
-            SubSynth    *subsynth0 = (SubSynth *) tracks[0].instrument_data;
-            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
-            tracks[0].fillBlock = !tracks[0].fillBlock;
+        Event event;
+        while (event_queue_pop(&g_event_queue, &event)) {
+            processTrackEvent(&event);
         }
 
-        if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
-            ndspWaveBuf *waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
-            OpusSampler *sampler1 = (OpusSampler *) tracks[1].instrument_data;
-            if (sampler1->seek_requested) {
-                op_pcm_seek(sampler1->audiofile, sampler1->start_position);
-                sampler1->seek_requested = false;
+        for (int i = 0; i < N_TRACKS; i++) {
+            // Determine which buffer is currently playing and which is next to fill
+            int current_buffer_idx = !tracks[i].fillBlock;
+            int next_buffer_idx = tracks[i].fillBlock;
+
+            // Wait for the currently playing buffer to finish
+            svcWaitSynchronization(tracks[i].sync_handle[current_buffer_idx].handle, U64_MAX);
+            
+            // Clear the event
+            LightEvent_Clear(&tracks[i].sync_handle[current_buffer_idx]);
+
+            // Fill the next buffer
+            ndspWaveBuf *waveBuf = &tracks[i].waveBuf[next_buffer_idx];
+
+            if (tracks[i].instrument_type == SUB_SYNTH) {
+                SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
+                fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth, 1, 0);
+            } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
+                OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
+                if (sampler->seek_requested) {
+                    op_pcm_seek(sampler->audiofile, sampler->start_position);
+                    sampler->seek_requested = false;
+                }
+                fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler, 1);
             }
-            fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
-            tracks[1].fillBlock = !tracks[1].fillBlock;
+            
+            // Add the filled buffer to the NDSP queue
+            ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf, &tracks[i].sync_handle[next_buffer_idx]);
+            
+            // Toggle fillBlock to switch to the other buffer for the next iteration
+            tracks[i].fillBlock = !tracks[i].fillBlock;
         }
-
-        LightLock_Unlock(&tracks_lock);
-
-        svcSleepThread(1000000);
     }
     threadExit(0);
 }
