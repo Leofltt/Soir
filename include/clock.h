@@ -34,7 +34,7 @@ typedef struct {
 
 extern void setBpm(Clock *clock, float bpm);
 extern void setBeatsPerBar(Clock *clock, int beats);
-extern int updateClock(Clock *clock);
+extern int  updateClock(Clock *clock);
 extern void resetClock(Clock *clock);
 extern void stopClock(Clock *clock);
 extern void pauseClock(Clock *clock);

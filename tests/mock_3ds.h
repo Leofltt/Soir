@@ -37,23 +37,23 @@ typedef s32      Result; // Added Result type
 #define SYSCLOCK_ARM11 268111856
 typedef uint64_t u64;
 typedef uint32_t u32;
-typedef int32_t Result;
+typedef int32_t  Result;
 
 // Mock for ndsp
 typedef struct {
     // Define necessary fields for ndspWaveBuf mock
     u32 *data_vaddr;
-    u32 nsamples;
+    u32  nsamples;
 } ndspWaveBuf;
 
-void DSP_FlushDataCache(void *addr, size_t size);
+void   DSP_FlushDataCache(void *addr, size_t size);
 Result ndspChnWaveBufAdd(int channel, ndspWaveBuf *waveBuf);
 
 // Mock for system ticks
 extern u64 mock_system_tick;
-void mock_set_system_tick(u64 ticks);
-void mock_advance_system_tick(u64 ticks);
-u64 svcGetSystemTick(void);
+void       mock_set_system_tick(u64 ticks);
+void       mock_advance_system_tick(u64 ticks);
+u64        svcGetSystemTick(void);
 
 // Memory allocation macros
 #ifndef linearAlloc

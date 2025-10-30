@@ -13,9 +13,9 @@ void test_sequence_length_update(void) {
 }
 
 void test_sequence_step_update(void) {
-    size_t num_steps = 4;
-    Sequencer seq = { .n_beats = 1, .steps_per_beat = 4, .cur_step = 0 };
-    seq.steps     = linearAlloc(num_steps * sizeof(SeqStep));
+    size_t    num_steps = 4;
+    Sequencer seq       = { .n_beats = 1, .steps_per_beat = 4, .cur_step = 0 };
+    seq.steps           = linearAlloc(num_steps * sizeof(SeqStep));
 
     for (size_t i = 0; i < num_steps; i++) {
         seq.steps[i].active = (i % 2 == 0); // steps 0 and 2 are active

@@ -9,12 +9,13 @@
 #include "sequencer.h"
 
 void updateSeqLength(Sequencer *seq, size_t newLength) { // Changed from int
-    if (!seq || newLength == 0 || newLength > MAXSEQUENCELENGTH || newLength == (seq->n_beats * seq->steps_per_beat)) {
+    if (!seq || newLength == 0 || newLength > MAXSEQUENCELENGTH ||
+        newLength == (seq->n_beats * seq->steps_per_beat)) {
         return;
     }
 
-    size_t old_n_steps = seq->n_beats * seq->steps_per_beat;
-    SeqStep *old_steps = (SeqStep *) linearAlloc(old_n_steps * sizeof(SeqStep));
+    size_t   old_n_steps = seq->n_beats * seq->steps_per_beat;
+    SeqStep *old_steps   = (SeqStep *) linearAlloc(old_n_steps * sizeof(SeqStep));
     if (!old_steps) {
         return;
     }
@@ -57,7 +58,7 @@ SeqStep updateSequencer(Sequencer *seq) {
     }
 
     SeqStep current_step = seq->steps[seq->cur_step];
-    seq->cur_step = (seq->cur_step + 1) % (seq->n_beats * seq->steps_per_beat);
+    seq->cur_step        = (seq->cur_step + 1) % (seq->n_beats * seq->steps_per_beat);
     return current_step;
 }
 

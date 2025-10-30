@@ -21,7 +21,7 @@ void resetBarBeats(Clock *clock) {
 }
 
 void resetClock(Clock *clock) {
-    clock->last_tick_time = svcGetSystemTick();
+    clock->last_tick_time   = svcGetSystemTick();
     clock->time_accumulator = 0;
 };
 void stopClock(Clock *clock) {
@@ -52,11 +52,11 @@ void setBpm(Clock *clock, float bpm) {
     if (clock && clock->bpm != bpm && bpm >= 20 && bpm <= 200) {
         clock->bpm = bpm;
         // Use double for intermediate calculation for precision
-        double ticks_per_beat = (double)SYSCLOCK_ARM11 * 60.0 / bpm;
+        double ticks_per_beat   = (double) SYSCLOCK_ARM11 * 60.0 / bpm;
         double ticks_per_step_f = ticks_per_beat / STEPS_PER_BEAT;
 
         // Scale up to maintain fractional precision with integers
-        clock->ticks_per_step = (u64)(ticks_per_step_f * (1 << CLOCK_RESOLUTION_SHIFT));
+        clock->ticks_per_step = (u64) (ticks_per_step_f * (1 << CLOCK_RESOLUTION_SHIFT));
         resetClock(clock);
     }
 }
@@ -72,8 +72,8 @@ int updateClock(Clock *clock) {
         return 0;
     }
 
-    u64 now = svcGetSystemTick();
-    u64 delta_ticks = now - clock->last_tick_time;
+    u64 now               = svcGetSystemTick();
+    u64 delta_ticks       = now - clock->last_tick_time;
     clock->last_tick_time = now;
 
     // Scale up delta_ticks before adding to the accumulator
@@ -81,10 +81,10 @@ int updateClock(Clock *clock) {
 
     if (clock->time_accumulator >= clock->ticks_per_step) {
         if (clock->ticks_per_step == 0) {
-            return 0;  // Prevent division by zero
+            return 0; // Prevent division by zero
         }
         u64 num_ticks_raw = clock->time_accumulator / clock->ticks_per_step;
-        int num_ticks = (num_ticks_raw > INT_MAX) ? INT_MAX : (int)num_ticks_raw;
+        int num_ticks     = (num_ticks_raw > INT_MAX) ? INT_MAX : (int) num_ticks_raw;
         clock->time_accumulator %= clock->ticks_per_step; // Keep the remainder
         return num_ticks;
     }

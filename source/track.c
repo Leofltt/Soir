@@ -16,7 +16,8 @@ static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *para
 
     setWaveform(synth->osc, params->osc_waveform);
     setOscFrequency(synth->osc, params->osc_freq);
-    updateEnvelope(synth->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
+    updateEnvelope(synth->env, params->env_atk, params->env_dec, params->env_sus_level,
+                   params->env_rel, params->env_dur);
     triggerEnvelope(synth->env);
 }
 
@@ -29,7 +30,8 @@ static void updateOpusSamplerFromSequence(OpusSampler *sampler, OpusSamplerParam
     sampler->playback_mode  = params->playback_mode;
     sampler->seek_requested = true;
     sampler->finished       = false;
-    updateEnvelope(sampler->env, params->env_atk, params->env_dec, params->env_sus_level, params->env_rel, params->env_dur);
+    updateEnvelope(sampler->env, params->env_atk, params->env_dec, params->env_sus_level,
+                   params->env_rel, params->env_dur);
     triggerEnvelope(sampler->env);
 }
 
@@ -105,15 +107,17 @@ void updateTrack(Track *track, Clock *clock) {
     }
 
     int clock_steps_per_seq_step = STEPS_PER_BEAT / track->sequencer->steps_per_beat;
-    if (clock_steps_per_seq_step == 0) return;
+    if (clock_steps_per_seq_step == 0)
+        return;
 
     if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
         SeqStep step = updateSequencer(track->sequencer);
         if (step.active && step.data) {
             updateTrackParameters(track, step.data);
             if (track->instrument_type == SUB_SYNTH) {
-                SubSynthParameters *subsynthParams = (SubSynthParameters *) step.data->instrument_data;
-                SubSynth           *ss             = (SubSynth *) track->instrument_data;
+                SubSynthParameters *subsynthParams =
+                    (SubSynthParameters *) step.data->instrument_data;
+                SubSynth *ss = (SubSynth *) track->instrument_data;
                 if (subsynthParams && ss) {
                     updateSubSynthFromSequence(ss, subsynthParams);
                 }
