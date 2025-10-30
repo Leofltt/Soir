@@ -11,9 +11,11 @@
 #include "track_parameters.h"
 #include "ui_constants.h"
 #include "views.h"
+#include "event_queue.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
+#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
 #include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
@@ -31,6 +33,7 @@ static Track         tracks[N_TRACKS];
 static LightLock     clock_lock;
 static LightLock     tracks_lock;
 static volatile bool should_exit = false;
+static EventQueue    g_event_queue;
 
 static Thread clock_thread;
 static Thread audio_thread;
@@ -38,8 +41,51 @@ static Thread audio_thread;
 void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
 
+// Helper function to process events on the audio thread
+static void processTrackEvent(Event *event) {
+    if (!event || event->track_id >= N_TRACKS) {
+        return;
+    }
+
+    LightLock_Lock(&tracks_lock);
+
+    Track *track = &tracks[event->track_id];
+    updateTrackParameters(track, &event->base_params); // Changed from event->params
+
+    if (event->instrument_type == SUB_SYNTH) {
+        SubSynthParameters *subsynthParams =
+            &event->instrument_specific_params.subsynth_params; // Changed access
+        SubSynth *ss = (SubSynth *) track->instrument_data;
+        if (subsynthParams && ss) {
+            setWaveform(ss->osc, subsynthParams->osc_waveform);
+            setOscFrequency(ss->osc, subsynthParams->osc_freq);
+            updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
+                           subsynthParams->env_sus_level, subsynthParams->env_rel,
+                           subsynthParams->env_dur);
+            triggerEnvelope(ss->env);
+        }
+    } else if (event->instrument_type == OPUS_SAMPLER) {
+        OpusSamplerParameters *opusSamplerParams =
+            &event->instrument_specific_params.sampler_params; // Changed access
+        OpusSampler *s = (OpusSampler *) track->instrument_data;
+        if (opusSamplerParams && s) {
+            s->audiofile      = opusSamplerParams->audiofile;
+            s->start_position = opusSamplerParams->start_position;
+            s->playback_mode  = opusSamplerParams->playback_mode;
+            s->seek_requested = true;
+            s->finished       = false;
+            updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
+                           opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
+                           opusSamplerParams->env_dur);
+            triggerEnvelope(s->env);
+        }
+    }
+
+    LightLock_Unlock(&tracks_lock);
+}
+
 int main(int argc, char **argv) {
-    // osSetSpeedupEnable(true)
+    osSetSpeedupEnable(true);
     gfxInitDefault();
     romfsInit();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
@@ -243,6 +289,7 @@ int main(int argc, char **argv) {
 
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
+    event_queue_init(&g_event_queue);
 
     s32 main_prio;
     svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
@@ -412,14 +459,14 @@ int main(int argc, char **argv) {
                 if (kDown & KEY_LEFT) {
                     if (selected_settings_option == 0) { // BPM
                         setBpm(clock, clock->bpm - 1);
-                    } else if (selected_settings_option == 1) { // Beats per bar
-                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                     }
                     left_timer = now + HOLD_DELAY_INITIAL;
                 } else if (kHeld & KEY_LEFT) {
                     if (now >= left_timer) {
                         if (selected_settings_option == 0) { // BPM
                             setBpm(clock, clock->bpm - 1);
+                        } else if (selected_settings_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                         }
                         left_timer = now + HOLD_DELAY_REPEAT;
                     }
@@ -706,7 +753,6 @@ void clock_thread_func(void *arg) {
         int ticks_to_process = updateClock(clock);
 
         if (ticks_to_process > 0) {
-            LightLock_Lock(&tracks_lock);
             for (int i = 0; i < ticks_to_process; i++) {
                 // update musical time for one tick
                 int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
@@ -715,10 +761,40 @@ void clock_thread_func(void *arg) {
                 clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
                 clock->barBeats->steps++;
 
-                updateTrack(&tracks[0], clock);
-                updateTrack(&tracks[1], clock);
+                for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
+                    Track *track = &tracks[track_idx];
+                    if (!track || !track->sequencer || !clock ||
+                        track->sequencer->steps_per_beat == 0) {
+                        continue;
+                    }
+
+                    int clock_steps_per_seq_step =
+                        STEPS_PER_BEAT / track->sequencer->steps_per_beat;
+                    if (clock_steps_per_seq_step == 0)
+                        continue;
+
+                    if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
+                        SeqStep step = updateSequencer(track->sequencer);
+                        if (step.active && step.data) {
+                            Event event = { .type     = TRIGGER_STEP,
+                                            .track_id = track_idx,
+                                            .base_params =
+                                                *step.data, // Copy the base TrackParameters
+                                            .instrument_type = track->instrument_type };
+
+                            // Copy instrument-specific parameters based on type
+                            if (track->instrument_type == SUB_SYNTH) {
+                                memcpy(&event.instrument_specific_params.subsynth_params,
+                                       step.data->instrument_data, sizeof(SubSynthParameters));
+                            } else if (track->instrument_type == OPUS_SAMPLER) {
+                                memcpy(&event.instrument_specific_params.sampler_params,
+                                       step.data->instrument_data, sizeof(OpusSamplerParameters));
+                            }
+                            event_queue_push(&g_event_queue, event);
+                        }
+                    }
+                }
             }
-            LightLock_Unlock(&tracks_lock);
         }
         LightLock_Unlock(&clock_lock);
 
@@ -729,28 +805,41 @@ void clock_thread_func(void *arg) {
 
 void audio_thread_func(void *arg) {
     while (!should_exit) {
-        LightLock_Lock(&tracks_lock);
-
-        if (tracks[0].waveBuf[tracks[0].fillBlock].status == NDSP_WBUF_DONE) {
-            ndspWaveBuf *waveBuf0  = &tracks[0].waveBuf[tracks[0].fillBlock];
-            SubSynth    *subsynth0 = (SubSynth *) tracks[0].instrument_data;
-            fillSubSynthAudiobuffer(waveBuf0, waveBuf0->nsamples, subsynth0, 1, 0);
-            tracks[0].fillBlock = !tracks[0].fillBlock;
+        Event event;
+        // Process all pending events
+        while (event_queue_pop(&g_event_queue, &event)) {
+            processTrackEvent(&event);
         }
 
-        if (tracks[1].waveBuf[tracks[1].fillBlock].status == NDSP_WBUF_DONE) {
-            ndspWaveBuf *waveBuf1 = &tracks[1].waveBuf[tracks[1].fillBlock];
-            OpusSampler *sampler1 = (OpusSampler *) tracks[1].instrument_data;
-            if (sampler1->seek_requested) {
-                op_pcm_seek(sampler1->audiofile, sampler1->start_position);
-                sampler1->seek_requested = false;
+        for (int i = 0; i < N_TRACKS; i++) {
+            // Get the next buffer in the queue for this track
+            ndspWaveBuf *waveBuf = &tracks[i].waveBuf[tracks[i].fillBlock];
+
+            // Check if the buffer is 'DONE' (i.e., finished playing)
+            // NDSP_WBUF_DONE is defined in 3ds/ndsp/ndsp.h
+            if (waveBuf->status == NDSP_WBUF_DONE) {
+                // Fill the buffer with new audio data
+                if (tracks[i].instrument_type == SUB_SYNTH) {
+                    SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
+                    fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth, 1.0f);
+                } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
+                    OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
+                    if (sampler->seek_requested) {
+                        op_pcm_seek(sampler->audiofile, sampler->start_position);
+                        sampler->seek_requested = false;
+                    }
+                    fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler);
+                }
+
+                // Add the (now filled) buffer back to the NDSP queue
+                ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf);
+
+                // Toggle fillBlock to point to the *other* buffer for the next check
+                tracks[i].fillBlock = !tracks[i].fillBlock;
             }
-            fillSamplerAudiobuffer(waveBuf1, waveBuf1->nsamples, sampler1, 1);
-            tracks[1].fillBlock = !tracks[1].fillBlock;
         }
 
-        LightLock_Unlock(&tracks_lock);
-
+        // Sleep for 1ms to prevent busy-waiting and starving other threads
         svcSleepThread(1000000);
     }
     threadExit(0);
