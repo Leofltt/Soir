@@ -459,6 +459,8 @@ int main(int argc, char **argv) {
                 if (kDown & KEY_LEFT) {
                     if (selected_settings_option == 0) { // BPM
                         setBpm(clock, clock->bpm - 1);
+                    } else if (selected_touch_clock_option == 1) { // Beats per bar
+                        setBeatsPerBar(clock, clock->barBeats->beats_per_bar - 1);
                     }
                     left_timer = now + HOLD_DELAY_INITIAL;
                 } else if (kHeld & KEY_LEFT) {
@@ -482,6 +484,8 @@ int main(int argc, char **argv) {
                     if (now >= right_timer) {
                         if (selected_settings_option == 0) { // BPM
                             setBpm(clock, clock->bpm + 1);
+                        } else if (selected_settings_option == 1) { // Beats per bar
+                            setBeatsPerBar(clock, clock->barBeats->beats_per_bar + 1);
                         }
                         right_timer = now + HOLD_DELAY_REPEAT;
                     }
