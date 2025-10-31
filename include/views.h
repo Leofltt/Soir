@@ -18,6 +18,6 @@ extern void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus);
 extern void drawTouchClockSettingsView(Clock *clock, int selected_option);
 extern void drawSampleManagerView(int selected_row, int selected_col);
 extern void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
-                                int selected_col, int selected_step_option);
+                                 int selected_col, int selected_step_option);
 
 #endif // VIEWS_H

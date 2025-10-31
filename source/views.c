@@ -1,6 +1,10 @@
 #include "views.h"
 
+#include "audio_utils.h"
 #include "engine_constants.h"
+#include "filters.h"
+#include "polybleposc.h"
+#include "samplers.h"
 #include "session_controller.h"
 #include "ui_constants.h"
 #include <stdio.h>
@@ -38,7 +42,7 @@ static const char *get_status_symbol(ClockStatus status) {
     case STOPPED:
         return "S";
     case PAUSED:
-        return "||";
+        return "| |";
     default:
         return "";
     }
@@ -76,7 +80,7 @@ void drawTrackbar(Clock *clock, Track *tracks) {
 
             // Draw bpm status text
             C2D_TextBufClear(text_buf);
-            snprintf(buf, sizeof(buf), "%.0f%s", clock->bpm, get_status_symbol(clock->status));
+            snprintf(buf, sizeof(buf), "%.0f %s", clock->bpm, get_status_symbol(clock->status));
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buf);
             C2D_TextOptimize(&text_obj);
 
@@ -300,24 +304,24 @@ void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus) {
 
     for (int i = 0; i < num_options; i++) {
         float rect_x = start_x + (rect_width + spacing) * i;
-        u32   color  = (i == selected_option && focus == FOCUS_BOTTOM) ? CLR_YELLOW : CLR_DARK_GRAY;
+        u32   color = (i == selected_option && focus == FOCUS_BOTTOM) ? CLR_YELLOW : CLR_LIGHT_GRAY;
 
         C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, color, color, color, color);
 
         C2D_Font current_font = font_angular;
-        u32      text_color   = CLR_WHITE;
+        u32      text_color   = CLR_BLACK;
 
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, current_font, text_buf, options[i]);
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
 
         float text_x = rect_x + (rect_width - text_width) / 2;
         float text_y = rect_y + (rect_height - text_height) / 2;
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, text_color);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, text_color);
     }
 }
 
@@ -384,9 +388,9 @@ void drawSampleManagerView(int selected_row, int selected_col) {
     }
 }
 
-void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
-                                int selected_col, int selected_step_option) {
-    if (selected_row == 0) {
+void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int selected_col,
+                          int selected_step_option) {
+    if (selected_row == 0 || selected_col == 0) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "No Track Selected");
         C2D_TextOptimize(&text_obj);
@@ -397,26 +401,169 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
         float text_x = (BOTTOM_SCREEN_WIDTH - text_width) / 2;
         float text_y = (SCREEN_HEIGHT - text_height) / 2;
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_WHITE);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
     } else {
-        int         track_idx       = selected_row - 1;
+        int     track_idx = selected_row - 1;
+        int     step_idx  = selected_col - 1;
+        Track   track     = tracks[track_idx];
+        SeqStep seq_step  = track.sequencer->steps[step_idx];
+
         const char *instrument_name = "";
-        if (tracks[track_idx].instrument_type == SUB_SYNTH) {
+        if (track.instrument_type == SUB_SYNTH) {
             instrument_name = "Synth";
-        } else if (tracks[track_idx].instrument_type == OPUS_SAMPLER) {
+        } else if (track.instrument_type == OPUS_SAMPLER) {
             instrument_name = "Sampler";
         }
 
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
         C2D_TextOptimize(&text_obj);
+        C2D_DrawText(&text_obj, C2D_WithColor, 10, 10, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
 
-        float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+        char  buffer[128];
+        float cell_width  = 140;
+        float cell_height = 20;
+        float padding     = 5;
 
-        float text_x = 10;
-        float text_y = 10;
+        u32 base_bg_color, base_text_color, border_color;
+        if (seq_step.active) {
+            base_bg_color   = CLR_LIGHT_GRAY;
+            base_text_color = CLR_BLACK;
+            border_color    = CLR_BLACK;
+        } else {
+            base_bg_color   = CLR_BLACK;
+            base_text_color = CLR_LIGHT_GRAY;
+            border_color    = CLR_LIGHT_GRAY;
+        }
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_WHITE);
+        // Common Parameters
+        const char *common_params[] = { "Volume", "Pan", "Filter Cf", "Filter Type" };
+        for (int i = 0; i < 4; i++) {
+            float x          = 10;
+            float y          = 30 + i * (cell_height + padding);
+            u32   bg_color   = (selected_step_option == i) ? CLR_YELLOW : base_bg_color;
+            u32   text_color = (selected_step_option == i) ? CLR_BLACK : base_text_color;
+
+            C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
+                              bg_color);
+            C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
+                              border_color);
+            C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color, border_color,
+                              border_color, border_color);
+            C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
+                              border_color);
+            C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color, border_color,
+                              border_color, border_color);
+
+            C2D_TextBufClear(text_buf);
+            switch (i) {
+            case 0:
+                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i],
+                         seq_step.data->volume);
+                break;
+            case 1:
+                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], seq_step.data->pan);
+                break;
+            case 2:
+                snprintf(buffer, sizeof(buffer), "%s: %.0f", common_params[i],
+                         seq_step.data->ndsp_filter_cutoff);
+                break;
+            case 3:
+                snprintf(buffer, sizeof(buffer), "%s: %s", common_params[i],
+                         ndsp_biquad_filter_names[seq_step.data->ndsp_filter_type]);
+                break;
+            }
+            C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+            C2D_TextOptimize(&text_obj);
+            C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                         text_color);
+        }
+
+        // Instrument-specific Parameters
+        if (track.instrument_type == SUB_SYNTH) {
+            SubSynthParameters *params = (SubSynthParameters *) seq_step.data->instrument_data;
+            const char         *synth_params[] = { "MIDI Freq", "Waveform" };
+            for (int i = 0; i < 2; i++) {
+                float x          = 160;
+                float y          = 30 + i * (cell_height + padding);
+                u32   bg_color   = (selected_step_option == i + 4) ? CLR_YELLOW : base_bg_color;
+                u32   text_color = (selected_step_option == i + 4) ? CLR_BLACK : base_text_color;
+
+                C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
+                                  bg_color);
+                C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
+                                  border_color);
+                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color,
+                                  border_color, border_color, border_color);
+                C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
+                                  border_color);
+                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color,
+                                  border_color, border_color, border_color);
+
+                C2D_TextBufClear(text_buf);
+                switch (i) {
+                case 0:
+                    snprintf(buffer, sizeof(buffer), "%s: %d", synth_params[i],
+                             hertzToMidi(params->osc_freq));
+                    break;
+                case 1:
+                    snprintf(buffer, sizeof(buffer), "%s: %s", synth_params[i],
+                             waveform_names[params->osc_waveform]);
+                    break;
+                }
+                C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+                C2D_TextOptimize(&text_obj);
+                C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                             text_color);
+            }
+        } else if (track.instrument_type == OPUS_SAMPLER) {
+            OpusSamplerParameters *params =
+                (OpusSamplerParameters *) seq_step.data->instrument_data;
+            const char *sampler_params[]      = { "Sample", "Looping", "Start Pos" };
+            const char *playback_mode_names[] = { "One Shot", "Loop" };
+            for (int i = 0; i < 3; i++) {
+                float x          = 160;
+                float y          = 30 + i * (cell_height + padding);
+                u32   bg_color   = (selected_step_option == i + 4) ? CLR_YELLOW : base_bg_color;
+                u32   text_color = (selected_step_option == i + 4) ? CLR_BLACK : base_text_color;
+
+                C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
+                                  bg_color);
+                C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
+                                  border_color);
+                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color,
+                                  border_color, border_color, border_color);
+                C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
+                                  border_color);
+                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color,
+                                  border_color, border_color, border_color);
+
+                C2D_TextBufClear(text_buf);
+                switch (i) {
+                case 0:
+                    snprintf(buffer, sizeof(buffer), "%s: ", sampler_params[i]);
+                    break;
+                case 1:
+                    snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
+                             playback_mode_names[params->playback_mode]);
+                    break;
+                case 2:
+                    snprintf(buffer, sizeof(buffer), "%s: %lld", sampler_params[i],
+                             params->start_position);
+                    break;
+                }
+                C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+                C2D_TextOptimize(&text_obj);
+                C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                             text_color);
+            }
+        }
+
+        // Track and Step Info
+        snprintf(buffer, sizeof(buffer), "Tr: %d | St: %d", track_idx + 1, step_idx + 1);
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+        C2D_TextOptimize(&text_obj);
+        C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, 0.4f, 0.4f, CLR_LIGHT_GRAY);
     }
 }

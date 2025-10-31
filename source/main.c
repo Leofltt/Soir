@@ -26,8 +26,7 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #define STACK_SIZE (N_TRACKS * 32 * 1024)
 
-static const char *PATH  = "romfs:/samples/bibop.opus";
-
+static const char *PATH = "romfs:/samples/bibop.opus";
 
 static Track         tracks[N_TRACKS];
 static LightLock     clock_lock;
@@ -640,6 +639,24 @@ int main(int argc, char **argv) {
                     session.touch_screen_view = VIEW_TOUCH_SETTINGS;
                 }
                 break;
+            case VIEW_STEP_SETTINGS:
+                if (kDown & KEY_UP) {
+                    selected_step_option =
+                        (selected_step_option > 0) ? selected_step_option - 1 : 0;
+                }
+                if (kDown & KEY_DOWN) {
+                    selected_step_option =
+                        (selected_step_option < 7) ? selected_step_option + 1 : 7;
+                }
+                if (kDown & KEY_LEFT) {
+                    selected_step_option = (selected_step_option > 3) ? selected_step_option - 4
+                                                                      : selected_step_option;
+                }
+                if (kDown & KEY_RIGHT) {
+                    selected_step_option = (selected_step_option < 4) ? selected_step_option + 4
+                                                                      : selected_step_option;
+                }
+                break;
             default:
                 break;
             }
@@ -686,7 +703,8 @@ int main(int argc, char **argv) {
             drawSampleManagerView(selected_sample_row, selected_sample_col);
             break;
         case VIEW_STEP_SETTINGS:
-            drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option);
+            drawStepSettingsView(&session, tracks, selected_row, selected_col,
+                                 selected_step_option);
             break;
         default:
             break;

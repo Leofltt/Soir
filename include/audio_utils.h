@@ -37,4 +37,6 @@ extern void fillBufferWithZeros(void *audioBuffer, size_t size);
 
 extern float midiToHertz(int midiNote);
 
+extern int hertzToMidi(float hertz);
+
 #endif // AUDIO_UTILS_H

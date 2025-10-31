@@ -31,3 +31,7 @@ void fillBufferWithZeros(void *audioBuffer, size_t size) {
 float midiToHertz(int midiNote) {
     return FREQ_A4 * powf(2.0f, (midiNote - MIDI_A4) / 12.0f);
 }
+
+int hertzToMidi(float hertz) {
+    return (int) roundf(12.0f * log2f(hertz / FREQ_A4) + MIDI_A4);
+}
