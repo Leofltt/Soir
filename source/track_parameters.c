@@ -12,14 +12,13 @@ SubSynthParameters defaultSubSynthParameters() {
                                   .osc_waveform  = SINE };
     return params;
 };
-OpusSamplerParameters defaultOpusSamplerParameters(OggOpusFile *audiofile) {
+OpusSamplerParameters defaultOpusSamplerParameters() {
     OpusSamplerParameters params = { .env_atk        = 50,
                                      .env_dec        = 300,
                                      .env_sus_time   = 550,
                                      .env_sus_level  = 0.8f,
                                      .env_rel        = 100,
                                      .env_dur        = 1000,
-                                     .audiofile      = audiofile,
                                      .playback_mode  = ONE_SHOT,
                                      .start_position = 0 };
     return params;

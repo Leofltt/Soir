@@ -4,6 +4,7 @@
 #include "filters.h"
 #include "oscillators.h"
 #include "samplers.h"
+#include "sample.h"
 #include "sequencer.h"
 #include "session_controller.h"
 #include "synth.h"
@@ -66,9 +67,8 @@ static void processTrackEvent(Event *event) {
     } else if (event->instrument_type == OPUS_SAMPLER) {
         OpusSamplerParameters *opusSamplerParams =
             &event->instrument_specific_params.sampler_params; // Changed access
-        OpusSampler *s = (OpusSampler *) track->instrument_data;
+        Sampler *s = (Sampler *) track->instrument_data;
         if (opusSamplerParams && s) {
-            s->audiofile      = opusSamplerParams->audiofile;
             s->start_position = opusSamplerParams->start_position;
             s->playback_mode  = opusSamplerParams->playback_mode;
             s->seek_requested = true;
@@ -130,11 +130,10 @@ int main(int argc, char **argv) {
     Sequencer             *seq1                   = NULL;
     u32                   *audioBuffer2           = NULL;
     Envelope              *env1                   = NULL;
-    OpusSampler           *sampler                = NULL;
+    Sampler               *sampler                = NULL;
     SeqStep               *sequence2              = NULL;
     TrackParameters       *trackParamsArray2      = NULL;
     OpusSamplerParameters *opusSamplerParamsArray = NULL;
-    OggOpusFile           *opusFile               = NULL;
     Sequencer             *seq2                   = NULL;
 
     ndspInit();
@@ -220,9 +219,8 @@ int main(int argc, char **argv) {
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
-    int error;
-    opusFile = op_open_file(PATH, &error);
-    if (error != 0 || !opusFile) {
+    Sample *sample = sample_create(PATH);
+    if (!sample) {
         ret = 1;
         goto cleanup;
     }
@@ -242,19 +240,19 @@ int main(int argc, char **argv) {
     *env1 = defaultEnvelopeStruct(OPUSSAMPLERATE);
     updateEnvelope(env1, 100, 300, 0.9, 200, 2000);
 
-    sampler = (OpusSampler *) linearAlloc(sizeof(OpusSampler));
+    sampler = (Sampler *) linearAlloc(sizeof(Sampler));
     if (!sampler) {
         ret = 1;
         goto cleanup;
     }
-    *sampler                  = (OpusSampler) { .audiofile       = opusFile,
-                                                .start_position  = 0,
-                                                .playback_mode   = ONE_SHOT,
-                                                .samples_per_buf = OPUSSAMPLESPERFBUF,
-                                                .samplerate      = OPUSSAMPLERATE,
-                                                .env             = env1,
-                                                .seek_requested  = false,
-                                                .finished        = true };
+    *sampler                  = (Sampler) { .sample          = sample,
+                                            .start_position  = 0,
+                                            .playback_mode   = ONE_SHOT,
+                                            .samples_per_buf = OPUSSAMPLESPERFBUF,
+                                            .samplerate      = OPUSSAMPLERATE,
+                                            .env             = env1,
+                                            .seek_requested  = false,
+                                            .finished        = true };
     tracks[1].instrument_data = sampler;
 
     sequence2 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
@@ -274,7 +272,7 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     for (int i = 0; i < 16; i++) {
-        opusSamplerParamsArray[i] = defaultOpusSamplerParameters(opusFile);
+        opusSamplerParamsArray[i] = defaultOpusSamplerParameters();
         trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
         sequence2[i]              = (SeqStep) { .active = false };
         sequence2[i].data         = &trackParamsArray2[i];
@@ -752,9 +750,9 @@ cleanup:
     if (audioBuffer2)
         linearFree(audioBuffer2);
     if (tracks[1].instrument_data) {
-        OpusSampler *s = (OpusSampler *) tracks[1].instrument_data;
-        if (s->audiofile)
-            op_free(s->audiofile);
+        Sampler *s = (Sampler *) tracks[1].instrument_data;
+        if (s->sample)
+            sample_destroy(s->sample);
         if (s->env)
             linearFree(s->env);
         linearFree(s);
@@ -859,12 +857,12 @@ void audio_thread_func(void *arg) {
                     SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
                     fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth);
                 } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
-                    OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
+                    Sampler *sampler = (Sampler *) tracks[i].instrument_data;
                     if (sampler->seek_requested) {
-                        op_pcm_seek(sampler->audiofile, sampler->start_position);
+                        op_pcm_seek(sampler->sample->opusFile, sampler->start_position);
                         sampler->seek_requested = false;
                     }
-                    fillSamplerAudiobuffer(waveBuf, waveBuf->nsamples, sampler);
+                    sampler_fill_buffer(waveBuf, waveBuf->nsamples, sampler);
                 }
 
                 // Add the (now filled) buffer back to the NDSP queue

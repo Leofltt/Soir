@@ -2,6 +2,7 @@
 #define SAMPLERS_H
 
 #include "envelope.h"
+#include "sample.h"
 
 #ifdef TESTING
 #include "../tests/mock_3ds.h"
@@ -14,7 +15,7 @@
 typedef enum { ONE_SHOT = 0, LOOP = 1 } PlaybackMode;
 
 typedef struct {
-    OggOpusFile *audiofile;
+    Sample      *sample;
     PlaybackMode playback_mode;
     int64_t      start_position;
     size_t       samples_per_buf;
@@ -22,14 +23,12 @@ typedef struct {
     Envelope    *env;
     bool         seek_requested;
     bool         finished;
-} OpusSampler;
+} Sampler;
 
-extern const char *opusStrError(int error);
+void sampler_set_sample(Sampler *sampler, Sample *sample);
 
-extern void setSample(OpusSampler *sampler, char *path);
+bool sampler_is_looping(Sampler *sampler);
 
-extern bool isLooping(OpusSampler *sampler);
-
-extern void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler);
+void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler);
 
 #endif // SAMPLERS_H

@@ -9,73 +9,38 @@
 #endif
 
 #include "samplers.h"
+#include "sample.h"
 
 #include "audio_utils.h"
 #include "engine_constants.h"
 
 #include <string.h>
 
-const char *opusStrError(int error) {
-    switch (error) {
-    case OP_FALSE:
-        return "OP_FALSE: A request did not succeed.";
-    case OP_HOLE:
-        return "OP_HOLE: There was a hole in the page sequence numbers.";
-    case OP_EREAD:
-        return "OP_EREAD: An underlying read, seek or tell operation "
-               "failed.";
-    case OP_EFAULT:
-        return "OP_EFAULT: A NULL pointer was passed where none was "
-               "expected, or an internal library error was encountered.";
-    case OP_EIMPL:
-        return "OP_EIMPL: The stream used a feature which is not "
-               "implemented.";
-    case OP_EINVAL:
-        return "OP_EINVAL: One or more parameters to a function were "
-               "invalid.";
-    case OP_ENOTFORMAT:
-        return "OP_ENOTFORMAT: This is not a valid Ogg Opus stream.";
-    case OP_EBADHEADER:
-        return "OP_EBADHEADER: A required header packet was not properly "
-               "formatted.";
-    case OP_EVERSION:
-        return "OP_EVERSION: The ID header contained an unrecognised "
-               "version number.";
-    case OP_EBADPACKET:
-        return "OP_EBADPACKET: An audio packet failed to decode properly.";
-    case OP_EBADLINK:
-        return "OP_EBADLINK: We failed to find data we had seen before or "
-               "the stream was sufficiently corrupt that seeking is "
-               "impossible.";
-    case OP_ENOSEEK:
-        return "OP_ENOSEEK: An operation that requires seeking was "
-               "requested on an unseekable stream.";
-    case OP_EBADTIMESTAMP:
-        return "OP_EBADTIMESTAMP: The first or last granule position of a "
-               "link failed basic validity checks.";
-    default:
-        return "Unknown error.";
+void sampler_set_sample(Sampler *sampler, Sample *sample) {
+    if (sampler->sample) {
+        sample_destroy(sampler->sample);
     }
+    sampler->sample = sample;
 };
 
-void setSample(OpusSampler *sampler, char *path) {
-    int error = 0;
-    if (sampler->audiofile) {
-        op_free(sampler->audiofile);
-    }
-    sampler->audiofile = op_open_file(path, &error);
-};
-
-bool isLooping(OpusSampler *sampler) {
+bool sampler_is_looping(Sampler *sampler) {
     return sampler->playback_mode == LOOP;
 }
 
-void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sampler) {
+void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
 #ifdef DEBUG
     // Setup timer for performance stats
     TickCounter timer;
     osTickCounterStart(&timer);
 #endif // DEBUG
+
+    if (!sampler->sample) {
+        memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
+        waveBuf_->nsamples = sampler->samples_per_buf;
+        DSP_FlushDataCache(waveBuf_->data_pcm16,
+                           sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
+        return;
+    }
 
     if (sampler->playback_mode == ONE_SHOT && sampler->finished) {
         memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
@@ -93,14 +58,15 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
 
         // Decode bufferSize samples from opusFile_ into buffer,
         // storing the number of samples that were decoded (or error)
-        const int samples = op_read_stereo(sampler->audiofile, buffer, bufferSize);
+        const int samples = op_read_stereo(sampler->sample->opusFile, buffer, bufferSize);
         if (samples <= 0) {
-            if (isLooping(sampler)) {
-                op_raw_seek(sampler->audiofile, 0);
+            if (sampler_is_looping(sampler)) {
+                op_raw_seek(sampler->sample->opusFile, 0);
                 continue;
             } else {
                 sampler->finished = true;
-                op_raw_seek(sampler->audiofile, sampler->start_position); // Reset for next trigger
+                op_raw_seek(sampler->sample->opusFile,
+                            sampler->start_position); // Reset for next trigger
                 if (totalSamples < sampler->samples_per_buf) {
                     memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
                            (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
@@ -131,8 +97,8 @@ void fillSamplerAudiobuffer(ndspWaveBuf *waveBuf_, size_t size, OpusSampler *sam
 
     // If no samples were read in the last decode cycle and looping is on,
     // seek back to the start of the sample
-    if (totalSamples == 0 && isLooping(sampler)) {
-        op_raw_seek(sampler->audiofile, 0);
+    if (totalSamples == 0 && sampler_is_looping(sampler)) {
+        op_raw_seek(sampler->sample->opusFile, 0);
     }
 
     // Pass samples to NDSP

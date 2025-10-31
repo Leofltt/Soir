@@ -5,6 +5,7 @@
 #include "filters.h"
 #include "polybleposc.h"
 #include "samplers.h"
+#include "sample.h"
 #include "session_controller.h"
 #include "ui_constants.h"
 #include <stdio.h>
@@ -160,7 +161,7 @@ static void drawSelectionOverlay(int row, int col) {
         if (row == 0) { // Header row for sequencer
             y = 0;
             h = (N_TRACKS + 1) * track_height;
-        } else { // A step in a track
+        } else {
             y = row * track_height;
             h = track_height - 2;
         }
@@ -519,6 +520,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         } else if (track.instrument_type == OPUS_SAMPLER) {
             OpusSamplerParameters *params =
                 (OpusSamplerParameters *) seq_step.data->instrument_data;
+            Sampler    *sampler               = (Sampler *) track.instrument_data;
             const char *sampler_params[]      = { "Sample", "Looping", "Start Pos" };
             const char *playback_mode_names[] = { "One Shot", "Loop" };
             for (int i = 0; i < 3; i++) {
@@ -541,7 +543,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                 C2D_TextBufClear(text_buf);
                 switch (i) {
                 case 0:
-                    snprintf(buffer, sizeof(buffer), "%s: ", sampler_params[i]);
+                    snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
+                             sample_get_name(sampler->sample));
                     break;
                 case 1:
                     snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],

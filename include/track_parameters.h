@@ -38,13 +38,12 @@ typedef struct {
     float        env_sus_level;
     int          env_rel;
     int          env_dur;
-    OggOpusFile *audiofile;
     PlaybackMode playback_mode;
     int64_t      start_position;
 } OpusSamplerParameters;
 
 extern SubSynthParameters    defaultSubSynthParameters();
-extern OpusSamplerParameters defaultOpusSamplerParameters(OggOpusFile *audiofile);
+extern OpusSamplerParameters defaultOpusSamplerParameters();
 extern TrackParameters       defaultTrackParameters(int track_id, void *instrument_data);
 
 #endif // TRACK_PARAMETERS_H

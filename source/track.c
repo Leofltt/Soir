@@ -21,11 +21,10 @@ static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *para
     triggerEnvelope(synth->env);
 }
 
-static void updateOpusSamplerFromSequence(OpusSampler *sampler, OpusSamplerParameters *params) {
+static void updateSamplerFromSequence(Sampler *sampler, OpusSamplerParameters *params) {
     if (!sampler || !params)
         return;
 
-    sampler->audiofile      = params->audiofile;
     sampler->start_position = params->start_position;
     sampler->playback_mode  = params->playback_mode;
     sampler->seek_requested = true;
@@ -128,9 +127,9 @@ void updateTrack(Track *track, Clock *clock) {
             } else if (track->instrument_type == OPUS_SAMPLER) {
                 OpusSamplerParameters *opusSamplerParams =
                     (OpusSamplerParameters *) step.data->instrument_data;
-                OpusSampler *s = (OpusSampler *) track->instrument_data;
+                Sampler *s = (Sampler *) track->instrument_data;
                 if (opusSamplerParams && s) {
-                    updateOpusSamplerFromSequence(s, opusSamplerParams);
+                    updateSamplerFromSequence(s, opusSamplerParams);
                 }
             }
         }
