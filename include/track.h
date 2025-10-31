@@ -24,7 +24,8 @@ typedef struct Track {
     bool           is_soloed;
     bool           fillBlock;
     Sequencer     *sequencer;
-
+    float          volume;
+    float          pan;
 } Track;
 
 extern void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,

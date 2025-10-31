@@ -9,8 +9,7 @@
 #include "audio_utils.h"
 #include "synth.h"
 
-void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth,
-                             float synthvol) {
+void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth) {
     u32 *dest = (u32 *) waveBuf->data_pcm16;
 
     for (int i = 0; i < size; i++) {
@@ -19,7 +18,6 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
         float env_value = nextEnvelopeSample(subsynth->env);
         env_value       = fmaxf(0.0f, fminf(1.0f, env_value));
         next_sam *= env_value;
-        next_sam *= synthvol;
         s16 sample = floatToInt16(next_sam);
         dest[i]    = (sample << 16) | (sample & 0xffff);
     }

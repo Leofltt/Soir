@@ -26,8 +26,8 @@ OpusSamplerParameters defaultOpusSamplerParameters(OggOpusFile *audiofile) {
 };
 TrackParameters defaultTrackParameters(int track_id, void *instrument_data) {
     TrackParameters params = { .track_id           = track_id,
-                               .volume             = 1.0f,
-                               .pan                = 0.0f,
+                               .volume             = 1.0f,     // 0 to 1
+                               .pan                = 0.0f,     // -1 to 1, 0 is center
                                .ndsp_filter_cutoff = 20000.0f, // Default to max cutoff
                                .ndsp_filter_type   = NDSP_BIQUAD_NONE,
                                // .reverb_level        = 0.0f,
