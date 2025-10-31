@@ -27,7 +27,7 @@
 #define STACK_SIZE (N_TRACKS * 32 * 1024)
 
 static const char *PATH  = "romfs:/samples/bibop.opus";
-static const char *PATHS = "sdmc:/soir/samples/bibop.opus";
+
 
 static Track         tracks[N_TRACKS];
 static LightLock     clock_lock;
@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
     int selected_touch_clock_option = 0;
     int selected_sample_row         = 0;
     int selected_sample_col         = 0;
+    int selected_step_option        = 0;
     int selectedQuitOption          = 0;
 
     u64 up_timer    = 0;
@@ -338,6 +339,14 @@ int main(int argc, char **argv) {
             }
         }
 
+        if (kDown & KEY_L) {
+            if (session.touch_screen_view == VIEW_TOUCH_SETTINGS) {
+                session.touch_screen_view = VIEW_STEP_SETTINGS;
+            } else if (session.touch_screen_view == VIEW_STEP_SETTINGS) {
+                session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+            }
+        }
+
         if (screen_focus == FOCUS_TOP) {
             switch (session.main_screen_view) {
             case VIEW_MAIN: {
@@ -390,6 +399,9 @@ int main(int argc, char **argv) {
                             resumeClock(clock);
                         }
                         LightLock_Unlock(&clock_lock);
+                    } else if (selected_row > 0 && selected_col > 0) {
+                        session.touch_screen_view = VIEW_STEP_SETTINGS;
+                        screen_focus              = FOCUS_BOTTOM;
                     }
                 }
 
@@ -514,12 +526,6 @@ int main(int argc, char **argv) {
                 }
                 break;
             case VIEW_ABOUT:
-                break;
-            case VIEW_TOUCH_SETTINGS:
-                break;
-            case VIEW_TOUCH_CLOCK_SETTINGS:
-                break;
-            case VIEW_SAMPLE_MANAGER:
                 break;
             }
         } else if (screen_focus == FOCUS_BOTTOM) {
@@ -678,6 +684,9 @@ int main(int argc, char **argv) {
             break;
         case VIEW_SAMPLE_MANAGER:
             drawSampleManagerView(selected_sample_row, selected_sample_col);
+            break;
+        case VIEW_STEP_SETTINGS:
+            drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option);
             break;
         default:
             break;

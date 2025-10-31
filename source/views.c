@@ -1,6 +1,7 @@
 #include "views.h"
 
 #include "engine_constants.h"
+#include "session_controller.h"
 #include "ui_constants.h"
 #include <stdio.h>
 
@@ -380,5 +381,42 @@ void drawSampleManagerView(int selected_row, int selected_col) {
             u32   color = (i == selected_row && j == selected_col) ? CLR_YELLOW : CLR_DARK_GRAY;
             C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, color, color, color, color);
         }
+    }
+}
+
+void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
+                                int selected_col, int selected_step_option) {
+    if (selected_row == 0) {
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, "No Track Selected");
+        C2D_TextOptimize(&text_obj);
+
+        float text_width, text_height;
+        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+
+        float text_x = (BOTTOM_SCREEN_WIDTH - text_width) / 2;
+        float text_y = (SCREEN_HEIGHT - text_height) / 2;
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_WHITE);
+    } else {
+        int         track_idx       = selected_row - 1;
+        const char *instrument_name = "";
+        if (tracks[track_idx].instrument_type == SUB_SYNTH) {
+            instrument_name = "Synth";
+        } else if (tracks[track_idx].instrument_type == OPUS_SAMPLER) {
+            instrument_name = "Sampler";
+        }
+
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
+        C2D_TextOptimize(&text_obj);
+
+        float text_width, text_height;
+        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+
+        float text_x = 10;
+        float text_y = 10;
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_WHITE);
     }
 }
