@@ -45,6 +45,8 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
     track->fillBlock       = false;
     track->sequencer       = NULL;
     track->instrument_data = NULL;
+    track->volume          = 1.0f; // Initialize volume
+    track->pan             = 0.0f; // Initialize pan
 
     ndspChnReset(track->chan_id);
     ndspChnSetInterp(track->chan_id, NDSP_INTERP_LINEAR);
@@ -84,12 +86,14 @@ void updateTrackParameters(Track *track, TrackParameters *params) {
 
     track->is_muted  = params->is_muted;
     track->is_soloed = params->is_soloed;
+    track->volume    = params->volume; // Update track volume
+    track->pan       = params->pan;    // Update track pan
 
     // Volume and pan
     // pan is from -1 (L) to 1 (R)
-    float pan_rad = (params->pan + 1.0f) * M_PI / 4.0f; // map [-1, 1] to [0, PI/2]
-    track->mix[0] = cosf(pan_rad) * params->volume;
-    track->mix[1] = sinf(pan_rad) * params->volume;
+    float pan_rad = (track->pan + 1.0f) * M_PI / 4.0f; // map [-1, 1] to [0, PI/2]
+    track->mix[0] = cosf(pan_rad) * track->volume;
+    track->mix[1] = sinf(pan_rad) * track->volume;
     ndspChnSetMix(track->chan_id, track->mix);
 
     // Filter

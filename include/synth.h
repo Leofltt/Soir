@@ -12,7 +12,6 @@ typedef struct {
     PolyBLEPOscillator *osc;
 } SubSynth;
 
-extern void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth,
-                                    float synthvol);
+extern void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth);
 
 #endif // SYNTH_H

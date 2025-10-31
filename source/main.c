@@ -816,6 +816,11 @@ void audio_thread_func(void *arg) {
         }
 
         for (int i = 0; i < N_TRACKS; i++) {
+            if (tracks[i].filter.update_params) {
+                updateNdspbiquad(tracks[i].filter);
+                tracks[i].filter.update_params = false;
+            }
+
             // Get the next buffer in the queue for this track
             ndspWaveBuf *waveBuf = &tracks[i].waveBuf[tracks[i].fillBlock];
 
@@ -825,7 +830,7 @@ void audio_thread_func(void *arg) {
                 // Fill the buffer with new audio data
                 if (tracks[i].instrument_type == SUB_SYNTH) {
                     SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
-                    fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth, 1.0f);
+                    fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth);
                 } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
                     OpusSampler *sampler = (OpusSampler *) tracks[i].instrument_data;
                     if (sampler->seek_requested) {
