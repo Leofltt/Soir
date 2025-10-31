@@ -13,6 +13,7 @@
 #include "ui_constants.h"
 #include "views.h"
 #include "event_queue.h"
+#include "sample_bank.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -27,13 +28,12 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #define STACK_SIZE (N_TRACKS * 32 * 1024)
 
-static const char *PATH = "romfs:/samples/bibop.opus";
-
 static Track         tracks[N_TRACKS];
 static LightLock     clock_lock;
 static LightLock     tracks_lock;
 static volatile bool should_exit = false;
 static EventQueue    g_event_queue;
+static SampleBank    g_sample_bank;
 
 static Thread clock_thread;
 static Thread audio_thread;
@@ -69,6 +69,7 @@ static void processTrackEvent(Event *event) {
             &event->instrument_specific_params.sampler_params; // Changed access
         Sampler *s = (Sampler *) track->instrument_data;
         if (opusSamplerParams && s) {
+            s->sample = SampleBank_get_sample(&g_sample_bank, opusSamplerParams->sample_index);
             s->start_position = opusSamplerParams->start_position;
             s->playback_mode  = opusSamplerParams->playback_mode;
             s->seek_requested = true;
@@ -91,6 +92,7 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
+    SampleBank_init(&g_sample_bank);
 
     int ret = 0;
 
@@ -219,12 +221,6 @@ int main(int argc, char **argv) {
     tracks[0].sequencer = seq1;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
-    Sample *sample = sample_create(PATH);
-    if (!sample) {
-        ret = 1;
-        goto cleanup;
-    }
-
     audioBuffer2 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer2) {
         ret = 1;
@@ -245,7 +241,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler                  = (Sampler) { .sample          = sample,
+    *sampler                  = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
                                             .start_position  = 0,
                                             .playback_mode   = ONE_SHOT,
                                             .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -272,10 +268,11 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     for (int i = 0; i < 16; i++) {
-        opusSamplerParamsArray[i] = defaultOpusSamplerParameters();
-        trackParamsArray2[i]      = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
-        sequence2[i]              = (SeqStep) { .active = false };
-        sequence2[i].data         = &trackParamsArray2[i];
+        opusSamplerParamsArray[i]              = defaultOpusSamplerParameters();
+        opusSamplerParamsArray[i].sample_index = 0;
+        trackParamsArray2[i] = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
+        sequence2[i]         = (SeqStep) { .active = false };
+        sequence2[i].data    = &trackParamsArray2[i];
     }
     seq2 = (Sequencer *) linearAlloc(sizeof(Sequencer));
     if (!seq2) {
@@ -324,6 +321,9 @@ int main(int argc, char **argv) {
             screen_focus             = FOCUS_TOP;
             session.main_screen_view = VIEW_QUIT;
             selectedQuitOption       = 0; // Reset selection when opening
+            LightLock_Lock(&clock_lock);
+            pauseClock(clock);
+            LightLock_Unlock(&clock_lock);
         }
 
         if (session.main_screen_view != VIEW_QUIT) {
@@ -698,7 +698,7 @@ int main(int argc, char **argv) {
             drawTouchClockSettingsView(clock, selected_touch_clock_option);
             break;
         case VIEW_SAMPLE_MANAGER:
-            drawSampleManagerView(selected_sample_row, selected_sample_col);
+            drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col);
             break;
         case VIEW_STEP_SETTINGS:
             drawStepSettingsView(&session, tracks, selected_row, selected_col,
@@ -751,8 +751,6 @@ cleanup:
         linearFree(audioBuffer2);
     if (tracks[1].instrument_data) {
         Sampler *s = (Sampler *) tracks[1].instrument_data;
-        if (s->sample)
-            sample_destroy(s->sample);
         if (s->env)
             linearFree(s->env);
         linearFree(s);
@@ -766,6 +764,7 @@ cleanup:
     if (opusSamplerParamsArray)
         linearFree(opusSamplerParamsArray);
 
+    SampleBank_deinit(&g_sample_bank);
     deinitViews();
     ndspExit();
     C2D_Fini();

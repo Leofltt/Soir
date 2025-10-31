@@ -25,8 +25,6 @@ typedef struct {
     bool         finished;
 } Sampler;
 
-void sampler_set_sample(Sampler *sampler, Sample *sample);
-
 bool sampler_is_looping(Sampler *sampler);
 
 void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler);

@@ -40,6 +40,7 @@ typedef struct {
     int          env_dur;
     PlaybackMode playback_mode;
     int64_t      start_position;
+    int          sample_index;
 } OpusSamplerParameters;
 
 extern SubSynthParameters    defaultSubSynthParameters();

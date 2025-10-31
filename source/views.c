@@ -6,6 +6,7 @@
 #include "polybleposc.h"
 #include "samplers.h"
 #include "sample.h"
+#include "sample_bank.h"
 #include "session_controller.h"
 #include "ui_constants.h"
 #include <stdio.h>
@@ -373,7 +374,7 @@ void drawTouchClockSettingsView(Clock *clock, int selected_option) {
         C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
     }
 }
-void drawSampleManagerView(int selected_row, int selected_col) {
+void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col) {
     int   num_rows    = 3;
     int   num_cols    = 4;
     float cell_width  = BOTTOM_SCREEN_WIDTH / num_cols;
@@ -385,6 +386,22 @@ void drawSampleManagerView(int selected_row, int selected_col) {
             float y     = i * cell_height;
             u32   color = (i == selected_row && j == selected_col) ? CLR_YELLOW : CLR_DARK_GRAY;
             C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, color, color, color, color);
+
+            int sample_index = i * num_cols + j;
+            if (sample_index < MAX_SAMPLES) {
+                const char *sample_name = SampleBank_get_sample_name(bank, sample_index);
+                C2D_TextBufClear(text_buf);
+                C2D_TextFontParse(&text_obj, font_angular, text_buf, sample_name);
+                C2D_TextOptimize(&text_obj);
+
+                float text_width, text_height;
+                C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+
+                float text_x = x + (cell_width - text_width) / 2;
+                float text_y = y + (cell_height - text_height) / 2;
+
+                C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
+            }
         }
     }
 }

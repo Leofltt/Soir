@@ -4,6 +4,7 @@
 #include "clock.h"
 #include "track.h"
 #include "session_controller.h"
+#include "sample_bank.h"
 
 extern void initViews();
 extern void deinitViews();
@@ -16,7 +17,7 @@ extern void drawClockSettingsView(Clock *clock, int selected_option);
 extern void drawQuitMenu(const char *options[], int num_options, int selected_option);
 extern void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus);
 extern void drawTouchClockSettingsView(Clock *clock, int selected_option);
-extern void drawSampleManagerView(int selected_row, int selected_col);
+extern void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col);
 extern void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
                                  int selected_col, int selected_step_option);
 

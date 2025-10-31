@@ -20,7 +20,8 @@ OpusSamplerParameters defaultOpusSamplerParameters() {
                                      .env_rel        = 100,
                                      .env_dur        = 1000,
                                      .playback_mode  = ONE_SHOT,
-                                     .start_position = 0 };
+                                     .start_position = 0,
+                                     .sample_index   = 0 };
     return params;
 };
 TrackParameters defaultTrackParameters(int track_id, void *instrument_data) {

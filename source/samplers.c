@@ -16,13 +16,6 @@
 
 #include <string.h>
 
-void sampler_set_sample(Sampler *sampler, Sample *sample) {
-    if (sampler->sample) {
-        sample_destroy(sampler->sample);
-    }
-    sampler->sample = sample;
-};
-
 bool sampler_is_looping(Sampler *sampler) {
     return sampler->playback_mode == LOOP;
 }
