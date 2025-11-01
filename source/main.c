@@ -693,6 +693,50 @@ int main(int argc, char **argv) {
                                                 loaded_sample_count;
                                         }
                                     }
+                                } else if (selected_step_option == 5) { // Playback Mode
+                                    OpusSamplerParameters *sampler_params =
+                                        &g_editing_sampler_params;
+                                    if (kDown & KEY_UP || kDown & KEY_DOWN) {
+                                        sampler_params->playback_mode =
+                                            (sampler_params->playback_mode == ONE_SHOT) ? LOOP
+                                                                                        : ONE_SHOT;
+                                    }
+                                } else if (selected_step_option == 6) { // Start Pos
+                                    OpusSamplerParameters *sampler_params =
+                                        &g_editing_sampler_params;
+                                    Sample *sample = SampleBank_get_sample(
+                                        &g_sample_bank, sampler_params->sample_index);
+                                    if (sample && sample->pcm_length > 0) {
+                                        float start_pos_normalized =
+                                            (float) sampler_params->start_position /
+                                            sample->pcm_length;
+                                        if (kDown & KEY_UP) {
+                                            start_pos_normalized += 0.01f;
+                                            up_timer = now + HOLD_DELAY_INITIAL;
+                                        } else if (kHeld & KEY_UP) {
+                                            if (now >= up_timer) {
+                                                start_pos_normalized += 0.01f;
+                                                up_timer = now + HOLD_DELAY_REPEAT;
+                                            }
+                                        }
+                                        if (kDown & KEY_DOWN) {
+                                            start_pos_normalized -= 0.01f;
+                                            down_timer = now + HOLD_DELAY_INITIAL;
+                                        } else if (kHeld & KEY_DOWN) {
+                                            if (now >= down_timer) {
+                                                start_pos_normalized -= 0.01f;
+                                                down_timer = now + HOLD_DELAY_REPEAT;
+                                            }
+                                        }
+
+                                        if (start_pos_normalized < 0.0f)
+                                            start_pos_normalized = 0.0f;
+                                        if (start_pos_normalized > 1.0f)
+                                            start_pos_normalized = 1.0f;
+
+                                        sampler_params->start_position =
+                                            start_pos_normalized * sample->pcm_length;
+                                    }
                                 }
                             }
                         }

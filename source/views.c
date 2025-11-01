@@ -598,7 +598,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         } else if (track.instrument_type == OPUS_SAMPLER) {
             OpusSamplerParameters *params =
                 (OpusSamplerParameters *) seq_step.data->instrument_data;
-            const char *sampler_params[]      = { "Sample", "Looping", "Start Pos" };
+            const char *sampler_params[]      = { "Sample", "Pb Mode", "Start Pos" };
             const char *playback_mode_names[] = { "One Shot", "Loop" };
             for (int i = 0; i < 3; i++) {
                 float x           = 160;
@@ -643,10 +643,16 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                     snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
                              playback_mode_names[params->playback_mode]);
                     break;
-                case 2:
-                    snprintf(buffer, sizeof(buffer), "%s: %lld", sampler_params[i],
-                             params->start_position);
+                case 2: {
+                    Sample *sample = SampleBank_get_sample(sample_bank, params->sample_index);
+                    float   start_pos_normalized = 0.0f;
+                    if (sample && sample->pcm_length > 0) {
+                        start_pos_normalized = (float) params->start_position / sample->pcm_length;
+                    }
+                    snprintf(buffer, sizeof(buffer), "%s: %.2f", sampler_params[i],
+                             start_pos_normalized);
                     break;
+                }
                 }
                 C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
                 C2D_TextOptimize(&text_obj);
@@ -713,6 +719,17 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
         if (selected_step_option == 4) { // Sample
             snprintf(text, sizeof(text), "Sample: %s",
                      SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
+        } else if (selected_step_option == 5) { // Playback Mode
+            const char *playback_mode_names[] = { "One Shot", "Loop" };
+            snprintf(text, sizeof(text), "Playback Mode: %s",
+                     playback_mode_names[sampler_params->playback_mode]);
+        } else if (selected_step_option == 6) { // Start Pos
+            Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
+            float   start_pos_normalized = 0.0f;
+            if (sample && sample->pcm_length > 0) {
+                start_pos_normalized = (float) sampler_params->start_position / sample->pcm_length;
+            }
+            snprintf(text, sizeof(text), "Start Pos: %.2f", start_pos_normalized);
         }
     }
 

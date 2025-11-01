@@ -8,6 +8,7 @@
 typedef struct {
     char        *path;
     OggOpusFile *opusFile;
+    opus_int64   pcm_length;
 } Sample;
 
 Sample     *sample_create(const char *path);

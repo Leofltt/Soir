@@ -22,6 +22,8 @@ Sample *sample_create(const char *path) {
         return NULL;
     }
 
+    sample->pcm_length = op_pcm_total(sample->opusFile, -1);
+
     return sample;
 }
 
