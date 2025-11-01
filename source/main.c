@@ -929,7 +929,7 @@ int main(int argc, char **argv) {
             break;
         case VIEW_STEP_SETTINGS:
             drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option,
-                                 &g_sample_bank);
+                                 &g_sample_bank, screen_focus);
             break;
         default:
             break;

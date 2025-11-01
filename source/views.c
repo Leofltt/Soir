@@ -145,7 +145,7 @@ void drawTracksSequencers(Track *tracks, int cur_step) {
     }
 }
 
-static void drawSelectionOverlay(int row, int col) {
+static void drawSelectionOverlay(int row, int col, bool is_focused) {
     float track_height = SCREEN_HEIGHT / 13;
     float x, y, w, h;
 
@@ -168,7 +168,19 @@ static void drawSelectionOverlay(int row, int col) {
         }
     }
 
-    C2D_DrawRectangle(x, y, 0, w, h, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW);
+    if (is_focused) {
+        C2D_DrawRectangle(x, y, 0, w, h, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW, CLR_YELLOW);
+    } else {
+        u32 border_color = CLR_YELLOW;
+        C2D_DrawRectangle(x, y, 0, w, 1, border_color, border_color, border_color,
+                          border_color); // Top
+        C2D_DrawRectangle(x, y + h - 1, 0, w, 1, border_color, border_color, border_color,
+                          border_color); // Bottom
+        C2D_DrawRectangle(x, y, 0, 1, h, border_color, border_color, border_color,
+                          border_color); // Left
+        C2D_DrawRectangle(x + w - 1, y, 0, 1, h, border_color, border_color, border_color,
+                          border_color); // Right
+    }
 }
 
 void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col,
@@ -195,9 +207,7 @@ void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_co
     drawStepsBar(cur_step);
     drawTrackbar(clock, tracks);
     drawTracksSequencers(tracks, cur_step);
-    if (focus == FOCUS_TOP) {
-        drawSelectionOverlay(selected_row, selected_col);
-    }
+    drawSelectionOverlay(selected_row, selected_col, focus == FOCUS_TOP);
 }
 
 void drawClockSettingsView(Clock *clock, int selected_option) {
@@ -306,9 +316,27 @@ void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus) {
 
     for (int i = 0; i < num_options; i++) {
         float rect_x = start_x + (rect_width + spacing) * i;
-        u32   color = (i == selected_option && focus == FOCUS_BOTTOM) ? CLR_YELLOW : CLR_LIGHT_GRAY;
-
-        C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, color, color, color, color);
+        if (i == selected_option) {
+            if (focus == FOCUS_BOTTOM) {
+                C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, CLR_YELLOW,
+                                  CLR_YELLOW, CLR_YELLOW, CLR_YELLOW);
+            } else {
+                C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, CLR_LIGHT_GRAY,
+                                  CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+                u32 border_color = CLR_YELLOW;
+                C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, 1, border_color, border_color,
+                                  border_color, border_color); // Top
+                C2D_DrawRectangle(rect_x, rect_y + rect_height - 1, 0, rect_width, 1, border_color,
+                                  border_color, border_color, border_color); // Bottom
+                C2D_DrawRectangle(rect_x, rect_y, 0, 1, rect_height, border_color, border_color,
+                                  border_color, border_color); // Left
+                C2D_DrawRectangle(rect_x + rect_width - 1, rect_y, 0, 1, rect_height, border_color,
+                                  border_color, border_color, border_color); // Right
+            }
+        } else {
+            C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, CLR_LIGHT_GRAY,
+                              CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        }
 
         C2D_Font current_font = font_angular;
         u32      text_color   = CLR_BLACK;
@@ -407,7 +435,7 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
 }
 
 void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int selected_col,
-                          int selected_step_option, SampleBank *sample_bank) {
+                          int selected_step_option, SampleBank *sample_bank, ScreenFocus focus) {
     if (selected_row == 0 || selected_col == 0) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "No Track Selected");
@@ -457,21 +485,37 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         // Common Parameters
         const char *common_params[] = { "Volume", "Pan", "Filter Cf", "Filter Type" };
         for (int i = 0; i < 4; i++) {
-            float x          = 10;
-            float y          = 30 + i * (cell_height + padding);
-            u32   bg_color   = (selected_step_option == i) ? CLR_YELLOW : base_bg_color;
-            u32   text_color = (selected_step_option == i) ? CLR_BLACK : base_text_color;
+            float x           = 10;
+            float y           = 30 + i * (cell_height + padding);
+            bool  is_selected = (selected_step_option == i);
+            u32   bg_color, text_color;
+
+            if (is_selected) {
+                if (focus == FOCUS_BOTTOM) {
+                    bg_color   = CLR_YELLOW;
+                    text_color = CLR_BLACK;
+                } else {
+                    bg_color   = base_bg_color;
+                    text_color = base_text_color;
+                }
+            } else {
+                bg_color   = base_bg_color;
+                text_color = base_text_color;
+            }
 
             C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
                               bg_color);
-            C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
-                              border_color);
-            C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color, border_color,
-                              border_color, border_color);
-            C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
-                              border_color);
-            C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color, border_color,
-                              border_color, border_color);
+
+            u32 current_border_color =
+                (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+            C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
 
             C2D_TextBufClear(text_buf);
             switch (i) {
@@ -502,21 +546,37 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             SubSynthParameters *params = (SubSynthParameters *) seq_step.data->instrument_data;
             const char         *synth_params[] = { "MIDI Note", "Waveform" };
             for (int i = 0; i < 2; i++) {
-                float x          = 160;
-                float y          = 30 + i * (cell_height + padding);
-                u32   bg_color   = (selected_step_option == i + 4) ? CLR_YELLOW : base_bg_color;
-                u32   text_color = (selected_step_option == i + 4) ? CLR_BLACK : base_text_color;
+                float x           = 160;
+                float y           = 30 + i * (cell_height + padding);
+                bool  is_selected = (selected_step_option == i + 4);
+                u32   bg_color, text_color;
+
+                if (is_selected) {
+                    if (focus == FOCUS_BOTTOM) {
+                        bg_color   = CLR_YELLOW;
+                        text_color = CLR_BLACK;
+                    } else {
+                        bg_color   = base_bg_color;
+                        text_color = base_text_color;
+                    }
+                } else {
+                    bg_color   = base_bg_color;
+                    text_color = base_text_color;
+                }
 
                 C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
                                   bg_color);
-                C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
-                                  border_color);
-                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color,
-                                  border_color, border_color, border_color);
-                C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
-                                  border_color);
-                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color,
-                                  border_color, border_color, border_color);
+
+                u32 current_border_color =
+                    (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+                C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
 
                 C2D_TextBufClear(text_buf);
                 switch (i) {
@@ -541,21 +601,37 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             const char *sampler_params[]      = { "Sample", "Looping", "Start Pos" };
             const char *playback_mode_names[] = { "One Shot", "Loop" };
             for (int i = 0; i < 3; i++) {
-                float x          = 160;
-                float y          = 30 + i * (cell_height + padding);
-                u32   bg_color   = (selected_step_option == i + 4) ? CLR_YELLOW : base_bg_color;
-                u32   text_color = (selected_step_option == i + 4) ? CLR_BLACK : base_text_color;
+                float x           = 160;
+                float y           = 30 + i * (cell_height + padding);
+                bool  is_selected = (selected_step_option == i + 4);
+                u32   bg_color, text_color;
+
+                if (is_selected) {
+                    if (focus == FOCUS_BOTTOM) {
+                        bg_color   = CLR_YELLOW;
+                        text_color = CLR_BLACK;
+                    } else {
+                        bg_color   = base_bg_color;
+                        text_color = base_text_color;
+                    }
+                } else {
+                    bg_color   = base_bg_color;
+                    text_color = base_text_color;
+                }
 
                 C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
                                   bg_color);
-                C2D_DrawRectangle(x, y, 0, cell_width, 1, border_color, border_color, border_color,
-                                  border_color);
-                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, border_color,
-                                  border_color, border_color, border_color);
-                C2D_DrawRectangle(x, y, 0, 1, cell_height, border_color, border_color, border_color,
-                                  border_color);
-                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, border_color,
-                                  border_color, border_color, border_color);
+
+                u32 current_border_color =
+                    (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+                C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
+                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                                  current_border_color, current_border_color, current_border_color);
 
                 C2D_TextBufClear(text_buf);
                 switch (i) {
