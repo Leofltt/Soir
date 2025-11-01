@@ -928,8 +928,8 @@ int main(int argc, char **argv) {
             drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col);
             break;
         case VIEW_STEP_SETTINGS:
-            drawStepSettingsView(&session, tracks, selected_row, selected_col,
-                                 selected_step_option);
+            drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option,
+                                 &g_sample_bank);
             break;
         default:
             break;

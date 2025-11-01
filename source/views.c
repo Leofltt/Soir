@@ -407,7 +407,7 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
 }
 
 void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int selected_col,
-                          int selected_step_option) {
+                          int selected_step_option, SampleBank *sample_bank) {
     if (selected_row == 0 || selected_col == 0) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "No Track Selected");
@@ -538,7 +538,6 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         } else if (track.instrument_type == OPUS_SAMPLER) {
             OpusSamplerParameters *params =
                 (OpusSamplerParameters *) seq_step.data->instrument_data;
-            Sampler    *sampler               = (Sampler *) track.instrument_data;
             const char *sampler_params[]      = { "Sample", "Looping", "Start Pos" };
             const char *playback_mode_names[] = { "One Shot", "Loop" };
             for (int i = 0; i < 3; i++) {
@@ -562,7 +561,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                 switch (i) {
                 case 0:
                     snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
-                             sample_get_name(sampler->sample));
+                             SampleBank_get_sample_name(sample_bank, params->sample_index));
                     break;
                 case 1:
                     snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
