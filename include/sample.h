@@ -1,7 +1,9 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
+#ifndef TESTING
 #include <opusfile.h>
+#endif
 
 typedef struct {
     char        *path;

@@ -1,5 +1,5 @@
-#include "envelope.h"
 #include "mock_3ds.h"
+#include "envelope.h"
 #include "unity.h"
 
 void test_envelope_initialization(void) {

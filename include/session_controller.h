@@ -2,10 +2,11 @@
 #define SESSION_CONTROLLER_H
 
 typedef enum {
-    VIEW_MAIN     = 0,
-    VIEW_SETTINGS = 1,
-    VIEW_ABOUT    = 2,
-    VIEW_QUIT     = 3,
+    VIEW_MAIN               = 0,
+    VIEW_SETTINGS           = 1,
+    VIEW_ABOUT              = 2,
+    VIEW_QUIT               = 3,
+    VIEW_STEP_SETTINGS_EDIT = 4,
 } TopScreenView;
 
 typedef enum {

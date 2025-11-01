@@ -1,5 +1,5 @@
-#include "clock.h"
 #include "mock_3ds.h"
+#include "clock.h"
 #include "unity.h"
 #include <math.h>
 

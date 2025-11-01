@@ -1,4 +1,5 @@
 #include "track_parameters.h"
+#include "audio_utils.h"
 #include "synth.h"
 
 SubSynthParameters defaultSubSynthParameters() {

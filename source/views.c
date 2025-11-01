@@ -500,7 +500,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         // Instrument-specific Parameters
         if (track.instrument_type == SUB_SYNTH) {
             SubSynthParameters *params = (SubSynthParameters *) seq_step.data->instrument_data;
-            const char         *synth_params[] = { "MIDI Freq", "Waveform" };
+            const char         *synth_params[] = { "MIDI Note", "Waveform" };
             for (int i = 0; i < 2; i++) {
                 float x          = 160;
                 float y          = 30 + i * (cell_height + padding);
@@ -520,10 +520,11 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
 
                 C2D_TextBufClear(text_buf);
                 switch (i) {
-                case 0:
-                    snprintf(buffer, sizeof(buffer), "%s: %d", synth_params[i],
-                             hertzToMidi(params->osc_freq));
+                case 0: {
+                    int midi_note = hertzToMidi(params->osc_freq);
+                    snprintf(buffer, sizeof(buffer), "%s: %d", synth_params[i], midi_note);
                     break;
+                }
                 case 1:
                     snprintf(buffer, sizeof(buffer), "%s: %s", synth_params[i],
                              waveform_names[params->osc_waveform]);
@@ -586,4 +587,68 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         C2D_TextOptimize(&text_obj);
         C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, 0.4f, 0.4f, CLR_LIGHT_GRAY);
     }
+}
+
+void drawStepSettingsEditView(Track *track, TrackParameters *params, int selected_step_option,
+                              SampleBank *sample_bank) {
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128),
+                      C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128),
+                      C2D_Color32(0, 0, 0, 128));
+
+    // Menu box
+    float menu_width  = 300;
+    float menu_height = 100;
+    float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
+                      CLR_BLACK);
+    // Border
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
+                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
+                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
+                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
+                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+
+    C2D_TextBufClear(text_buf);
+    char text[64];
+
+    if (selected_step_option == 0) { // Volume
+        snprintf(text, sizeof(text), "Volume: %.1f", params->volume);
+    } else if (selected_step_option == 1) { // Pan
+        snprintf(text, sizeof(text), "Pan: %.1f", params->pan);
+    } else if (selected_step_option == 2) { // Filter CF
+        snprintf(text, sizeof(text), "Filter Cf: %.0f", params->ndsp_filter_cutoff);
+    } else if (selected_step_option == 3) { // Filter Type
+        snprintf(text, sizeof(text), "Filter Type: %s",
+                 ndsp_biquad_filter_names[params->ndsp_filter_type]);
+    } else if (track->instrument_type == SUB_SYNTH) {
+        SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
+        if (selected_step_option == 4) { // MIDI Note
+            int midi_note = hertzToMidi(synth_params->osc_freq);
+            snprintf(text, sizeof(text), "MIDI Note: %d", midi_note);
+        } else if (selected_step_option == 5) { // Waveform
+            snprintf(text, sizeof(text), "Waveform: %s",
+                     waveform_names[synth_params->osc_waveform]);
+        }
+    } else if (track->instrument_type == OPUS_SAMPLER) {
+        OpusSamplerParameters *sampler_params = (OpusSamplerParameters *) params->instrument_data;
+        if (selected_step_option == 4) { // Sample
+            snprintf(text, sizeof(text), "Sample: %s",
+                     SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
+        }
+    }
+
+    C2D_TextFontParse(&text_obj, font_heavy, text_buf, text);
+    C2D_TextOptimize(&text_obj);
+
+    float text_width, text_height;
+    C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+
+    float text_x = menu_x + (menu_width - text_width) / 2;
+    float text_y = menu_y + (menu_height - text_height) / 2;
+
+    C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_YELLOW);
 }

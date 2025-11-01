@@ -20,5 +20,7 @@ extern void drawTouchClockSettingsView(Clock *clock, int selected_option);
 extern void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col);
 extern void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
                                  int selected_col, int selected_step_option);
+extern void drawStepSettingsEditView(Track *track, TrackParameters *params,
+                                     int selected_step_option, SampleBank *sample_bank);
 
 #endif // VIEWS_H

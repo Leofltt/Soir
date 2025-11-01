@@ -53,3 +53,13 @@ void SampleBank_load_sample(SampleBank *bank, int index, const char *path) {
 
     bank->samples[index] = sample_create(path);
 }
+
+int SampleBank_get_loaded_sample_count(SampleBank *bank) {
+    int count = 0;
+    for (int i = 0; i < MAX_SAMPLES; i++) {
+        if (bank->samples[i] != NULL) {
+            count++;
+        }
+    }
+    return count;
+}

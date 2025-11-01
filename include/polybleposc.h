@@ -7,6 +7,8 @@
 
 typedef enum { SINE = 0, SQUARE = 1, SAW = 2, TRIANGLE = 3 } Waveform;
 
+#define WAVEFORM_COUNT 4
+
 extern const char *waveform_names[];
 
 typedef struct {
