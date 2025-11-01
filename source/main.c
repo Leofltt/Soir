@@ -895,6 +895,14 @@ int main(int argc, char **argv) {
                     }
                 }
 
+                if (kDown & KEY_X) {
+                    selected_col = (selected_col % 16) + 1;
+                }
+
+                if (kDown & KEY_B) {
+                    selected_row = (selected_row % N_TRACKS) + 1;
+                }
+
                 selected_step_option = (current_col == 0) ? current_row : current_row + num_left;
 
                 if (kDown & KEY_A) {
