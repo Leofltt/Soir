@@ -766,7 +766,7 @@ int main(int argc, char **argv) {
                     selected_touch_option =
                         (selected_touch_option > 0) ? selected_touch_option - 1 : 1;
                 }
-                if (kDown & KEY_DOWN) {
+                if (kDown & KEY_RIGHT) {
                     selected_touch_option =
                         (selected_touch_option < 1) ? selected_touch_option + 1 : 0;
                 }

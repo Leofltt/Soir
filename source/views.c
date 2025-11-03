@@ -703,8 +703,7 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
     } else if (selected_step_option == 2) { // Filter CF
         snprintf(text, sizeof(text), "%.0f Hz", params->ndsp_filter_cutoff);
     } else if (selected_step_option == 3) { // Filter Type
-        snprintf(text, sizeof(text), "%s",
-                 ndsp_biquad_filter_names[params->ndsp_filter_type]);
+        snprintf(text, sizeof(text), "%s", ndsp_biquad_filter_names[params->ndsp_filter_type]);
     } else if (track->instrument_type == SUB_SYNTH) {
         SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
         if (selected_step_option == 4) { // MIDI Note
@@ -720,8 +719,7 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                      SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
         } else if (selected_step_option == 5) { // Playback Mode
             const char *playback_mode_names[] = { "One Shot", "Loop" };
-            snprintf(text, sizeof(text), "%s",
-                     playback_mode_names[sampler_params->playback_mode]);
+            snprintf(text, sizeof(text), "%s", playback_mode_names[sampler_params->playback_mode]);
         } else if (selected_step_option == 6) { // Start Pos
             Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
             float   start_pos_normalized = 0.0f;
