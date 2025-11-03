@@ -6,7 +6,7 @@ typedef enum {
     VIEW_SETTINGS           = 1,
     VIEW_ABOUT              = 2,
     VIEW_QUIT               = 3,
-    VIEW_STEP_SETTINGS_EDIT = 4,
+    VIEW_STEP_SETTINGS_EDIT = 4
 } TopScreenView;
 
 typedef enum {

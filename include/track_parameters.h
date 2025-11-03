@@ -23,7 +23,6 @@ typedef struct {
 typedef struct {
     int      env_atk;
     int      env_dec;
-    int      env_sus_time;
     float    env_sus_level;
     int      env_rel;
     int      env_dur;
@@ -34,7 +33,6 @@ typedef struct {
 typedef struct {
     int          env_atk;
     int          env_dec;
-    int          env_sus_time;
     float        env_sus_level;
     int          env_rel;
     int          env_dur;

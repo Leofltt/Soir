@@ -5,7 +5,6 @@
 SubSynthParameters defaultSubSynthParameters() {
     SubSynthParameters params = { .env_atk       = 50,
                                   .env_dec       = 300,
-                                  .env_sus_time  = 550,
                                   .env_sus_level = 0.8f,
                                   .env_rel       = 100,
                                   .env_dur       = 1000,
@@ -16,7 +15,6 @@ SubSynthParameters defaultSubSynthParameters() {
 OpusSamplerParameters defaultOpusSamplerParameters() {
     OpusSamplerParameters params = { .env_atk        = 50,
                                      .env_dec        = 300,
-                                     .env_sus_time   = 550,
                                      .env_sus_level  = 0.8f,
                                      .env_rel        = 100,
                                      .env_dur        = 1000,

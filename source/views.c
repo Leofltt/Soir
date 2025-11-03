@@ -544,8 +544,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         // Instrument-specific Parameters
         if (track.instrument_type == SUB_SYNTH) {
             SubSynthParameters *params = (SubSynthParameters *) seq_step.data->instrument_data;
-            const char         *synth_params[] = { "MIDI Note", "Waveform" };
-            for (int i = 0; i < 2; i++) {
+            const char         *synth_params[] = { "MIDI Note", "Waveform", "Envelope", "Env Dur" };
+            for (int i = 0; i < 4; i++) {
                 float x           = 160;
                 float y           = 30 + i * (cell_height + padding);
                 bool  is_selected = (selected_step_option == i + 4);
@@ -589,6 +589,12 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                     snprintf(buffer, sizeof(buffer), "%s: %s", synth_params[i],
                              waveform_names[params->osc_waveform]);
                     break;
+                case 2:
+                    snprintf(buffer, sizeof(buffer), "%s", synth_params[i]);
+                    break;
+                case 3:
+                    snprintf(buffer, sizeof(buffer), "%s: %dms", synth_params[i], params->env_dur);
+                    break;
                 }
                 C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
                 C2D_TextOptimize(&text_obj);
@@ -598,9 +604,10 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         } else if (track.instrument_type == OPUS_SAMPLER) {
             OpusSamplerParameters *params =
                 (OpusSamplerParameters *) seq_step.data->instrument_data;
-            const char *sampler_params[]      = { "Sample", "Pb Mode", "Start Pos" };
+            const char *sampler_params[]      = { "Sample", "Pb Mode", "Start Pos", "Envelope",
+                                                  "Env Dur" };
             const char *playback_mode_names[] = { "One Shot", "Loop" };
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 5; i++) {
                 float x           = 160;
                 float y           = 30 + i * (cell_height + padding);
                 bool  is_selected = (selected_step_option == i + 4);
@@ -653,6 +660,13 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                              start_pos_normalized);
                     break;
                 }
+                case 3:
+                    snprintf(buffer, sizeof(buffer), "%s", sampler_params[i]);
+                    break;
+                case 4:
+                    snprintf(buffer, sizeof(buffer), "%s: %dms", sampler_params[i],
+                             params->env_dur);
+                    break;
                 }
                 C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
                 C2D_TextOptimize(&text_obj);
@@ -671,7 +685,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
 }
 
 void drawStepSettingsEditView(Track *track, TrackParameters *params, int selected_step_option,
-                              SampleBank *sample_bank) {
+                              int selected_adsr_option, SampleBank *sample_bank) {
     C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128),
                       C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128),
                       C2D_Color32(0, 0, 0, 128));
@@ -694,50 +708,106 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                       CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
 
     C2D_TextBufClear(text_buf);
-    char text[64];
+    char text[128];
 
-    if (selected_step_option == 0) { // Volume
-        snprintf(text, sizeof(text), "%.1f", params->volume);
-    } else if (selected_step_option == 1) { // Pan
-        snprintf(text, sizeof(text), "%.1f", params->pan);
-    } else if (selected_step_option == 2) { // Filter CF
-        snprintf(text, sizeof(text), "%.0f Hz", params->ndsp_filter_cutoff);
-    } else if (selected_step_option == 3) { // Filter Type
-        snprintf(text, sizeof(text), "%s", ndsp_biquad_filter_names[params->ndsp_filter_type]);
-    } else if (track->instrument_type == SUB_SYNTH) {
-        SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
-        if (selected_step_option == 4) { // MIDI Note
-            int midi_note = hertzToMidi(synth_params->osc_freq);
-            snprintf(text, sizeof(text), "%d", midi_note);
-        } else if (selected_step_option == 5) { // Waveform
-            snprintf(text, sizeof(text), "%s", waveform_names[synth_params->osc_waveform]);
+    bool is_synth   = track->instrument_type == SUB_SYNTH;
+    bool is_sampler = track->instrument_type == OPUS_SAMPLER;
+    bool is_envelope_option =
+        (is_synth && selected_step_option == 6) || (is_sampler && selected_step_option == 7);
+
+    if (is_envelope_option) {
+        const char *labels[] = { "A", "D", "S", "R" };
+        float       values[4];
+        char        value_str[4][16];
+
+        if (is_synth) {
+            SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
+            values[0]                        = synth_params->env_atk;
+            values[1]                        = synth_params->env_dec;
+            values[2]                        = synth_params->env_sus_level;
+            values[3]                        = synth_params->env_rel;
+        } else { // is_sampler
+            OpusSamplerParameters *sampler_params =
+                (OpusSamplerParameters *) params->instrument_data;
+            values[0] = sampler_params->env_atk;
+            values[1] = sampler_params->env_dec;
+            values[2] = sampler_params->env_sus_level;
+            values[3] = sampler_params->env_rel;
         }
-    } else if (track->instrument_type == OPUS_SAMPLER) {
-        OpusSamplerParameters *sampler_params = (OpusSamplerParameters *) params->instrument_data;
-        if (selected_step_option == 4) { // Sample
-            snprintf(text, sizeof(text), "%s",
-                     SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
-        } else if (selected_step_option == 5) { // Playback Mode
-            const char *playback_mode_names[] = { "One Shot", "Loop" };
-            snprintf(text, sizeof(text), "%s", playback_mode_names[sampler_params->playback_mode]);
-        } else if (selected_step_option == 6) { // Start Pos
-            Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
-            float   start_pos_normalized = 0.0f;
-            if (sample && sample->pcm_length > 0) {
-                start_pos_normalized = (float) sampler_params->start_position / sample->pcm_length;
+
+        snprintf(value_str[0], 16, "%d", (int) values[0]);
+        snprintf(value_str[1], 16, "%d", (int) values[1]);
+        snprintf(value_str[2], 16, "%.1f", values[2]);
+        snprintf(value_str[3], 16, "%d", (int) values[3]);
+
+        float start_x = menu_x + 20;
+        for (int i = 0; i < 4; i++) {
+            C2D_Font current_font = (i == selected_adsr_option) ? font_heavy : font_angular;
+            u32      color        = (i == selected_adsr_option) ? CLR_YELLOW : CLR_WHITE;
+
+            C2D_TextBufClear(text_buf);
+            snprintf(text, sizeof(text), "%s %s", labels[i], value_str[i]);
+            C2D_TextFontParse(&text_obj, current_font, text_buf, text);
+            C2D_TextOptimize(&text_obj);
+
+            float text_width, text_height;
+            C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+            float text_y = menu_y + (menu_height - text_height) / 2;
+            C2D_DrawText(&text_obj, C2D_WithColor, start_x, text_y, 0.0f, 0.5f, 0.5f, color);
+            start_x += text_width + 15;
+        }
+
+    } else {
+        if (selected_step_option == 0) { // Volume
+            snprintf(text, sizeof(text), "%.1f", params->volume);
+        } else if (selected_step_option == 1) { // Pan
+            snprintf(text, sizeof(text), "%.1f", params->pan);
+        } else if (selected_step_option == 2) { // Filter CF
+            snprintf(text, sizeof(text), "%.0f Hz", params->ndsp_filter_cutoff);
+        } else if (selected_step_option == 3) { // Filter Type
+            snprintf(text, sizeof(text), "%s", ndsp_biquad_filter_names[params->ndsp_filter_type]);
+        } else if (is_synth) {
+            SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
+            if (selected_step_option == 4) { // MIDI Note
+                int midi_note = hertzToMidi(synth_params->osc_freq);
+                snprintf(text, sizeof(text), "%d", midi_note);
+            } else if (selected_step_option == 5) { // Waveform
+                snprintf(text, sizeof(text), "%s", waveform_names[synth_params->osc_waveform]);
+            } else if (selected_step_option == 7) { // Env Dur
+                snprintf(text, sizeof(text), "%dms", synth_params->env_dur);
             }
-            snprintf(text, sizeof(text), "%.2f", start_pos_normalized);
+        } else if (is_sampler) {
+            OpusSamplerParameters *sampler_params =
+                (OpusSamplerParameters *) params->instrument_data;
+            if (selected_step_option == 4) { // Sample
+                snprintf(text, sizeof(text), "%s",
+                         SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
+            } else if (selected_step_option == 5) { // Playback Mode
+                const char *playback_mode_names[] = { "One Shot", "Loop" };
+                snprintf(text, sizeof(text), "%s",
+                         playback_mode_names[sampler_params->playback_mode]);
+            } else if (selected_step_option == 6) { // Start Pos
+                Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
+                float   start_pos_normalized = 0.0f;
+                if (sample && sample->pcm_length > 0) {
+                    start_pos_normalized =
+                        (float) sampler_params->start_position / sample->pcm_length;
+                }
+                snprintf(text, sizeof(text), "%.2f", start_pos_normalized);
+            } else if (selected_step_option == 8) {
+                snprintf(text, sizeof(text), "%dms", sampler_params->env_dur);
+            }
         }
+
+        C2D_TextFontParse(&text_obj, font_heavy, text_buf, text);
+        C2D_TextOptimize(&text_obj);
+
+        float text_width, text_height;
+        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+
+        float text_x = menu_x + (menu_width - text_width) / 2;
+        float text_y = menu_y + (menu_height - text_height) / 2;
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_YELLOW);
     }
-
-    C2D_TextFontParse(&text_obj, font_heavy, text_buf, text);
-    C2D_TextOptimize(&text_obj);
-
-    float text_width, text_height;
-    C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
-
-    float text_x = menu_x + (menu_width - text_width) / 2;
-    float text_y = menu_y + (menu_height - text_height) / 2;
-
-    C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_YELLOW);
 }
