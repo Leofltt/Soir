@@ -40,11 +40,19 @@ static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
 
-static Thread clock_thread;
-static Thread audio_thread;
+static Thread     clock_thread;
+static Thread     audio_thread;
+static Thread     timer_thread;
+static LightEvent s_audio_event;
+static LightEvent s_clock_event;
 
 void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
+void timer_thread_func(void *arg);
+
+static void audio_callback(void *data) {
+    LightEvent_Signal(&s_audio_event);
+}
 
 // Helper function to process events on the audio thread
 static void processTrackEvent(Event *event) {
@@ -145,10 +153,10 @@ int main(int argc, char **argv) {
 
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+    ndspSetCallback(audio_callback, NULL);
 
-    int pcfreq[] = { 175, 196, 220, 233, 262, 284, 314 };
-
-    int note = 1;
+    LightEvent_Init(&s_audio_event, RESET_ONESHOT);
+    LightEvent_Init(&s_clock_event, RESET_ONESHOT);
 
     // CLOCK //////////////////////////
     MusicalTime mt    = { .bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4 };
@@ -159,7 +167,7 @@ int main(int argc, char **argv) {
                           .status           = STOPPED,
                           .barBeats         = &mt };
     Clock      *clock = &cl;
-    setBpm(clock, 60.0f);
+    setBpm(clock, 127.0f);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -174,11 +182,11 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *osc = (PolyBLEPOscillator) { .frequency  = pcfreq[note],
+    *osc = (PolyBLEPOscillator) { .frequency  = 220.0f,
                                   .samplerate = SAMPLERATE,
                                   .waveform   = SINE,
                                   .phase      = 0.,
-                                  .phase_inc  = pcfreq[note] * M_TWOPI / SAMPLERATE };
+                                  .phase_inc  = 220.0f * M_TWOPI / SAMPLERATE };
 
     env = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env) {
@@ -297,6 +305,13 @@ int main(int argc, char **argv) {
     clock_thread = threadCreate(clock_thread_func, clock, STACK_SIZE, main_prio - 1, -2, true);
     if (clock_thread == NULL) {
         printf("Failed to create clock thread\n");
+        ret = 1;
+        goto cleanup;
+    }
+
+    timer_thread = threadCreate(timer_thread_func, NULL, STACK_SIZE, main_prio - 1, -2, true);
+    if (timer_thread == NULL) {
+        printf("Failed to create timer thread\n");
         ret = 1;
         goto cleanup;
     }
@@ -994,11 +1009,18 @@ cleanup:
     should_exit = true;
 
     if (clock_thread) {
+        LightEvent_Signal(&s_clock_event);
         threadJoin(clock_thread, U64_MAX);
         threadFree(clock_thread);
     }
 
+    if (timer_thread) {
+        threadJoin(timer_thread, U64_MAX);
+        threadFree(timer_thread);
+    }
+
     if (audio_thread) {
+        LightEvent_Signal(&s_audio_event);
         threadJoin(audio_thread, U64_MAX);
         threadFree(audio_thread);
     }
@@ -1058,6 +1080,10 @@ cleanup:
 void clock_thread_func(void *arg) {
     Clock *clock = (Clock *) arg;
     while (!should_exit) {
+        LightEvent_Wait(&s_clock_event);
+        if (should_exit)
+            break;
+
         LightLock_Lock(&clock_lock);
         int ticks_to_process = updateClock(clock);
 
@@ -1106,10 +1132,7 @@ void clock_thread_func(void *arg) {
             }
         }
         LightLock_Unlock(&clock_lock);
-
-        svcSleepThread(1000000);
     }
-    threadExit(0);
 }
 
 void audio_thread_func(void *arg) {
@@ -1152,9 +1175,13 @@ void audio_thread_func(void *arg) {
                 tracks[i].fillBlock = !tracks[i].fillBlock;
             }
         }
-
-        // Sleep for 1ms to prevent busy-waiting and starving other threads
-        svcSleepThread(1000000);
+        LightEvent_Wait(&s_audio_event);
     }
-    threadExit(0);
+}
+
+void timer_thread_func(void *arg) {
+    while (!should_exit) {
+        svcSleepThread(100000);
+        LightEvent_Signal(&s_clock_event);
+    }
 }
