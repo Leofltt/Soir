@@ -697,31 +697,30 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
     char text[64];
 
     if (selected_step_option == 0) { // Volume
-        snprintf(text, sizeof(text), "Volume: %.1f", params->volume);
+        snprintf(text, sizeof(text), "%.1f", params->volume);
     } else if (selected_step_option == 1) { // Pan
-        snprintf(text, sizeof(text), "Pan: %.1f", params->pan);
+        snprintf(text, sizeof(text), "%.1f", params->pan);
     } else if (selected_step_option == 2) { // Filter CF
-        snprintf(text, sizeof(text), "Filter Cf: %.0f", params->ndsp_filter_cutoff);
+        snprintf(text, sizeof(text), "%.0f Hz", params->ndsp_filter_cutoff);
     } else if (selected_step_option == 3) { // Filter Type
-        snprintf(text, sizeof(text), "Filter Type: %s",
+        snprintf(text, sizeof(text), "%s",
                  ndsp_biquad_filter_names[params->ndsp_filter_type]);
     } else if (track->instrument_type == SUB_SYNTH) {
         SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
         if (selected_step_option == 4) { // MIDI Note
             int midi_note = hertzToMidi(synth_params->osc_freq);
-            snprintf(text, sizeof(text), "MIDI Note: %d", midi_note);
+            snprintf(text, sizeof(text), "%d", midi_note);
         } else if (selected_step_option == 5) { // Waveform
-            snprintf(text, sizeof(text), "Waveform: %s",
-                     waveform_names[synth_params->osc_waveform]);
+            snprintf(text, sizeof(text), "%s", waveform_names[synth_params->osc_waveform]);
         }
     } else if (track->instrument_type == OPUS_SAMPLER) {
         OpusSamplerParameters *sampler_params = (OpusSamplerParameters *) params->instrument_data;
         if (selected_step_option == 4) { // Sample
-            snprintf(text, sizeof(text), "Sample: %s",
+            snprintf(text, sizeof(text), "%s",
                      SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
         } else if (selected_step_option == 5) { // Playback Mode
             const char *playback_mode_names[] = { "One Shot", "Loop" };
-            snprintf(text, sizeof(text), "Playback Mode: %s",
+            snprintf(text, sizeof(text), "%s",
                      playback_mode_names[sampler_params->playback_mode]);
         } else if (selected_step_option == 6) { // Start Pos
             Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
@@ -729,7 +728,7 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
             if (sample && sample->pcm_length > 0) {
                 start_pos_normalized = (float) sampler_params->start_position / sample->pcm_length;
             }
-            snprintf(text, sizeof(text), "Start Pos: %.2f", start_pos_normalized);
+            snprintf(text, sizeof(text), "%.2f", start_pos_normalized);
         }
     }
 
