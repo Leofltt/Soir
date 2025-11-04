@@ -13,19 +13,20 @@
 typedef enum { SUB_SYNTH = 0, OPUS_SAMPLER = 1, FM_SYNTH = 2 } InstrumentType;
 
 typedef struct Track {
-    int            chan_id;
-    float          mix[12];
-    InstrumentType instrument_type;
-    void          *instrument_data;
-    ndspWaveBuf    waveBuf[2];
-    u32           *audioBuffer;
-    NdspBiquad     filter;
-    bool           is_muted;
-    bool           is_soloed;
-    bool           fillBlock;
-    Sequencer     *sequencer;
-    float          volume;
-    float          pan;
+    int              chan_id;
+    float            mix[12];
+    InstrumentType   instrument_type;
+    void            *instrument_data;
+    ndspWaveBuf      waveBuf[2];
+    u32             *audioBuffer;
+    NdspBiquad       filter;
+    bool             is_muted;
+    bool             is_soloed;
+    bool             fillBlock;
+    Sequencer       *sequencer;
+    float            volume;
+    float            pan;
+    TrackParameters *default_parameters;
 } Track;
 
 extern void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,

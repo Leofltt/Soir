@@ -555,25 +555,74 @@ int main(int argc, char **argv) {
                     session.main_screen_view = VIEW_MAIN;
                     screen_focus             = FOCUS_BOTTOM;
                 } else if (kDown & KEY_A) { // Apply
-                    int step_idx = selected_col - 1;
-                    if (step_idx >= 0) {
-                        SeqStep *seq_step = &track->sequencer->steps[step_idx];
+                    if (selected_col == 0) {
+                        // Apply to all steps
+                        for (int i = 0;
+                             i < track->sequencer->n_beats * track->sequencer->steps_per_beat;
+                             i++) {
+                            SeqStep *seq_step                 = &track->sequencer->steps[i];
+                            void    *original_instrument_data = seq_step->data->instrument_data;
+                            memcpy(seq_step->data, &g_editing_step_params, sizeof(TrackParameters));
+                            seq_step->data->instrument_data = original_instrument_data;
 
-                        void *original_instrument_data = seq_step->data->instrument_data;
-                        memcpy(seq_step->data, &g_editing_step_params, sizeof(TrackParameters));
-                        seq_step->data->instrument_data = original_instrument_data;
+                            if (track->instrument_type == SUB_SYNTH) {
+                                memcpy(seq_step->data->instrument_data, &g_editing_subsynth_params,
+                                       sizeof(SubSynthParameters));
+                            } else if (track->instrument_type == OPUS_SAMPLER) {
+                                memcpy(seq_step->data->instrument_data, &g_editing_sampler_params,
+                                       sizeof(OpusSamplerParameters));
+                            }
+
+                            Event event = { .type            = TRIGGER_STEP,
+                                            .track_id        = track_idx,
+                                            .base_params     = *seq_step->data,
+                                            .instrument_type = track->instrument_type };
+
+                            if (track->instrument_type == SUB_SYNTH) {
+                                memcpy(&event.instrument_specific_params.subsynth_params,
+                                       seq_step->data->instrument_data, sizeof(SubSynthParameters));
+                            } else if (track->instrument_type == OPUS_SAMPLER) {
+                                memcpy(&event.instrument_specific_params.sampler_params,
+                                       seq_step->data->instrument_data,
+                                       sizeof(OpusSamplerParameters));
+                            }
+                            event_queue_push(&g_event_queue, event);
+                        }
+
+                        // Update default parameters for the track
+                        void *original_instrument_data = track->default_parameters->instrument_data;
+                        memcpy(track->default_parameters, &g_editing_step_params,
+                               sizeof(TrackParameters));
+                        track->default_parameters->instrument_data = original_instrument_data;
 
                         if (track->instrument_type == SUB_SYNTH) {
-                            memcpy(seq_step->data->instrument_data, &g_editing_subsynth_params,
-                                   sizeof(SubSynthParameters));
+                            memcpy(track->default_parameters->instrument_data,
+                                   &g_editing_subsynth_params, sizeof(SubSynthParameters));
                         } else if (track->instrument_type == OPUS_SAMPLER) {
-                            memcpy(seq_step->data->instrument_data, &g_editing_sampler_params,
-                                   sizeof(OpusSamplerParameters));
+                            memcpy(track->default_parameters->instrument_data,
+                                   &g_editing_sampler_params, sizeof(OpusSamplerParameters));
                         }
-                        track->filter.update_params = true;
+                    } else {
+                        int step_idx = selected_col - 1;
+                        if (step_idx >= 0) {
+                            SeqStep *seq_step = &track->sequencer->steps[step_idx];
+
+                            void *original_instrument_data = seq_step->data->instrument_data;
+                            memcpy(seq_step->data, &g_editing_step_params, sizeof(TrackParameters));
+                            seq_step->data->instrument_data = original_instrument_data;
+
+                            if (track->instrument_type == SUB_SYNTH) {
+                                memcpy(seq_step->data->instrument_data, &g_editing_subsynth_params,
+                                       sizeof(SubSynthParameters));
+                            } else if (track->instrument_type == OPUS_SAMPLER) {
+                                memcpy(seq_step->data->instrument_data, &g_editing_sampler_params,
+                                       sizeof(OpusSamplerParameters));
+                            }
+                        }
                     }
-                    session.main_screen_view = VIEW_MAIN;
-                    screen_focus             = FOCUS_BOTTOM;
+                    track->filter.update_params = true;
+                    session.main_screen_view    = VIEW_MAIN;
+                    screen_focus                = FOCUS_BOTTOM;
                 } else {
                     bool is_synth           = track->instrument_type == SUB_SYNTH;
                     bool is_sampler         = track->instrument_type == OPUS_SAMPLER;
@@ -1016,22 +1065,44 @@ int main(int argc, char **argv) {
                 selected_step_option = (current_col == 0) ? current_row : current_row + num_left;
 
                 if (kDown & KEY_A) {
-                    if (track_idx >= 0 && (selected_col - 1) >= 0) {
+                    if (track_idx >= 0) {
                         bool is_sampler = track->instrument_type == OPUS_SAMPLER;
                         int  max_option = is_sampler ? 8 : 7;
 
                         if (selected_step_option >= 0 && selected_step_option <= max_option) {
-                            SeqStep *seq_step = &track->sequencer->steps[selected_col - 1];
-
-                            memcpy(&g_editing_step_params, seq_step->data, sizeof(TrackParameters));
-                            if (track->instrument_type == SUB_SYNTH) {
-                                memcpy(&g_editing_subsynth_params, seq_step->data->instrument_data,
-                                       sizeof(SubSynthParameters));
-                                g_editing_step_params.instrument_data = &g_editing_subsynth_params;
-                            } else if (track->instrument_type == OPUS_SAMPLER) {
-                                memcpy(&g_editing_sampler_params, seq_step->data->instrument_data,
-                                       sizeof(OpusSamplerParameters));
-                                g_editing_step_params.instrument_data = &g_editing_sampler_params;
+                            if (selected_col == 0) {
+                                memcpy(&g_editing_step_params, track->default_parameters,
+                                       sizeof(TrackParameters));
+                                if (track->instrument_type == SUB_SYNTH) {
+                                    memcpy(&g_editing_subsynth_params,
+                                           track->default_parameters->instrument_data,
+                                           sizeof(SubSynthParameters));
+                                    g_editing_step_params.instrument_data =
+                                        &g_editing_subsynth_params;
+                                } else if (track->instrument_type == OPUS_SAMPLER) {
+                                    memcpy(&g_editing_sampler_params,
+                                           track->default_parameters->instrument_data,
+                                           sizeof(OpusSamplerParameters));
+                                    g_editing_step_params.instrument_data =
+                                        &g_editing_sampler_params;
+                                }
+                            } else {
+                                SeqStep *seq_step = &track->sequencer->steps[selected_col - 1];
+                                memcpy(&g_editing_step_params, seq_step->data,
+                                       sizeof(TrackParameters));
+                                if (track->instrument_type == SUB_SYNTH) {
+                                    memcpy(&g_editing_subsynth_params,
+                                           seq_step->data->instrument_data,
+                                           sizeof(SubSynthParameters));
+                                    g_editing_step_params.instrument_data =
+                                        &g_editing_subsynth_params;
+                                } else if (track->instrument_type == OPUS_SAMPLER) {
+                                    memcpy(&g_editing_sampler_params,
+                                           seq_step->data->instrument_data,
+                                           sizeof(OpusSamplerParameters));
+                                    g_editing_step_params.instrument_data =
+                                        &g_editing_sampler_params;
+                                }
                             }
                             session.main_screen_view = VIEW_STEP_SETTINGS_EDIT;
                             screen_focus             = FOCUS_TOP;

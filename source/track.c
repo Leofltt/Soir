@@ -3,6 +3,7 @@
 #include "engine_constants.h"
 #include "synth.h"
 #include "track_parameters.h"
+#include <stdlib.h>
 #ifndef TESTING
 #include <3ds/ndsp/ndsp.h>
 #include <3ds/types.h>
@@ -46,6 +47,24 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
     track->instrument_data = NULL;
     track->volume          = 1.0f; // Initialize volume
     track->pan             = 0.0f; // Initialize pan
+
+    // Initialize default parameters
+    track->default_parameters = malloc(sizeof(TrackParameters));
+    if (track->default_parameters) {
+        void *instrument_data = NULL;
+        if (instrument_type == SUB_SYNTH) {
+            instrument_data = malloc(sizeof(SubSynthParameters));
+            if (instrument_data) {
+                *((SubSynthParameters *) instrument_data) = defaultSubSynthParameters();
+            }
+        } else if (instrument_type == OPUS_SAMPLER) {
+            instrument_data = malloc(sizeof(OpusSamplerParameters));
+            if (instrument_data) {
+                *((OpusSamplerParameters *) instrument_data) = defaultOpusSamplerParameters();
+            }
+        }
+        *(track->default_parameters) = defaultTrackParameters(chan_id, instrument_data);
+    }
 
     ndspChnReset(track->chan_id);
     ndspChnSetInterp(track->chan_id, NDSP_INTERP_LINEAR);

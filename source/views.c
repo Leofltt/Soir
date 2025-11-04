@@ -436,7 +436,7 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
 
 void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int selected_col,
                           int selected_step_option, SampleBank *sample_bank, ScreenFocus focus) {
-    if (selected_row == 0 || selected_col == 0) {
+    if (selected_row == 0) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "No Track Selected");
         C2D_TextOptimize(&text_obj);
@@ -448,46 +448,180 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         float text_y = (SCREEN_HEIGHT - text_height) / 2;
 
         C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
-    } else {
-        int     track_idx = selected_row - 1;
-        int     step_idx  = selected_col - 1;
-        Track   track     = tracks[track_idx];
-        SeqStep seq_step  = track.sequencer->steps[step_idx];
+        return;
+    }
 
-        const char *instrument_name = "";
-        if (track.instrument_type == SUB_SYNTH) {
-            instrument_name = "Synth";
-        } else if (track.instrument_type == OPUS_SAMPLER) {
-            instrument_name = "Sampler";
+    int   track_idx = selected_row - 1;
+    Track track     = tracks[track_idx];
+
+    TrackParameters *params;
+    bool             is_all_steps = (selected_col == 0);
+
+    if (is_all_steps) {
+        params = track.default_parameters;
+    } else {
+        int step_idx = selected_col - 1;
+        params       = track.sequencer->steps[step_idx].data;
+    }
+
+    const char *instrument_name = "";
+    if (track.instrument_type == SUB_SYNTH) {
+        instrument_name = "Synth";
+    } else if (track.instrument_type == OPUS_SAMPLER) {
+        instrument_name = "Sampler";
+    }
+
+    C2D_TextBufClear(text_buf);
+    C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
+    C2D_TextOptimize(&text_obj);
+    C2D_DrawText(&text_obj, C2D_WithColor, 10, 10, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
+
+    char  buffer[128];
+    float cell_width  = 140;
+    float cell_height = 20;
+    float padding     = 5;
+
+    u32 base_bg_color, base_text_color, border_color;
+    // Use a default active state for "all steps" view
+    bool is_active = is_all_steps ? true : track.sequencer->steps[selected_col - 1].active;
+
+    if (is_active) {
+        base_bg_color   = CLR_LIGHT_GRAY;
+        base_text_color = CLR_BLACK;
+        border_color    = CLR_BLACK;
+    } else {
+        base_bg_color   = CLR_BLACK;
+        base_text_color = CLR_LIGHT_GRAY;
+        border_color    = CLR_LIGHT_GRAY;
+    }
+
+    // Common Parameters
+    const char *common_params[] = { "Volume", "Pan", "Filter Cf", "Filter Type" };
+    for (int i = 0; i < 4; i++) {
+        float x           = 10;
+        float y           = 30 + i * (cell_height + padding);
+        bool  is_selected = (selected_step_option == i);
+        u32   bg_color, text_color;
+
+        if (is_selected) {
+            if (focus == FOCUS_BOTTOM) {
+                bg_color   = CLR_YELLOW;
+                text_color = CLR_BLACK;
+            } else {
+                bg_color   = base_bg_color;
+                text_color = base_text_color;
+            }
+        } else {
+            bg_color   = base_bg_color;
+            text_color = base_text_color;
         }
+
+        C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color, bg_color);
+
+        u32 current_border_color =
+            (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+        C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color, current_border_color,
+                          current_border_color, current_border_color);
+        C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                          current_border_color, current_border_color, current_border_color);
+        C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color, current_border_color,
+                          current_border_color, current_border_color);
+        C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                          current_border_color, current_border_color, current_border_color);
 
         C2D_TextBufClear(text_buf);
-        C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
-        C2D_TextOptimize(&text_obj);
-        C2D_DrawText(&text_obj, C2D_WithColor, 10, 10, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
-
-        char  buffer[128];
-        float cell_width  = 140;
-        float cell_height = 20;
-        float padding     = 5;
-
-        u32 base_bg_color, base_text_color, border_color;
-        if (seq_step.active) {
-            base_bg_color   = CLR_LIGHT_GRAY;
-            base_text_color = CLR_BLACK;
-            border_color    = CLR_BLACK;
-        } else {
-            base_bg_color   = CLR_BLACK;
-            base_text_color = CLR_LIGHT_GRAY;
-            border_color    = CLR_LIGHT_GRAY;
+        switch (i) {
+        case 0:
+            snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->volume);
+            break;
+        case 1:
+            snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->pan);
+            break;
+        case 2:
+            snprintf(buffer, sizeof(buffer), "%s: %.0f", common_params[i],
+                     params->ndsp_filter_cutoff);
+            break;
+        case 3:
+            snprintf(buffer, sizeof(buffer), "%s: %s", common_params[i],
+                     ndsp_biquad_filter_names[params->ndsp_filter_type]);
+            break;
         }
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+        C2D_TextOptimize(&text_obj);
+        C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                     text_color);
+    }
 
-        // Common Parameters
-        const char *common_params[] = { "Volume", "Pan", "Filter Cf", "Filter Type" };
+    // Instrument-specific Parameters
+    if (track.instrument_type == SUB_SYNTH) {
+        SubSynthParameters *synth_params_data = (SubSynthParameters *) params->instrument_data;
+        const char         *synth_params[]    = { "MIDI Note", "Waveform", "Envelope", "Env Dur" };
         for (int i = 0; i < 4; i++) {
-            float x           = 10;
+            float x           = 160;
             float y           = 30 + i * (cell_height + padding);
-            bool  is_selected = (selected_step_option == i);
+            bool  is_selected = (selected_step_option == i + 4);
+            u32   bg_color, text_color;
+
+            if (is_selected) {
+                if (focus == FOCUS_BOTTOM) {
+                    bg_color   = CLR_YELLOW;
+                    text_color = CLR_BLACK;
+                } else {
+                    bg_color   = base_bg_color;
+                    text_color = base_text_color;
+                }
+            } else {
+                bg_color   = base_bg_color;
+                text_color = base_text_color;
+            }
+
+            C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
+                              bg_color);
+
+            u32 current_border_color =
+                (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+            C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
+
+            C2D_TextBufClear(text_buf);
+            switch (i) {
+            case 0: {
+                int midi_note = hertzToMidi(synth_params_data->osc_freq);
+                snprintf(buffer, sizeof(buffer), "%s: %d", synth_params[i], midi_note);
+                break;
+            }
+            case 1:
+                snprintf(buffer, sizeof(buffer), "%s: %s", synth_params[i],
+                         waveform_names[synth_params_data->osc_waveform]);
+                break;
+            case 2:
+                snprintf(buffer, sizeof(buffer), "%s", synth_params[i]);
+                break;
+            case 3:
+                snprintf(buffer, sizeof(buffer), "%s: %dms", synth_params[i],
+                         synth_params_data->env_dur);
+                break;
+            }
+            C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+            C2D_TextOptimize(&text_obj);
+            C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                         text_color);
+        }
+    } else if (track.instrument_type == OPUS_SAMPLER) {
+        OpusSamplerParameters *sampler_params_data =
+            (OpusSamplerParameters *) params->instrument_data;
+        const char *sampler_params[] = { "Sample", "Pb Mode", "Start Pos", "Envelope", "Env Dur" };
+        const char *playback_mode_names[] = { "One Shot", "Loop" };
+        for (int i = 0; i < 5; i++) {
+            float x           = 160;
+            float y           = 30 + i * (cell_height + padding);
+            bool  is_selected = (selected_step_option == i + 4);
             u32   bg_color, text_color;
 
             if (is_selected) {
@@ -520,19 +654,32 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             C2D_TextBufClear(text_buf);
             switch (i) {
             case 0:
-                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i],
-                         seq_step.data->volume);
+                snprintf(
+                    buffer, sizeof(buffer), "%s: %s", sampler_params[i],
+                    SampleBank_get_sample_name(sample_bank, sampler_params_data->sample_index));
                 break;
             case 1:
-                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], seq_step.data->pan);
+                snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
+                         playback_mode_names[sampler_params_data->playback_mode]);
                 break;
-            case 2:
-                snprintf(buffer, sizeof(buffer), "%s: %.0f", common_params[i],
-                         seq_step.data->ndsp_filter_cutoff);
+            case 2: {
+                Sample *sample =
+                    SampleBank_get_sample(sample_bank, sampler_params_data->sample_index);
+                float start_pos_normalized = 0.0f;
+                if (sample && sample->pcm_length > 0) {
+                    start_pos_normalized =
+                        (float) sampler_params_data->start_position / sample->pcm_length;
+                }
+                snprintf(buffer, sizeof(buffer), "%s: %.2f", sampler_params[i],
+                         start_pos_normalized);
                 break;
+            }
             case 3:
-                snprintf(buffer, sizeof(buffer), "%s: %s", common_params[i],
-                         ndsp_biquad_filter_names[seq_step.data->ndsp_filter_type]);
+                snprintf(buffer, sizeof(buffer), "%s", sampler_params[i]);
+                break;
+            case 4:
+                snprintf(buffer, sizeof(buffer), "%s: %dms", sampler_params[i],
+                         sampler_params_data->env_dur);
                 break;
             }
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
@@ -540,148 +687,18 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
                          text_color);
         }
-
-        // Instrument-specific Parameters
-        if (track.instrument_type == SUB_SYNTH) {
-            SubSynthParameters *params = (SubSynthParameters *) seq_step.data->instrument_data;
-            const char         *synth_params[] = { "MIDI Note", "Waveform", "Envelope", "Env Dur" };
-            for (int i = 0; i < 4; i++) {
-                float x           = 160;
-                float y           = 30 + i * (cell_height + padding);
-                bool  is_selected = (selected_step_option == i + 4);
-                u32   bg_color, text_color;
-
-                if (is_selected) {
-                    if (focus == FOCUS_BOTTOM) {
-                        bg_color   = CLR_YELLOW;
-                        text_color = CLR_BLACK;
-                    } else {
-                        bg_color   = base_bg_color;
-                        text_color = base_text_color;
-                    }
-                } else {
-                    bg_color   = base_bg_color;
-                    text_color = base_text_color;
-                }
-
-                C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
-                                  bg_color);
-
-                u32 current_border_color =
-                    (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
-                C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-
-                C2D_TextBufClear(text_buf);
-                switch (i) {
-                case 0: {
-                    int midi_note = hertzToMidi(params->osc_freq);
-                    snprintf(buffer, sizeof(buffer), "%s: %d", synth_params[i], midi_note);
-                    break;
-                }
-                case 1:
-                    snprintf(buffer, sizeof(buffer), "%s: %s", synth_params[i],
-                             waveform_names[params->osc_waveform]);
-                    break;
-                case 2:
-                    snprintf(buffer, sizeof(buffer), "%s", synth_params[i]);
-                    break;
-                case 3:
-                    snprintf(buffer, sizeof(buffer), "%s: %dms", synth_params[i], params->env_dur);
-                    break;
-                }
-                C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
-                C2D_TextOptimize(&text_obj);
-                C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
-                             text_color);
-            }
-        } else if (track.instrument_type == OPUS_SAMPLER) {
-            OpusSamplerParameters *params =
-                (OpusSamplerParameters *) seq_step.data->instrument_data;
-            const char *sampler_params[]      = { "Sample", "Pb Mode", "Start Pos", "Envelope",
-                                                  "Env Dur" };
-            const char *playback_mode_names[] = { "One Shot", "Loop" };
-            for (int i = 0; i < 5; i++) {
-                float x           = 160;
-                float y           = 30 + i * (cell_height + padding);
-                bool  is_selected = (selected_step_option == i + 4);
-                u32   bg_color, text_color;
-
-                if (is_selected) {
-                    if (focus == FOCUS_BOTTOM) {
-                        bg_color   = CLR_YELLOW;
-                        text_color = CLR_BLACK;
-                    } else {
-                        bg_color   = base_bg_color;
-                        text_color = base_text_color;
-                    }
-                } else {
-                    bg_color   = base_bg_color;
-                    text_color = base_text_color;
-                }
-
-                C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
-                                  bg_color);
-
-                u32 current_border_color =
-                    (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
-                C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-                C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
-                                  current_border_color, current_border_color, current_border_color);
-
-                C2D_TextBufClear(text_buf);
-                switch (i) {
-                case 0:
-                    snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
-                             SampleBank_get_sample_name(sample_bank, params->sample_index));
-                    break;
-                case 1:
-                    snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
-                             playback_mode_names[params->playback_mode]);
-                    break;
-                case 2: {
-                    Sample *sample = SampleBank_get_sample(sample_bank, params->sample_index);
-                    float   start_pos_normalized = 0.0f;
-                    if (sample && sample->pcm_length > 0) {
-                        start_pos_normalized = (float) params->start_position / sample->pcm_length;
-                    }
-                    snprintf(buffer, sizeof(buffer), "%s: %.2f", sampler_params[i],
-                             start_pos_normalized);
-                    break;
-                }
-                case 3:
-                    snprintf(buffer, sizeof(buffer), "%s", sampler_params[i]);
-                    break;
-                case 4:
-                    snprintf(buffer, sizeof(buffer), "%s: %dms", sampler_params[i],
-                             params->env_dur);
-                    break;
-                }
-                C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
-                C2D_TextOptimize(&text_obj);
-                C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
-                             text_color);
-            }
-        }
-
-        // Track and Step Info
-        snprintf(buffer, sizeof(buffer), "Tr: %d | St: %d", track_idx + 1, step_idx + 1);
-        C2D_TextBufClear(text_buf);
-        C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
-        C2D_TextOptimize(&text_obj);
-        C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, 0.4f, 0.4f, CLR_LIGHT_GRAY);
     }
+
+    // Track and Step Info
+    if (is_all_steps) {
+        snprintf(buffer, sizeof(buffer), "Tr: %d | St: All", track_idx + 1);
+    } else {
+        snprintf(buffer, sizeof(buffer), "Tr: %d | St: %d", track_idx + 1, selected_col);
+    }
+    C2D_TextBufClear(text_buf);
+    C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+    C2D_TextOptimize(&text_obj);
+    C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, 0.4f, 0.4f, CLR_LIGHT_GRAY);
 }
 
 void drawStepSettingsEditView(Track *track, TrackParameters *params, int selected_step_option,
