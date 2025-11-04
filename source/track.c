@@ -5,6 +5,7 @@
 #include "track_parameters.h"
 #include <stdlib.h>
 #ifndef TESTING
+#include <3ds.h>
 #include <3ds/ndsp/ndsp.h>
 #include <3ds/types.h>
 #endif
@@ -49,16 +50,16 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
     track->pan             = 0.0f; // Initialize pan
 
     // Initialize default parameters
-    track->default_parameters = malloc(sizeof(TrackParameters));
+    track->default_parameters = linearAlloc(sizeof(TrackParameters));
     if (track->default_parameters) {
         void *instrument_data = NULL;
         if (instrument_type == SUB_SYNTH) {
-            instrument_data = malloc(sizeof(SubSynthParameters));
+            instrument_data = linearAlloc(sizeof(SubSynthParameters));
             if (instrument_data) {
                 *((SubSynthParameters *) instrument_data) = defaultSubSynthParameters();
             }
         } else if (instrument_type == OPUS_SAMPLER) {
-            instrument_data = malloc(sizeof(OpusSamplerParameters));
+            instrument_data = linearAlloc(sizeof(OpusSamplerParameters));
             if (instrument_data) {
                 *((OpusSamplerParameters *) instrument_data) = defaultOpusSamplerParameters();
             }
@@ -95,6 +96,12 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
 
 void resetTrack(Track *track) {
     ndspChnReset(track->chan_id);
+    if (track->default_parameters) {
+        if (track->default_parameters->instrument_data) {
+            linearFree(track->default_parameters->instrument_data);
+        }
+        linearFree(track->default_parameters);
+    }
 }
 
 void updateTrackParameters(Track *track, TrackParameters *params) {

@@ -94,11 +94,20 @@ void drawTrackbar(Clock *clock, Track *tracks) {
                          0.4f, CLR_LIGHT_GRAY);
 
         } else {
+            int track_idx = i - 1;
+            u32 bg_color, text_color;
+            if (tracks[track_idx].is_muted) {
+                bg_color   = CLR_BLACK;
+                text_color = CLR_LIGHT_GRAY;
+            } else {
+                bg_color   = CLR_LIGHT_GRAY;
+                text_color = CLR_BLACK;
+            }
+
             C2D_DrawRectangle(0, i * track_height, 0, HOME_TRACKS_WIDTH,
                               track_height - 2, // -2 for spacing
-                              CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+                              bg_color, bg_color, bg_color, bg_color);
 
-            int         track_idx       = i - 1;
             const char *instrument_name = "";
             if (tracks[track_idx].instrument_type == SUB_SYNTH) {
                 instrument_name = "Synth";
@@ -117,7 +126,7 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             float text_y = (i * track_height) + (track_height - text_height) / 2.0f;
 
             C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f, 0.4f,
-                         0.4f, CLR_BLACK);
+                         0.4f, text_color);
         }
     }
 }
@@ -481,9 +490,13 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
     float cell_height = 20;
     float padding     = 5;
 
-    u32 base_bg_color, base_text_color, border_color;
-    // Use a default active state for "all steps" view
-    bool is_active = is_all_steps ? true : track.sequencer->steps[selected_col - 1].active;
+    u32  base_bg_color, base_text_color, border_color;
+    bool is_active;
+    if (is_all_steps) {
+        is_active = !track.is_muted;
+    } else {
+        is_active = track.sequencer->steps[selected_col - 1].active;
+    }
 
     if (is_active) {
         base_bg_color   = CLR_LIGHT_GRAY;

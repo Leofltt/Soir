@@ -430,6 +430,19 @@ int main(int argc, char **argv) {
                         LightLock_Unlock(&clock_lock);
                         session.main_screen_view = VIEW_SETTINGS;
                         selected_settings_option = 0;
+                    } else if (selected_row > 0 && selected_col == 0) {
+                        int track_index = selected_row - 1;
+                        if (track_index < N_TRACKS) {
+                            LightLock_Lock(&tracks_lock);
+                            tracks[track_index].is_muted = !tracks[track_index].is_muted;
+                            for (int i = 0; i < tracks[track_index].sequencer->n_beats *
+                                                    tracks[track_index].sequencer->steps_per_beat;
+                                 i++) {
+                                tracks[track_index].sequencer->steps[i].data->is_muted =
+                                    tracks[track_index].is_muted;
+                            }
+                            LightLock_Unlock(&tracks_lock);
+                        }
                     } else if (selected_col > 0) {
                         int step_index = selected_col - 1;
                         LightLock_Lock(&tracks_lock);
@@ -1190,6 +1203,8 @@ cleanup:
         threadFree(audio_thread);
     }
 
+    ndspExit();
+
     resetTrack(&tracks[0]);
     resetTrack(&tracks[1]);
 
@@ -1234,7 +1249,6 @@ cleanup:
 
     SampleBank_deinit(&g_sample_bank);
     deinitViews();
-    ndspExit();
     C2D_Fini();
     C3D_Fini();
     romfsExit();
@@ -1275,7 +1289,7 @@ void clock_thread_func(void *arg) {
 
                     if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
                         SeqStep step = updateSequencer(track->sequencer);
-                        if (step.active && step.data) {
+                        if (step.active && !track->is_muted && step.data) {
                             Event event = { .type     = TRIGGER_STEP,
                                             .track_id = track_idx,
                                             .base_params =
