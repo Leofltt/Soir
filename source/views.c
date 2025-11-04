@@ -1,6 +1,7 @@
 #include "views.h"
 
 #include "audio_utils.h"
+#include <string.h>
 #include "engine_constants.h"
 #include "filters.h"
 #include "polybleposc.h"
@@ -419,14 +420,14 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
 
     for (int i = 0; i < num_rows; i++) {
         for (int j = 0; j < num_cols; j++) {
-            float x     = j * cell_width;
-            float y     = i * cell_height;
-            u32   color = (i == selected_row && j == selected_col) ? CLR_YELLOW : CLR_DARK_GRAY;
-            C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, color, color, color, color);
+            float x = j * cell_width;
+            float y = i * cell_height;
 
             int sample_index = i * num_cols + j;
             if (sample_index < MAX_SAMPLES) {
                 const char *sample_name = SampleBank_get_sample_name(bank, sample_index);
+                u32 color = (strcmp(sample_name, "Empty") == 0) ? CLR_DARK_GRAY : CLR_LIGHT_GRAY;
+                color     = (i == selected_row && j == selected_col) ? CLR_YELLOW : color;
                 C2D_TextBufClear(text_buf);
                 C2D_TextFontParse(&text_obj, font_angular, text_buf, sample_name);
                 C2D_TextOptimize(&text_obj);
@@ -437,6 +438,8 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
                 float text_x = x + (cell_width - text_width) / 2;
                 float text_y = y + (cell_height - text_height) / 2;
 
+                C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, color, color, color,
+                                  color);
                 C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
             }
         }

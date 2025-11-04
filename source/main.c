@@ -1268,7 +1268,6 @@ void clock_thread_func(void *arg) {
 
         if (ticks_to_process > 0) {
             for (int i = 0; i < ticks_to_process; i++) {
-                // update musical time for one tick
                 int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
                 clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
                 clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
@@ -1290,13 +1289,11 @@ void clock_thread_func(void *arg) {
                     if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
                         SeqStep step = updateSequencer(track->sequencer);
                         if (step.active && !track->is_muted && step.data) {
-                            Event event = { .type     = TRIGGER_STEP,
-                                            .track_id = track_idx,
-                                            .base_params =
-                                                *step.data, // Copy the base TrackParameters
+                            Event event = { .type            = TRIGGER_STEP,
+                                            .track_id        = track_idx,
+                                            .base_params     = *step.data,
                                             .instrument_type = track->instrument_type };
 
-                            // Copy instrument-specific parameters based on type
                             if (track->instrument_type == SUB_SYNTH) {
                                 memcpy(&event.instrument_specific_params.subsynth_params,
                                        step.data->instrument_data, sizeof(SubSynthParameters));
@@ -1317,7 +1314,6 @@ void clock_thread_func(void *arg) {
 void audio_thread_func(void *arg) {
     while (!should_exit) {
         Event event;
-        // Process all pending events
         while (event_queue_pop(&g_event_queue, &event)) {
             processTrackEvent(&event);
         }
@@ -1328,13 +1324,9 @@ void audio_thread_func(void *arg) {
                 tracks[i].filter.update_params = false;
             }
 
-            // Get the next buffer in the queue for this track
             ndspWaveBuf *waveBuf = &tracks[i].waveBuf[tracks[i].fillBlock];
 
-            // Check if the buffer is 'DONE' (i.e., finished playing)
-            // NDSP_WBUF_DONE is defined in 3ds/ndsp/ndsp.h
             if (waveBuf->status == NDSP_WBUF_DONE) {
-                // Fill the buffer with new audio data
                 if (tracks[i].instrument_type == SUB_SYNTH) {
                     SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
                     fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth);
@@ -1347,10 +1339,8 @@ void audio_thread_func(void *arg) {
                     sampler_fill_buffer(waveBuf, waveBuf->nsamples, sampler);
                 }
 
-                // Add the (now filled) buffer back to the NDSP queue
                 ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf);
 
-                // Toggle fillBlock to point to the *other* buffer for the next check
                 tracks[i].fillBlock = !tracks[i].fillBlock;
             }
         }
