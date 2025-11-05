@@ -23,6 +23,25 @@ OpusSamplerParameters defaultOpusSamplerParameters() {
                                      .sample_index   = 0 };
     return params;
 };
+
+FMSynthParameters defaultFMSynthParameters() {
+    FMSynthParameters params = { .carrier_env_atk       = 50,
+                                 .carrier_env_dec       = 300,
+                                 .carrier_env_sus_level = 0.8f,
+                                 .carrier_env_rel       = 100,
+                                 .carrier_env_dur       = 1000,
+                                 .mod_env_atk           = 50,
+                                 .mod_env_dec           = 300,
+                                 .mod_env_sus_level     = 0.8f,
+                                 .mod_env_rel           = 100,
+                                 .mod_env_dur           = 1000,
+                                 .mod_index             = 1.0f,
+                                 .mod_depth             = 100.0f,
+                                 .carrier_freq          = 220.0f,
+                                 .mod_freq_ratio        = 1.0f };
+    return params;
+}
+
 TrackParameters defaultTrackParameters(int track_id, void *instrument_data) {
     TrackParameters params = { .track_id           = track_id,
                                .volume             = 1.0f,    // 0 to 1

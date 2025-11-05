@@ -1,4 +1,6 @@
 #ifndef FM_OSC_H
+#define FM_OSC_H
+
 #include "envelope.h"
 #include "polybleposc.h"
 

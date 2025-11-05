@@ -41,8 +41,43 @@ typedef struct {
     int          sample_index;
 } OpusSamplerParameters;
 
-extern SubSynthParameters    defaultSubSynthParameters();
+typedef struct {
+    int carrier_env_atk;
+
+    int carrier_env_dec;
+
+    float carrier_env_sus_level;
+
+    int carrier_env_rel;
+
+    int carrier_env_dur;
+
+    int mod_env_atk;
+
+    int mod_env_dec;
+
+    float mod_env_sus_level;
+
+    int mod_env_rel;
+
+    int mod_env_dur;
+
+    float mod_index;
+
+    float mod_depth;
+
+    float carrier_freq;
+
+    float mod_freq_ratio;
+
+} FMSynthParameters;
+
+extern SubSynthParameters defaultSubSynthParameters();
+
 extern OpusSamplerParameters defaultOpusSamplerParameters();
-extern TrackParameters       defaultTrackParameters(int track_id, void *instrument_data);
+
+extern FMSynthParameters defaultFMSynthParameters();
+
+extern TrackParameters defaultTrackParameters(int track_id, void *instrument_data);
 
 #endif // TRACK_PARAMETERS_H

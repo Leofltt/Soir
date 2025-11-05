@@ -8,6 +8,26 @@
 
 #include "audio_utils.h"
 #include "synth.h"
+#include "engine_constants.h"
+
+void fillFMSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, FMSynth *fm_synth) {
+    if (!fm_synth || !fm_synth->fm_op || !fm_synth->carrierEnv) {
+        fillBufferWithZeros(waveBuf->data_pcm16, size * NCHANNELS * sizeof(int16_t));
+        return;
+    }
+
+    for (size_t i = 0; i < size; i++) {
+        float sample  = nextFMOscillatorSample(fm_synth->fm_op);
+        float env_val = nextEnvelopeSample(fm_synth->carrierEnv);
+        sample *= env_val;
+
+        int16_t sample_i16                     = floatToInt16(sample);
+        waveBuf->data_pcm16[i * NCHANNELS]     = sample_i16;
+        waveBuf->data_pcm16[i * NCHANNELS + 1] = sample_i16;
+    }
+    waveBuf->nsamples = size;
+    DSP_FlushDataCache(waveBuf->data_pcm16, size * NCHANNELS * sizeof(int16_t));
+}
 
 void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth) {
     u32 *dest = (u32 *) waveBuf->data_pcm16;
