@@ -111,6 +111,9 @@ static void audio_thread_entry(void *arg) {
             }
         }
         LightEvent_Wait(&s_audio_event);
+        if (*s_should_exit_ptr) {
+            break;
+        }
     }
 }
 

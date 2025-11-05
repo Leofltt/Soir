@@ -34,5 +34,6 @@ extern void initializeTrack(Track *track, int chan_id, InstrumentType instrument
 extern void resetTrack(Track *track);
 extern void updateTrack(Track *track, Clock *clock);
 extern void updateTrackParameters(Track *track, TrackParameters *params);
+extern void Track_deinit(Track *track);
 
 #endif // TRACK_H

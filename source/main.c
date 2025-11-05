@@ -375,18 +375,21 @@ cleanup:
 
     audio_thread_stop_and_join();
 
+    for (int i = 0; i < N_TRACKS; i++) {
+        ndspChnWaveBufClear(tracks[i].chan_id);
+    }
+    ndspExit();
+
+    for (int i = 0; i < N_TRACKS; i++) {
+        Track_deinit(&tracks[i]);
+    }
+
     SampleBank_deinit(&g_sample_bank);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
     romfsExit();
     gfxExit();
-
-    // Clear any pending wave buffers and then exit NDSP
-    for (int i = 0; i < N_TRACKS; i++) {
-        ndspChnWaveBufClear(tracks[i].chan_id);
-    }
-    ndspExit();
 
     return ret;
 }

@@ -12,6 +12,81 @@
 #endif
 #include <math.h>
 #include <string.h>
+#include "sample.h"
+
+// ... (existing code) ...
+
+void Track_deinit(Track *track) {
+    if (!track) {
+        return;
+    }
+
+    // Deallocate instrument_data
+    if (track->instrument_data) {
+        if (track->instrument_type == OPUS_SAMPLER) {
+            Sampler *sampler = (Sampler *) track->instrument_data;
+            if (sampler->sample) {
+                sample_dec_ref(sampler->sample);
+            }
+            if (sampler->env) {
+                linearFree(sampler->env);
+            }
+            linearFree(sampler);
+        } else if (track->instrument_type == SUB_SYNTH) {
+            SubSynth *subsynth = (SubSynth *) track->instrument_data;
+            if (subsynth->osc) {
+                linearFree(subsynth->osc);
+            }
+            if (subsynth->env) {
+                linearFree(subsynth->env);
+            }
+            linearFree(subsynth);
+        } else if (track->instrument_type == FM_SYNTH) {
+            FMSynth *fmsynth = (FMSynth *) track->instrument_data;
+            if (fmsynth->fm_op) {
+                if (fmsynth->fm_op->modEnvelope) {
+                    linearFree(fmsynth->fm_op->modEnvelope);
+                }
+                linearFree(fmsynth->fm_op);
+            }
+            if (fmsynth->carrierEnv) {
+                linearFree(fmsynth->carrierEnv);
+            }
+            linearFree(fmsynth);
+        }
+    }
+
+    // Deallocate sequencer
+    if (track->sequencer) {
+        if (track->sequencer->steps) {
+            // Need to free instrument_data within each step's TrackParameters
+            for (int i = 0; i < track->sequencer->n_beats * track->sequencer->steps_per_beat; i++) {
+                SeqStep *step = &track->sequencer->steps[i];
+                if (step->active && step->data && step->data->instrument_data) {
+                    linearFree(step->data->instrument_data);
+                }
+                if (step->data) {
+                    linearFree(step->data);
+                }
+            }
+            linearFree(track->sequencer->steps);
+        }
+        linearFree(track->sequencer);
+    }
+
+    // Deallocate audioBuffer
+    if (track->audioBuffer) {
+        linearFree(track->audioBuffer);
+    }
+
+    // Deallocate default_parameters
+    if (track->default_parameters) {
+        if (track->default_parameters->instrument_data) {
+            linearFree(track->default_parameters->instrument_data);
+        }
+        linearFree(track->default_parameters);
+    }
+}
 
 static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *params) {
     if (!synth || !params)

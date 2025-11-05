@@ -33,6 +33,7 @@ static void clock_thread_entry(void *arg) {
         int ticks_to_process = updateClock(s_clock_ptr);
 
         if (ticks_to_process > 0) {
+            LightLock_Lock(s_tracks_lock_ptr);
             for (int i = 0; i < ticks_to_process; i++) {
                 int totBeats                = s_clock_ptr->barBeats->steps / STEPS_PER_BEAT;
                 s_clock_ptr->barBeats->bar  = totBeats / s_clock_ptr->barBeats->beats_per_bar;
@@ -40,7 +41,6 @@ static void clock_thread_entry(void *arg) {
                 s_clock_ptr->barBeats->deltaStep = s_clock_ptr->barBeats->steps % STEPS_PER_BEAT;
                 s_clock_ptr->barBeats->steps++;
 
-                LightLock_Lock(s_tracks_lock_ptr); // <-- ADD THIS
                 for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
                     Track *track = &s_tracks_ptr[track_idx];
                     if (!track || !track->sequencer || !s_clock_ptr ||
@@ -72,8 +72,8 @@ static void clock_thread_entry(void *arg) {
                         }
                     }
                 }
-                LightLock_Unlock(s_tracks_lock_ptr); // <-- AND ADD THIS
             }
+            LightLock_Unlock(s_tracks_lock_ptr);
         }
         LightLock_Unlock(s_clock_lock_ptr);
     }

@@ -7,6 +7,9 @@ static void _sample_destroy(Sample *sample) {
         return;
     }
     if (sample->opusFile) {
+        if (strncmp(sample->path, "sdmc:/", 6) == 0) {
+            svcSleepThread(10000000); // 10ms delay to allow pending I/O to complete
+        }
         op_free(sample->opusFile);
     }
     if (sample->path) {
@@ -53,10 +56,18 @@ void sample_inc_ref(Sample *sample) {
 void sample_dec_ref(Sample *sample) {
     if (!sample)
         return;
-    LightLock_Lock(&sample->lock);
+
+    LightLock_Lock(&sample->lock); // Acquire lock first
+
+    // Now, check ref_count safely within the lock
+    if (sample->ref_count <= 0) {
+        LightLock_Unlock(&sample->lock); // Release lock before returning
+        return;                          // Already freed or invalid, do not proceed
+    }
+
     sample->ref_count--;
     if (sample->ref_count == 0) {
-        LightLock_Unlock(&sample->lock);
+        LightLock_Unlock(&sample->lock); // Release lock before destroying
         _sample_destroy(sample);
     } else {
         LightLock_Unlock(&sample->lock);

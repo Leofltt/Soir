@@ -728,7 +728,7 @@ void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, 
                                 ctx->editing_step_params->instrument_data =
                                     ctx->editing_subsynth_params;
                             } else if (track->instrument_type == OPUS_SAMPLER) {
-                                memcpy(&ctx->editing_sampler_params,
+                                memcpy(ctx->editing_sampler_params,
                                        track->default_parameters->instrument_data,
                                        sizeof(OpusSamplerParameters));
                                 ctx->editing_step_params->instrument_data =
