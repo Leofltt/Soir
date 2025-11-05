@@ -8,7 +8,7 @@ static void _sample_destroy(Sample *sample) {
     }
     if (sample->opusFile) {
         if (strncmp(sample->path, "sdmc:/", 6) == 0) {
-            svcSleepThread(10000000); // 10ms delay to allow pending I/O to complete
+            svcSleepThread(50000000); // 50ms delay to allow pending I/O to complete
         }
         op_free(sample->opusFile);
     }

@@ -88,21 +88,28 @@ int main(int argc, char **argv) {
     ScreenFocus screen_focus          = FOCUS_TOP;
     ScreenFocus previous_screen_focus = FOCUS_TOP;
 
-    u32                   *audioBuffer1           = NULL;
-    PolyBLEPOscillator    *osc                    = NULL;
-    Envelope              *env                    = NULL;
-    SubSynth              *subsynth               = NULL;
-    SeqStep               *sequence1              = NULL;
-    TrackParameters       *trackParamsArray1      = NULL;
-    SubSynthParameters    *subsynthParamsArray    = NULL;
-    Sequencer             *seq1                   = NULL;
-    u32                   *audioBuffer2           = NULL;
-    Envelope              *env1                   = NULL;
-    Sampler               *sampler                = NULL;
-    SeqStep               *sequence2              = NULL;
-    TrackParameters       *trackParamsArray2      = NULL;
-    OpusSamplerParameters *opusSamplerParamsArray = NULL;
-    Sequencer             *seq2                   = NULL;
+    u32                   *audioBuffer1            = NULL;
+    PolyBLEPOscillator    *osc                     = NULL;
+    Envelope              *env                     = NULL;
+    SubSynth              *subsynth                = NULL;
+    SeqStep               *sequence1               = NULL;
+    TrackParameters       *trackParamsArray1       = NULL;
+    SubSynthParameters    *subsynthParamsArray     = NULL;
+    Sequencer             *seq1                    = NULL;
+    u32                   *audioBuffer2            = NULL;
+    Envelope              *env1                    = NULL;
+    Sampler               *sampler                 = NULL;
+    SeqStep               *sequence2               = NULL;
+    TrackParameters       *trackParamsArray2       = NULL;
+    OpusSamplerParameters *opusSamplerParamsArray  = NULL;
+    Sequencer             *seq2                    = NULL;
+    u32                   *audioBuffer3            = NULL;
+    Envelope              *env2                    = NULL;
+    Sampler               *sampler2                = NULL;
+    SeqStep               *sequence3               = NULL;
+    TrackParameters       *trackParamsArray3       = NULL;
+    OpusSamplerParameters *opusSamplerParamsArray2 = NULL;
+    Sequencer             *seq3                    = NULL;
 
     s32 main_prio;
     svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
@@ -288,6 +295,69 @@ int main(int argc, char **argv) {
     }
     *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
     tracks[1].sequencer = seq2;
+
+    // TRACK 3 (OPUS_SAMPLER) ///////////////////////////////////////////
+    audioBuffer3 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
+    if (!audioBuffer3) {
+        ret = 1;
+        goto cleanup;
+    }
+    initializeTrack(&tracks[2], 2, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer3);
+
+    env2 = (Envelope *) linearAlloc(sizeof(Envelope));
+    if (!env2) {
+        ret = 1;
+        goto cleanup;
+    }
+    *env2 = defaultEnvelopeStruct(OPUSSAMPLERATE);
+    updateEnvelope(env2, 100, 300, 0.9, 200, 2000);
+
+    sampler2 = (Sampler *) linearAlloc(sizeof(Sampler));
+    if (!sampler2) {
+        ret = 1;
+        goto cleanup;
+    }
+    *sampler2 = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+                            .start_position  = 0,
+                            .playback_mode   = ONE_SHOT,
+                            .samples_per_buf = OPUSSAMPLESPERFBUF,
+                            .samplerate      = OPUSSAMPLERATE,
+                            .env             = env2,
+                            .seek_requested  = false,
+                            .finished        = true };
+    sample_inc_ref(sampler2->sample);
+    tracks[2].instrument_data = sampler2;
+
+    sequence3 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
+    if (!sequence3) {
+        ret = 1;
+        goto cleanup;
+    }
+    trackParamsArray3 = (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
+    if (!trackParamsArray3) {
+        ret = 1;
+        goto cleanup;
+    }
+    opusSamplerParamsArray2 =
+        (OpusSamplerParameters *) linearAlloc(16 * sizeof(OpusSamplerParameters));
+    if (!opusSamplerParamsArray2) {
+        ret = 1;
+        goto cleanup;
+    }
+    for (int i = 0; i < 16; i++) {
+        opusSamplerParamsArray2[i]              = defaultOpusSamplerParameters();
+        opusSamplerParamsArray2[i].sample_index = 0;
+        trackParamsArray3[i] = defaultTrackParameters(2, &opusSamplerParamsArray2[i]);
+        sequence3[i]         = (SeqStep) { .active = false };
+        sequence3[i].data    = &trackParamsArray3[i];
+    }
+    seq3 = (Sequencer *) linearAlloc(sizeof(Sequencer));
+    if (!seq3) {
+        ret = 1;
+        goto cleanup;
+    }
+    *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
+    tracks[2].sequencer = seq3;
 
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
