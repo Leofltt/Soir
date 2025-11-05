@@ -17,6 +17,7 @@
 #include "sample_bank.h"
 #include "sample_browser.h"
 #include "audio_utils.h"
+#include "threads/audio_thread.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -42,73 +43,16 @@ static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
 
-static Thread     clock_thread;
-static Thread     audio_thread;
-static Thread     timer_thread;
-static LightEvent s_audio_event;
+static Thread clock_thread;
+static Thread timer_thread;
+
 static LightEvent s_clock_event;
 
 void clock_thread_func(void *arg);
 void audio_thread_func(void *arg);
 void timer_thread_func(void *arg);
 
-static void audio_callback(void *data) {
-    LightEvent_Signal(&s_audio_event);
-}
-
 // Helper function to process events on the audio thread
-static void processTrackEvent(Event *event) {
-    if (!event || event->track_id >= N_TRACKS) {
-        return;
-    }
-
-    LightLock_Lock(&tracks_lock);
-
-    Track *track = &tracks[event->track_id];
-    updateTrackParameters(track, &event->base_params);
-
-    if (event->instrument_type == SUB_SYNTH) {
-        SubSynthParameters *subsynthParams =
-            &event->instrument_specific_params.subsynth_params; // Changed access
-        SubSynth *ss = (SubSynth *) track->instrument_data;
-        if (subsynthParams && ss) {
-            setWaveform(ss->osc, subsynthParams->osc_waveform);
-            setOscFrequency(ss->osc, subsynthParams->osc_freq);
-            updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
-                           subsynthParams->env_sus_level, subsynthParams->env_rel,
-                           subsynthParams->env_dur);
-            if (event->type == TRIGGER_STEP) {
-                triggerEnvelope(ss->env);
-            }
-        }
-    } else if (event->instrument_type == OPUS_SAMPLER) {
-        OpusSamplerParameters *opusSamplerParams =
-            &event->instrument_specific_params.sampler_params;
-        Sampler *s = (Sampler *) track->instrument_data;
-        if (opusSamplerParams && s) {
-            Sample *new_sample =
-                SampleBank_get_sample(&g_sample_bank, opusSamplerParams->sample_index);
-            if (new_sample != s->sample) {
-                sample_inc_ref(new_sample);
-                sample_dec_ref(s->sample);
-                s->sample = new_sample;
-            }
-
-            s->start_position = opusSamplerParams->start_position;
-            s->playback_mode  = opusSamplerParams->playback_mode;
-            s->seek_requested = true;
-            s->finished       = false;
-            updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
-                           opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
-                           opusSamplerParams->env_dur);
-            if (event->type == TRIGGER_STEP) {
-                triggerEnvelope(s->env);
-            }
-        }
-    }
-
-    LightLock_Unlock(&tracks_lock);
-}
 
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
@@ -168,11 +112,14 @@ int main(int argc, char **argv) {
     OpusSamplerParameters *opusSamplerParamsArray = NULL;
     Sequencer             *seq2                   = NULL;
 
+    s32 main_prio;
+    svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
+
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-    ndspSetCallback(audio_callback, NULL);
 
-    LightEvent_Init(&s_audio_event, RESET_ONESHOT);
+    audio_thread_init(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
+                      main_prio);
     LightEvent_Init(&s_clock_event, RESET_ONESHOT);
 
     // CLOCK //////////////////////////
@@ -317,9 +264,6 @@ int main(int argc, char **argv) {
     LightLock_Init(&tracks_lock);
     event_queue_init(&g_event_queue);
 
-    s32 main_prio;
-    svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
-
     clock_thread = threadCreate(clock_thread_func, clock, STACK_SIZE, main_prio - 1, -2, true);
     if (clock_thread == NULL) {
         printf("Failed to create clock thread\n");
@@ -334,12 +278,7 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
-    audio_thread = threadCreate(audio_thread_func, NULL, STACK_SIZE, main_prio - 2, -2, true);
-    if (audio_thread == NULL) {
-        printf("Failed to create audio thread\n");
-        ret = 1;
-        goto cleanup;
-    }
+    audio_thread_start();
 
     startClock(clock);
 
@@ -1250,11 +1189,7 @@ cleanup:
         threadFree(timer_thread);
     }
 
-    if (audio_thread) {
-        LightEvent_Signal(&s_audio_event);
-        threadJoin(audio_thread, U64_MAX);
-        threadFree(audio_thread);
-    }
+    audio_thread_stop_and_join();
 
     SampleBank_deinit(&g_sample_bank);
     deinitViews();
@@ -1324,43 +1259,6 @@ void clock_thread_func(void *arg) {
             }
         }
         LightLock_Unlock(&clock_lock);
-    }
-}
-
-void audio_thread_func(void *arg) {
-    while (!should_exit) {
-        Event event;
-        while (event_queue_pop(&g_event_queue, &event)) {
-            processTrackEvent(&event);
-        }
-
-        for (int i = 0; i < N_TRACKS; i++) {
-            if (tracks[i].filter.update_params) {
-                updateNdspbiquad(tracks[i].filter);
-                tracks[i].filter.update_params = false;
-            }
-
-            ndspWaveBuf *waveBuf = &tracks[i].waveBuf[tracks[i].fillBlock];
-
-            if (waveBuf->status == NDSP_WBUF_DONE) {
-                if (tracks[i].instrument_type == SUB_SYNTH) {
-                    SubSynth *subsynth = (SubSynth *) tracks[i].instrument_data;
-                    fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth);
-                } else if (tracks[i].instrument_type == OPUS_SAMPLER) {
-                    Sampler *sampler = (Sampler *) tracks[i].instrument_data;
-                    if (sampler->seek_requested) {
-                        op_pcm_seek(sampler->sample->opusFile, sampler->start_position);
-                        sampler->seek_requested = false;
-                    }
-                    sampler_fill_buffer(waveBuf, waveBuf->nsamples, sampler);
-                }
-
-                ndspChnWaveBufAdd(tracks[i].chan_id, waveBuf);
-
-                tracks[i].fillBlock = !tracks[i].fillBlock;
-            }
-        }
-        LightEvent_Wait(&s_audio_event);
     }
 }
 
