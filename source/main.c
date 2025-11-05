@@ -1256,58 +1256,19 @@ cleanup:
         threadFree(audio_thread);
     }
 
-    ndspExit();
-
-    resetTrack(&tracks[0]);
-    resetTrack(&tracks[1]);
-
-    if (audioBuffer1)
-        linearFree(audioBuffer1);
-    if (subsynth) {
-        if (subsynth->env) {
-            if (subsynth->env->env_buffer) {
-                linearFree(subsynth->env->env_buffer);
-            }
-            linearFree(subsynth->env);
-        }
-        if (subsynth->osc) {
-            linearFree(subsynth->osc);
-        }
-        linearFree(subsynth);
-    }
-    if (subsynthParamsArray)
-        linearFree(subsynthParamsArray);
-    if (trackParamsArray1)
-        linearFree(trackParamsArray1);
-    if (sequence1)
-        linearFree(sequence1);
-    if (seq1)
-        linearFree(seq1);
-
-    if (audioBuffer2)
-        linearFree(audioBuffer2);
-    if (sampler) {
-        if (sampler->env)
-            linearFree(sampler->env);
-        if (sampler->sample)
-            sample_dec_ref(sampler->sample);
-        linearFree(sampler);
-    }
-    if (opusSamplerParamsArray)
-        linearFree(opusSamplerParamsArray);
-    if (trackParamsArray2)
-        linearFree(trackParamsArray2);
-    if (sequence2)
-        linearFree(sequence2);
-    if (seq2)
-        linearFree(seq2);
-
     SampleBank_deinit(&g_sample_bank);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
     romfsExit();
     gfxExit();
+
+    // Clear any pending wave buffers and then exit NDSP
+    for (int i = 0; i < N_TRACKS; i++) {
+        ndspChnWaveBufClear(tracks[i].chan_id);
+    }
+    ndspExit();
+
     return ret;
 }
 

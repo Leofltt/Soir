@@ -27,7 +27,7 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
     osTickCounterStart(&timer);
 #endif // DEBUG
 
-    if (!sampler->sample) {
+    if (!sampler->sample || !sampler->sample->opusFile) {
         memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
         waveBuf_->nsamples = sampler->samples_per_buf;
         DSP_FlushDataCache(waveBuf_->data_pcm16,
@@ -57,9 +57,8 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
                 op_raw_seek(sampler->sample->opusFile, 0);
                 continue;
             } else {
-                sampler->finished = true;
-                op_raw_seek(sampler->sample->opusFile,
-                            sampler->start_position); // Reset for next trigger
+                sampler->finished       = true;
+                sampler->seek_requested = true; // Set seek_requested to reset for next trigger
                 if (totalSamples < sampler->samples_per_buf) {
                     memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
                            (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
@@ -91,7 +90,9 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
     // If no samples were read in the last decode cycle and looping is on,
     // seek back to the start of the sample
     if (totalSamples == 0 && sampler_is_looping(sampler)) {
-        op_raw_seek(sampler->sample->opusFile, 0);
+        if (sampler->sample && sampler->sample->opusFile) { // Defensive check
+            op_raw_seek(sampler->sample->opusFile, 0);
+        }
     }
 
     // Pass samples to NDSP
