@@ -75,6 +75,7 @@ typedef struct {
     TrackParameters       *editing_step_params;
     SubSynthParameters    *editing_subsynth_params;
     OpusSamplerParameters *editing_sampler_params;
+    FMSynthParameters     *editing_fm_synth_params;
     LightLock             *clock_lock;
     LightLock             *tracks_lock;
 

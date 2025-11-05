@@ -30,15 +30,20 @@ FMSynthParameters defaultFMSynthParameters() {
                                  .carrier_env_sus_level = 0.8f,
                                  .carrier_env_rel       = 100,
                                  .carrier_env_dur       = 1000,
-                                 .mod_env_atk           = 50,
-                                 .mod_env_dec           = 300,
-                                 .mod_env_sus_level     = 0.8f,
-                                 .mod_env_rel           = 100,
-                                 .mod_env_dur           = 1000,
+                                 .mod_env_atk           = 50,   // Will be overwritten
+                                 .mod_env_dec           = 300,  // Will be overwritten
+                                 .mod_env_sus_level     = 0.8f, // Will be overwritten
+                                 .mod_env_rel           = 100,  // Will be overwritten
+                                 .mod_env_dur           = 1000, // Will be overwritten
                                  .mod_index             = 1.0f,
                                  .mod_depth             = 100.0f,
                                  .carrier_freq          = 220.0f,
                                  .mod_freq_ratio        = 1.0f };
+    params.mod_env_atk       = params.carrier_env_atk;
+    params.mod_env_dec       = params.carrier_env_dec;
+    params.mod_env_sus_level = params.carrier_env_sus_level;
+    params.mod_env_rel       = params.carrier_env_rel;
+    params.mod_env_dur       = params.carrier_env_dur;
     return params;
 }
 

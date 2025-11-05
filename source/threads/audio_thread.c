@@ -72,6 +72,25 @@ static void processTrackEvent(Event *event) {
                 triggerEnvelope(s->env);
             }
         }
+    } else if (event->instrument_type == FM_SYNTH) {
+        FMSynthParameters *fmSynthParams = &event->instrument_specific_params.fm_synth_params;
+        FMSynth           *fs            = (FMSynth *) track->instrument_data;
+        if (fmSynthParams && fs) {
+            FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
+            FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
+            FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
+            FMOperator_set_mod_depth(fs->fm_op, fmSynthParams->mod_depth);
+            updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
+                           fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
+                           fmSynthParams->carrier_env_rel, fmSynthParams->carrier_env_dur);
+            updateEnvelope(fs->fm_op->modEnvelope, fmSynthParams->mod_env_atk,
+                           fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
+                           fmSynthParams->mod_env_rel, fmSynthParams->mod_env_dur);
+            if (event->type == TRIGGER_STEP) {
+                triggerEnvelope(fs->carrierEnv);
+                triggerEnvelope(fs->fm_op->modEnvelope);
+            }
+        }
     }
 
     LightLock_Unlock(s_tracks_lock_ptr);
@@ -103,6 +122,9 @@ static void audio_thread_entry(void *arg) {
                         sampler->seek_requested = false;
                     }
                     fillSamplerAudioBuffer(waveBuf, waveBuf->nsamples, sampler);
+                } else if (s_tracks_ptr[i].instrument_type == FM_SYNTH) {
+                    FMSynth *fm_synth = (FMSynth *) s_tracks_ptr[i].instrument_data;
+                    fillFMSynthAudiobuffer(waveBuf, waveBuf->nsamples, fm_synth);
                 }
 
                 ndspChnWaveBufAdd(s_tracks_ptr[i].chan_id, waveBuf);

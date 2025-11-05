@@ -21,9 +21,9 @@ void fillFMSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, FMSynth *fm_synth
         float env_val = nextEnvelopeSample(fm_synth->carrierEnv);
         sample *= env_val;
 
-        int16_t sample_i16                     = floatToInt16(sample);
-        waveBuf->data_pcm16[i * NCHANNELS]     = sample_i16;
-        waveBuf->data_pcm16[i * NCHANNELS + 1] = sample_i16;
+        s16  sample_i16 = floatToInt16(sample);
+        u32 *dest       = (u32 *) waveBuf->data_pcm16;
+        dest[i]         = (sample_i16 << 16) | (sample_i16 & 0xffff);
     }
     waveBuf->nsamples = size;
     DSP_FlushDataCache(waveBuf->data_pcm16, size * NCHANNELS * sizeof(int16_t));

@@ -217,7 +217,7 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
             if (kDown & KEY_B) { // Cancel
                 ctx->session->main_screen_view = VIEW_MAIN;
                 *ctx->screen_focus             = FOCUS_BOTTOM;
-            } else if (kDown & KEY_A) { // Apply
+            } else if (kDown & KEY_A) {
                 if (*ctx->selected_col == 0) {
                     // Apply to all steps
                     for (int i = 0;
@@ -233,6 +233,9 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                         } else if (track->instrument_type == OPUS_SAMPLER) {
                             memcpy(seq_step->data->instrument_data, ctx->editing_sampler_params,
                                    sizeof(OpusSamplerParameters));
+                        } else if (track->instrument_type == FM_SYNTH) {
+                            memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
+                                   sizeof(FMSynthParameters));
                         }
 
                         Event event = { .type            = UPDATE_STEP,
@@ -246,6 +249,9 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                         } else if (track->instrument_type == OPUS_SAMPLER) {
                             memcpy(&event.instrument_specific_params.sampler_params,
                                    seq_step->data->instrument_data, sizeof(OpusSamplerParameters));
+                        } else if (track->instrument_type == FM_SYNTH) {
+                            memcpy(&event.instrument_specific_params.fm_synth_params,
+                                   seq_step->data->instrument_data, sizeof(FMSynthParameters));
                         }
                         eventQueuePush(ctx->event_queue, event);
                     }
@@ -262,6 +268,9 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                     } else if (track->instrument_type == OPUS_SAMPLER) {
                         memcpy(track->default_parameters->instrument_data,
                                ctx->editing_sampler_params, sizeof(OpusSamplerParameters));
+                    } else if (track->instrument_type == FM_SYNTH) {
+                        memcpy(track->default_parameters->instrument_data,
+                               ctx->editing_fm_synth_params, sizeof(FMSynthParameters));
                     }
                 } else {
                     int step_idx = *ctx->selected_col - 1;
@@ -278,6 +287,9 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                         } else if (track->instrument_type == OPUS_SAMPLER) {
                             memcpy(seq_step->data->instrument_data, ctx->editing_sampler_params,
                                    sizeof(OpusSamplerParameters));
+                        } else if (track->instrument_type == FM_SYNTH) {
+                            memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
+                                   sizeof(FMSynthParameters));
                         }
                     }
                 }
@@ -287,8 +299,11 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
             } else {
                 bool is_synth           = track->instrument_type == SUB_SYNTH;
                 bool is_sampler         = track->instrument_type == OPUS_SAMPLER;
+                bool is_fm_synth        = track->instrument_type == FM_SYNTH;
                 bool is_envelope_option = (is_synth && *ctx->selected_step_option == 6) ||
-                                          (is_sampler && *ctx->selected_step_option == 7);
+                                          (is_sampler && *ctx->selected_step_option == 7) ||
+                                          (is_fm_synth && (*ctx->selected_step_option == 9 ||
+                                                           *ctx->selected_step_option == 10));
 
                 if (is_envelope_option) {
                     if (kDown & KEY_LEFT) {
@@ -357,62 +372,132 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                             if (synth_params->env_rel < 0)
                                 synth_params->env_rel = 0;
                         }
-                    } else { // is_sampler
-                        OpusSamplerParameters *sampler_params = ctx->editing_sampler_params;
-                        if (*ctx->selected_adsr_option == 0) { // Attack
-                            if (kDown & KEY_UP) {
-                                sampler_params->env_atk += 10;
-                                int sum = sampler_params->env_atk + sampler_params->env_dec +
-                                          sampler_params->env_rel;
-                                if (sum > sampler_params->env_dur) {
-                                    sampler_params->env_atk =
-                                        sampler_params->env_dur -
-                                        (sampler_params->env_dec + sampler_params->env_rel);
+                    } else if (is_fm_synth) {
+                        FMSynthParameters *fm_synth_params = ctx->editing_fm_synth_params;
+                        if (*ctx->selected_step_option == 6) {     // Carrier Envelope
+                            if (*ctx->selected_adsr_option == 0) { // Attack
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->carrier_env_atk += 10;
+                                    int sum = fm_synth_params->carrier_env_atk +
+                                              fm_synth_params->carrier_env_dec +
+                                              fm_synth_params->carrier_env_rel;
+                                    if (sum > fm_synth_params->carrier_env_dur) {
+                                        fm_synth_params->carrier_env_atk =
+                                            fm_synth_params->carrier_env_dur -
+                                            (fm_synth_params->carrier_env_dec +
+                                             fm_synth_params->carrier_env_rel);
+                                    }
                                 }
-                            }
-                            if (kDown & KEY_DOWN)
-                                sampler_params->env_atk -= 10;
-                            if (sampler_params->env_atk < 0)
-                                sampler_params->env_atk = 0;
-                        } else if (*ctx->selected_adsr_option == 1) { // Decay
-                            if (kDown & KEY_UP) {
-                                sampler_params->env_dec += 10;
-                                int sum = sampler_params->env_atk + sampler_params->env_dec +
-                                          sampler_params->env_rel;
-                                if (sum > sampler_params->env_dur) {
-                                    sampler_params->env_dec =
-                                        sampler_params->env_dur -
-                                        (sampler_params->env_atk + sampler_params->env_rel);
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->carrier_env_atk -= 10;
+                                if (fm_synth_params->carrier_env_atk < 0)
+                                    fm_synth_params->carrier_env_atk = 0;
+                            } else if (*ctx->selected_adsr_option == 1) { // Decay
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->carrier_env_dec += 10;
+                                    int sum = fm_synth_params->carrier_env_atk +
+                                              fm_synth_params->carrier_env_dec +
+                                              fm_synth_params->carrier_env_rel;
+                                    if (sum > fm_synth_params->carrier_env_dur) {
+                                        fm_synth_params->carrier_env_dec =
+                                            fm_synth_params->carrier_env_dur -
+                                            (fm_synth_params->carrier_env_atk +
+                                             fm_synth_params->carrier_env_rel);
+                                    }
                                 }
-                            }
-                            if (kDown & KEY_DOWN)
-                                sampler_params->env_dec -= 10;
-                            if (sampler_params->env_dec < 0)
-                                sampler_params->env_dec = 0;
-                        } else if (*ctx->selected_adsr_option == 2) { // Sustain
-                            if (kDown & KEY_UP)
-                                sampler_params->env_sus_level += 0.1f;
-                            if (kDown & KEY_DOWN)
-                                sampler_params->env_sus_level -= 0.1f;
-                            if (sampler_params->env_sus_level < 0.0f)
-                                sampler_params->env_sus_level = 0.0f;
-                            if (sampler_params->env_sus_level > 1.0f)
-                                sampler_params->env_sus_level = 1.0f;
-                        } else if (*ctx->selected_adsr_option == 3) { // Release
-                            if (kDown & KEY_UP) {
-                                sampler_params->env_rel += 10;
-                                int sum = sampler_params->env_atk + sampler_params->env_dec +
-                                          sampler_params->env_rel;
-                                if (sum > sampler_params->env_dur) {
-                                    sampler_params->env_rel =
-                                        sampler_params->env_dur -
-                                        (sampler_params->env_atk + sampler_params->env_dec);
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->carrier_env_dec -= 10;
+                                if (fm_synth_params->carrier_env_dec < 0)
+                                    fm_synth_params->carrier_env_dec = 0;
+                            } else if (*ctx->selected_adsr_option == 2) { // Sustain
+                                if (kDown & KEY_UP)
+                                    fm_synth_params->carrier_env_sus_level += 0.1f;
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->carrier_env_sus_level -= 0.1f;
+                                if (fm_synth_params->carrier_env_sus_level < 0.0f)
+                                    fm_synth_params->carrier_env_sus_level = 0.0f;
+                                if (fm_synth_params->carrier_env_sus_level > 1.0f)
+                                    fm_synth_params->carrier_env_sus_level = 1.0f;
+                            } else if (*ctx->selected_adsr_option == 3) { // Release
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->carrier_env_rel += 10;
+                                    int sum = fm_synth_params->carrier_env_atk +
+                                              fm_synth_params->carrier_env_dec +
+                                              fm_synth_params->carrier_env_rel;
+                                    if (sum > fm_synth_params->carrier_env_dur) {
+                                        fm_synth_params->carrier_env_rel =
+                                            fm_synth_params->carrier_env_dur -
+                                            (fm_synth_params->carrier_env_atk +
+                                             fm_synth_params->carrier_env_dec);
+                                    }
                                 }
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->carrier_env_rel -= 10;
+                                if (fm_synth_params->carrier_env_rel < 0)
+                                    fm_synth_params->carrier_env_rel = 0;
                             }
-                            if (kDown & KEY_DOWN)
-                                sampler_params->env_rel -= 10;
-                            if (sampler_params->env_rel < 0)
-                                sampler_params->env_rel = 0;
+                        } else if (*ctx->selected_step_option == 7) { // Modulator Envelope
+                            if (*ctx->selected_adsr_option == 0) {    // Attack
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->mod_env_atk += 10;
+                                    int sum = fm_synth_params->mod_env_atk +
+                                              fm_synth_params->mod_env_dec +
+                                              fm_synth_params->mod_env_rel;
+                                    if (sum > fm_synth_params->mod_env_dur) {
+                                        fm_synth_params->mod_env_atk =
+                                            fm_synth_params->mod_env_dur -
+                                            (fm_synth_params->mod_env_dec +
+                                             fm_synth_params->mod_env_rel);
+                                    }
+                                }
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->mod_env_atk -= 10;
+                                if (fm_synth_params->mod_env_atk < 0)
+                                    fm_synth_params->mod_env_atk = 0;
+                            } else if (*ctx->selected_adsr_option == 1) { // Decay
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->mod_env_dec += 10;
+                                    int sum = fm_synth_params->mod_env_atk +
+                                              fm_synth_params->mod_env_dec +
+                                              fm_synth_params->mod_env_rel;
+                                    if (sum > fm_synth_params->mod_env_dur) {
+                                        fm_synth_params->mod_env_dec =
+                                            fm_synth_params->mod_env_dur -
+                                            (fm_synth_params->mod_env_atk +
+                                             fm_synth_params->mod_env_rel);
+                                    }
+                                }
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->mod_env_dec -= 10;
+                                if (fm_synth_params->mod_env_dec < 0)
+                                    fm_synth_params->mod_env_dec = 0;
+                            } else if (*ctx->selected_adsr_option == 2) { // Sustain
+                                if (kDown & KEY_UP)
+                                    fm_synth_params->mod_env_sus_level += 0.1f;
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->mod_env_sus_level -= 0.1f;
+                                if (fm_synth_params->mod_env_sus_level < 0.0f)
+                                    fm_synth_params->mod_env_sus_level = 0.0f;
+                                if (fm_synth_params->mod_env_sus_level > 1.0f)
+                                    fm_synth_params->mod_env_sus_level = 1.0f;
+                            } else if (*ctx->selected_adsr_option == 3) { // Release
+                                if (kDown & KEY_UP) {
+                                    fm_synth_params->mod_env_rel += 10;
+                                    int sum = fm_synth_params->mod_env_atk +
+                                              fm_synth_params->mod_env_dec +
+                                              fm_synth_params->mod_env_rel;
+                                    if (sum > fm_synth_params->mod_env_dur) {
+                                        fm_synth_params->mod_env_rel =
+                                            fm_synth_params->mod_env_dur -
+                                            (fm_synth_params->mod_env_atk +
+                                             fm_synth_params->mod_env_dec);
+                                    }
+                                }
+                                if (kDown & KEY_DOWN)
+                                    fm_synth_params->mod_env_rel -= 10;
+                                if (fm_synth_params->mod_env_rel < 0)
+                                    fm_synth_params->mod_env_rel = 0;
+                            }
                         }
                     }
                 } else if (*ctx->selected_step_option == 0) { // Volume
@@ -488,6 +573,92 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                             synth_params->env_dur -= 50;
                         if (synth_params->env_dur < 0)
                             synth_params->env_dur = 0;
+                    }
+                } else if (is_fm_synth) {
+                    FMSynthParameters *fm_synth_params = ctx->editing_fm_synth_params;
+                    if (*ctx->selected_step_option == 4) { // Mod Depth
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_depth += 10.0f;
+                        }
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_depth -= 10.0f;
+                        }
+                        if (fm_synth_params->mod_depth < 0.0f)
+                            fm_synth_params->mod_depth = 0.0f;
+                    } else if (*ctx->selected_step_option == 5) { // Mod Index
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_index += 0.1f;
+                        }
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_index -= 0.1f;
+                        }
+                        if (fm_synth_params->mod_index < 0.0f)
+                            fm_synth_params->mod_index = 0.0f;
+                    } else if (*ctx->selected_step_option == 6) { // MIDI Note (Carrier Freq)
+                        int midi_note = hertzToMidi(fm_synth_params->carrier_freq);
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            midi_note++;
+                        }
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            midi_note--;
+                        }
+                        if (midi_note < 0)
+                            midi_note = 0;
+                        if (midi_note > 127)
+                            midi_note = 127;
+                        fm_synth_params->carrier_freq = midiToHertz(midi_note);
+                    } else if (*ctx->selected_step_option == 7) { // Mod Freq Ratio
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_freq_ratio += 0.1f;
+                        }
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->mod_freq_ratio -= 0.1f;
+                        }
+                        if (fm_synth_params->mod_freq_ratio < 0.0f)
+                            fm_synth_params->mod_freq_ratio = 0.0f;
+                    } else if (*ctx->selected_step_option == 8) { // Env Dur (combined)
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->carrier_env_dur += 50;
+                            fm_synth_params->mod_env_dur += 50;
+                        }
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT)) {
+                            fm_synth_params->carrier_env_dur -= 50;
+                            fm_synth_params->mod_env_dur -= 50;
+                        }
+                        if (fm_synth_params->carrier_env_dur < 0)
+                            fm_synth_params->carrier_env_dur = 0;
+                        if (fm_synth_params->mod_env_dur < 0)
+                            fm_synth_params->mod_env_dur = 0;
+                    } else if (*ctx->selected_step_option == 9) { // Car Envelope button
+                        if (kDown & KEY_A) {
+                            *ctx->selected_step_option =
+                                6; // Switch to Carrier Envelope ADSR editing
+                        }
+                    } else if (*ctx->selected_step_option == 10) { // Mod Envelope button
+                        if (kDown & KEY_A) {
+                            *ctx->selected_step_option =
+                                7; // Switch to Modulator Envelope ADSR editing
+                        }
                     }
                 } else if (is_sampler) {
                     OpusSamplerParameters *sampler_params = ctx->editing_sampler_params;
@@ -666,10 +837,21 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
             int track_idx = *ctx->selected_row - 1;
             if (track_idx < 0)
                 break;
-            Track *track      = &ctx->tracks[track_idx];
-            bool   is_sampler = track->instrument_type == OPUS_SAMPLER;
-            int    num_left   = 4;
-            int    num_right  = is_sampler ? 5 : 4;
+            Track *track       = &ctx->tracks[track_idx];
+            bool   is_sampler  = track->instrument_type == OPUS_SAMPLER;
+            bool   is_fm_synth = track->instrument_type == FM_SYNTH;
+            int    num_left    = 4; // Common parameters
+            if (is_fm_synth) {
+                num_left += 2; // Add Mod Depth and Mod Index
+            }
+            int num_right = 0;
+            if (track->instrument_type == SUB_SYNTH) {
+                num_right = 4; // MIDI Note, Waveform, Envelope, Env Dur
+            } else if (is_sampler) {
+                num_right = 5; // Sample, Pb Mode, Start Pos, Envelope, Env Dur
+            } else if (is_fm_synth) {
+                num_right = 5; // MIDI Note, Mod Ratio, Env Dur, Car Env, Mod Env
+            }
 
             int current_col = (*ctx->selected_step_option < num_left) ? 0 : 1;
             int current_row = (current_col == 0) ? *ctx->selected_step_option
@@ -713,8 +895,9 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
 
             if (kDown & KEY_A) {
                 if (track_idx >= 0) {
-                    bool is_sampler = track->instrument_type == OPUS_SAMPLER;
-                    int  max_option = is_sampler ? 8 : 7;
+                    bool is_sampler  = track->instrument_type == OPUS_SAMPLER;
+                    bool is_fm_synth = track->instrument_type == FM_SYNTH;
+                    int  max_option  = is_sampler ? 8 : (is_fm_synth ? 11 : 7);
 
                     if (*ctx->selected_step_option >= 0 &&
                         *ctx->selected_step_option <= max_option) {
@@ -733,6 +916,12 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                                        sizeof(OpusSamplerParameters));
                                 ctx->editing_step_params->instrument_data =
                                     &ctx->editing_sampler_params;
+                            } else if (track->instrument_type == FM_SYNTH) {
+                                memcpy(ctx->editing_fm_synth_params,
+                                       track->default_parameters->instrument_data,
+                                       sizeof(FMSynthParameters));
+                                ctx->editing_step_params->instrument_data =
+                                    ctx->editing_fm_synth_params;
                             }
                         } else {
                             SeqStep *seq_step = &track->sequencer->steps[*ctx->selected_col - 1];
@@ -748,6 +937,11 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                                        sizeof(OpusSamplerParameters));
                                 ctx->editing_step_params->instrument_data =
                                     ctx->editing_sampler_params;
+                            } else if (track->instrument_type == FM_SYNTH) {
+                                memcpy(ctx->editing_fm_synth_params,
+                                       seq_step->data->instrument_data, sizeof(FMSynthParameters));
+                                ctx->editing_step_params->instrument_data =
+                                    ctx->editing_fm_synth_params;
                             }
                         }
                         ctx->session->main_screen_view = VIEW_STEP_SETTINGS_EDIT;

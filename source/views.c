@@ -113,6 +113,8 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             const char *instrument_name = "";
             if (tracks[track_idx].instrument_type == SUB_SYNTH) {
                 instrument_name = "Synth";
+            } else if (tracks[track_idx].instrument_type == FM_SYNTH) {
+                instrument_name = "FM Synth";
             } else if (tracks[track_idx].instrument_type == OPUS_SAMPLER) {
                 instrument_name = "Sampler";
             }
@@ -529,6 +531,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
     const char *instrument_name = "";
     if (track.instrument_type == SUB_SYNTH) {
         instrument_name = "Synth";
+    } else if (track.instrument_type == FM_SYNTH) {
+        instrument_name = "FM Synth";
     } else if (track.instrument_type == OPUS_SAMPLER) {
         instrument_name = "Sampler";
     }
@@ -562,8 +566,19 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
     }
 
     // Common Parameters
-    const char *common_params[] = { "Volume", "Pan", "Filter Cf", "Filter Type" };
-    for (int i = 0; i < 4; i++) {
+    const char *common_params[]   = { "Volume", "Pan", "Filter Cf", "Filter Type" };
+    int         num_common_params = 4;
+
+    // FM Synth specific left column parameters
+    const char *fm_synth_left_params[]   = { "Mod Depth", "Mod Index" };
+    int         num_fm_synth_left_params = 2;
+
+    int total_left_params = num_common_params;
+    if (track.instrument_type == FM_SYNTH) {
+        total_left_params += num_fm_synth_left_params;
+    }
+
+    for (int i = 0; i < total_left_params; i++) {
         float x           = 10;
         float y           = 30 + i * (cell_height + padding);
         bool  is_selected = (selected_step_option == i);
@@ -596,21 +611,40 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                           current_border_color, current_border_color, current_border_color);
 
         C2D_TextBufClear(text_buf);
-        switch (i) {
-        case 0:
-            snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->volume);
-            break;
-        case 1:
-            snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->pan);
-            break;
-        case 2:
-            snprintf(buffer, sizeof(buffer), "%s: %.0f", common_params[i],
-                     params->ndsp_filter_cutoff);
-            break;
-        case 3:
-            snprintf(buffer, sizeof(buffer), "%s: %s", common_params[i],
-                     ndsp_biquad_filter_names[params->ndsp_filter_type]);
-            break;
+        if (i < num_common_params) {
+            switch (i) {
+            case 0:
+                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->volume);
+                break;
+            case 1:
+                snprintf(buffer, sizeof(buffer), "%s: %.2f", common_params[i], params->pan);
+                break;
+            case 2:
+                snprintf(buffer, sizeof(buffer), "%s: %.0f", common_params[i],
+                         params->ndsp_filter_cutoff);
+                break;
+            case 3:
+                snprintf(buffer, sizeof(buffer), "%s: %s", common_params[i],
+                         ndsp_biquad_filter_names[params->ndsp_filter_type]);
+                break;
+            }
+        } else { // FM Synth specific left column parameters
+            FMSynthParameters *fm_synth_params = (FMSynthParameters *) params->instrument_data;
+            if (fm_synth_params) {
+                switch (i - num_common_params) {
+                case 0: // Mod Depth
+                    snprintf(buffer, sizeof(buffer), "%s: %.0f", fm_synth_left_params[0],
+                             fm_synth_params->mod_depth);
+                    break;
+                case 1: // Mod Index
+                    snprintf(buffer, sizeof(buffer), "%s: %.1f", fm_synth_left_params[1],
+                             fm_synth_params->mod_index);
+                    break;
+                }
+            } else {
+                snprintf(buffer, sizeof(buffer), "%s: N/A",
+                         fm_synth_left_params[i - num_common_params]);
+            }
         }
         C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
         C2D_TextOptimize(&text_obj);
@@ -625,7 +659,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         for (int i = 0; i < 4; i++) {
             float x           = 160;
             float y           = 30 + i * (cell_height + padding);
-            bool  is_selected = (selected_step_option == i + 4);
+            bool  is_selected = (selected_step_option == i + 6);
             u32   bg_color, text_color;
 
             if (is_selected) {
@@ -687,7 +721,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         for (int i = 0; i < 5; i++) {
             float x           = 160;
             float y           = 30 + i * (cell_height + padding);
-            bool  is_selected = (selected_step_option == i + 4);
+            bool  is_selected = (selected_step_option == i + 10);
             u32   bg_color, text_color;
 
             if (is_selected) {
@@ -752,6 +786,75 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
                          text_color);
         }
+    } else if (track.instrument_type == FM_SYNTH) {
+        FMSynthParameters *fm_synth_params  = (FMSynthParameters *) params->instrument_data;
+        const char *fm_synth_right_params[] = { "MIDI Note", "Mod Ratio", "Env Dur", "Car Env",
+                                                "Mod Env" };
+        int         num_fm_synth_right_params =
+            sizeof(fm_synth_right_params) / sizeof(fm_synth_right_params[0]);
+
+        for (int i = 0; i < num_fm_synth_right_params; i++) {
+            float x           = 160;
+            float y           = 30 + i * (cell_height + padding);
+            bool  is_selected = (selected_step_option == i + 15);
+            u32   bg_color, text_color;
+
+            if (is_selected) {
+                if (focus == FOCUS_BOTTOM) {
+                    bg_color   = CLR_YELLOW;
+                    text_color = CLR_BLACK;
+                } else {
+                    bg_color   = base_bg_color;
+                    text_color = base_text_color;
+                }
+            } else {
+                bg_color   = base_bg_color;
+                text_color = base_text_color;
+            }
+
+            C2D_DrawRectangle(x, y, 0, cell_width, cell_height, bg_color, bg_color, bg_color,
+                              bg_color);
+
+            u32 current_border_color =
+                (is_selected && focus != FOCUS_BOTTOM) ? CLR_YELLOW : border_color;
+            C2D_DrawRectangle(x, y, 0, cell_width, 1, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y + cell_height - 1, 0, cell_width, 1, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
+            C2D_DrawRectangle(x, y, 0, 1, cell_height, current_border_color, current_border_color,
+                              current_border_color, current_border_color);
+            C2D_DrawRectangle(x + cell_width - 1, y, 0, 1, cell_height, current_border_color,
+                              current_border_color, current_border_color, current_border_color);
+
+            C2D_TextBufClear(text_buf);
+            if (fm_synth_params) {
+                switch (i) {
+                case 0: { // MIDI Note
+                    int midi_note = hertzToMidi(fm_synth_params->carrier_freq);
+                    snprintf(buffer, sizeof(buffer), "%s: %d", fm_synth_right_params[i], midi_note);
+                    break;
+                }
+                case 1: // Mod Freq Ratio
+                    snprintf(buffer, sizeof(buffer), "%s: %.1f", fm_synth_right_params[i],
+                             fm_synth_params->mod_freq_ratio);
+                    break;
+                case 2: // Env Dur (Carrier)
+                    snprintf(buffer, sizeof(buffer), "%s: %dms", fm_synth_right_params[i],
+                             fm_synth_params->carrier_env_dur);
+                    break;
+                case 3: // Car Envelope button
+                case 4: // Mod Envelope button
+                    snprintf(buffer, sizeof(buffer), "%s", fm_synth_right_params[i]);
+                    break;
+                }
+            } else {
+                snprintf(buffer, sizeof(buffer), "%s: N/A", fm_synth_right_params[i]);
+            }
+            C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
+            C2D_TextOptimize(&text_obj);
+            C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
+                         text_color);
+        }
     }
 
     // Track and Step Info
@@ -792,10 +895,12 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
     C2D_TextBufClear(text_buf);
     char text[128];
 
-    bool is_synth   = track->instrument_type == SUB_SYNTH;
-    bool is_sampler = track->instrument_type == OPUS_SAMPLER;
+    bool is_synth    = track->instrument_type == SUB_SYNTH;
+    bool is_sampler  = track->instrument_type == OPUS_SAMPLER;
+    bool is_fm_synth = track->instrument_type == FM_SYNTH;
     bool is_envelope_option =
-        (is_synth && selected_step_option == 6) || (is_sampler && selected_step_option == 7);
+        (is_synth && selected_step_option == 8) || (is_sampler && selected_step_option == 13) ||
+        (is_fm_synth && (selected_step_option == 18 || selected_step_option == 19));
 
     if (is_envelope_option) {
         const char *labels[] = { "A", "D", "S", "R" };
@@ -808,6 +913,26 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
             values[1]                        = synth_params->env_dec;
             values[2]                        = synth_params->env_sus_level;
             values[3]                        = synth_params->env_rel;
+        } else if (is_fm_synth) {
+            FMSynthParameters *fm_synth_params = (FMSynthParameters *) params->instrument_data;
+            if (fm_synth_params) {               // Add null check
+                if (selected_step_option == 6) { // Carrier Envelope
+                    values[0] = fm_synth_params->carrier_env_atk;
+                    values[1] = fm_synth_params->carrier_env_dec;
+                    values[2] = fm_synth_params->carrier_env_sus_level;
+                    values[3] = fm_synth_params->carrier_env_rel;
+                } else { // Modulator Envelope
+                    values[0] = fm_synth_params->mod_env_atk;
+                    values[1] = fm_synth_params->mod_env_dec;
+                    values[2] = fm_synth_params->mod_env_sus_level;
+                    values[3] = fm_synth_params->mod_env_rel;
+                }
+            } else { // Handle null fm_synth_params
+                values[0] = 0;
+                values[1] = 0;
+                values[2] = 0;
+                values[3] = 0;
+            }
         } else { // is_sampler
             OpusSamplerParameters *sampler_params =
                 (OpusSamplerParameters *) params->instrument_data;
@@ -850,25 +975,57 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
             snprintf(text, sizeof(text), "%s", ndsp_biquad_filter_names[params->ndsp_filter_type]);
         } else if (is_synth) {
             SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
-            if (selected_step_option == 4) { // MIDI Note
+            if (selected_step_option == 6) { // MIDI Note
                 int midi_note = hertzToMidi(synth_params->osc_freq);
                 snprintf(text, sizeof(text), "%d", midi_note);
-            } else if (selected_step_option == 5) { // Waveform
+            } else if (selected_step_option == 7) { // Waveform
                 snprintf(text, sizeof(text), "%s", waveform_names[synth_params->osc_waveform]);
-            } else if (selected_step_option == 7) { // Env Dur
+            } else if (selected_step_option == 9) { // Env Dur
                 snprintf(text, sizeof(text), "%dms", synth_params->env_dur);
+            }
+        } else if (is_fm_synth) {
+            FMSynthParameters *fm_synth_params = (FMSynthParameters *) params->instrument_data;
+            if (fm_synth_params) {               // Add null check
+                if (selected_step_option == 0) { // Volume (common)
+                    snprintf(text, sizeof(text), "%.1f", params->volume);
+                } else if (selected_step_option == 1) { // Pan (common)
+                    snprintf(text, sizeof(text), "%.1f", params->pan);
+                } else if (selected_step_option == 2) { // Filter CF (common)
+                    snprintf(text, sizeof(text), "%.0f Hz", params->ndsp_filter_cutoff);
+                } else if (selected_step_option == 3) { // Filter Type (common)
+                    snprintf(text, sizeof(text), "%s",
+                             ndsp_biquad_filter_names[params->ndsp_filter_type]);
+                } else if (selected_step_option == 4) { // Mod Depth
+                    snprintf(text, sizeof(text), "%.0f", fm_synth_params->mod_depth);
+                } else if (selected_step_option == 5) { // Mod Index
+                    snprintf(text, sizeof(text), "%.1f", fm_synth_params->mod_index);
+                } else if (selected_step_option == 15) { // MIDI Note
+                    int midi_note = hertzToMidi(fm_synth_params->carrier_freq);
+                    snprintf(text, sizeof(text), "%d", midi_note);
+                } else if (selected_step_option == 16) { // Mod Freq Ratio
+                    snprintf(text, sizeof(text), "%.1f", fm_synth_params->mod_freq_ratio);
+                } else if (selected_step_option == 17) { // Env Dur (combined)
+                    snprintf(text, sizeof(text), "%dms",
+                             fm_synth_params->carrier_env_dur); // Display carrier_env_dur
+                } else if (selected_step_option == 18) {         // Car Envelope (button)
+                    snprintf(text, sizeof(text), "Car Envelope");
+                } else if (selected_step_option == 19) { // Mod Envelope (button)
+                    snprintf(text, sizeof(text), "Mod Envelope");
+                }
+            } else {                                 // Handle null fm_synth_params
+                snprintf(text, sizeof(text), "N/A"); // Display N/A for uninitialized parameters
             }
         } else if (is_sampler) {
             OpusSamplerParameters *sampler_params =
                 (OpusSamplerParameters *) params->instrument_data;
-            if (selected_step_option == 4) { // Sample
+            if (selected_step_option == 10) { // Sample
                 snprintf(text, sizeof(text), "%s",
                          SampleBankGetSampleName(sample_bank, sampler_params->sample_index));
-            } else if (selected_step_option == 5) { // Playback Mode
+            } else if (selected_step_option == 11) { // Playback Mode
                 const char *playback_mode_names[] = { "One Shot", "Loop" };
                 snprintf(text, sizeof(text), "%s",
                          playback_mode_names[sampler_params->playback_mode]);
-            } else if (selected_step_option == 6) { // Start Pos
+            } else if (selected_step_option == 12) { // Start Pos
                 Sample *sample = SampleBankGetSample(sample_bank, sampler_params->sample_index);
                 float   start_pos_normalized = 0.0f;
                 if (sample && sample->pcm_length > 0) {
@@ -876,7 +1033,7 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                         (float) sampler_params->start_position / sample->pcm_length;
                 }
                 snprintf(text, sizeof(text), "%.2f", start_pos_normalized);
-            } else if (selected_step_option == 8) {
+            } else if (selected_step_option == 14) { // Env Dur
                 snprintf(text, sizeof(text), "%dms", sampler_params->env_dur);
             }
         }
