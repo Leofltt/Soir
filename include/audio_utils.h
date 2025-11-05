@@ -5,6 +5,7 @@
 #include "../tests/mock_3ds.h"
 #else
 #include <3ds/types.h>
+#include <3ds/synchronization.h>
 #endif
 #include <math.h>
 

@@ -8,7 +8,7 @@ SubSynthParameters defaultSubSynthParameters() {
                                   .env_sus_level = 0.8f,
                                   .env_rel       = 100,
                                   .env_dur       = 1000,
-                                  .osc_freq      = 440.0f, // A4
+                                  .osc_freq      = 220.0f, // A3
                                   .osc_waveform  = SINE };
     return params;
 };
@@ -25,9 +25,9 @@ OpusSamplerParameters defaultOpusSamplerParameters() {
 };
 TrackParameters defaultTrackParameters(int track_id, void *instrument_data) {
     TrackParameters params = { .track_id           = track_id,
-                               .volume             = 1.0f,     // 0 to 1
-                               .pan                = 0.0f,     // -1 to 1, 0 is center
-                               .ndsp_filter_cutoff = 20000.0f, // Default to max cutoff
+                               .volume             = 1.0f,    // 0 to 1
+                               .pan                = 0.0f,    // -1 to 1, 0 is center
+                               .ndsp_filter_cutoff = 8000.0f, // Default to 8000Hz cutoff
                                .ndsp_filter_type   = NDSP_BIQUAD_NONE,
                                // .reverb_level        = 0.0f,
                                // .delay_level         = 0.0f,

@@ -2,6 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void _sample_destroy(Sample *sample) {
+    if (!sample) {
+        return;
+    }
+    if (sample->opusFile) {
+        op_free(sample->opusFile);
+    }
+    if (sample->path) {
+        free(sample->path);
+    }
+    free(sample);
+}
+
 Sample *sample_create(const char *path) {
     Sample *sample = (Sample *) malloc(sizeof(Sample));
     if (!sample) {
@@ -23,21 +36,31 @@ Sample *sample_create(const char *path) {
     }
 
     sample->pcm_length = op_pcm_total(sample->opusFile, -1);
+    sample->ref_count  = 1;
+    LightLock_Init(&sample->lock);
 
     return sample;
 }
 
-void sample_destroy(Sample *sample) {
-    if (!sample) {
+void sample_inc_ref(Sample *sample) {
+    if (!sample)
         return;
+    LightLock_Lock(&sample->lock);
+    sample->ref_count++;
+    LightLock_Unlock(&sample->lock);
+}
+
+void sample_dec_ref(Sample *sample) {
+    if (!sample)
+        return;
+    LightLock_Lock(&sample->lock);
+    sample->ref_count--;
+    if (sample->ref_count == 0) {
+        LightLock_Unlock(&sample->lock);
+        _sample_destroy(sample);
+    } else {
+        LightLock_Unlock(&sample->lock);
     }
-    if (sample->opusFile) {
-        op_free(sample->opusFile);
-    }
-    if (sample->path) {
-        free(sample->path);
-    }
-    free(sample);
 }
 
 static char sample_name_buffer[64];

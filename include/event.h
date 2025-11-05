@@ -6,7 +6,7 @@
 #include "samplers.h" // For OpusSamplerParameters
 #include "track.h"    // For InstrumentType
 
-typedef enum { TRIGGER_STEP } EventType;
+typedef enum { TRIGGER_STEP, UPDATE_STEP } EventType;
 
 typedef struct {
     EventType       type;

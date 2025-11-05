@@ -1,4 +1,5 @@
 #include "sample_bank.h"
+#include "audio_utils.h"
 #include <string.h>
 
 const char *DEFAULT_SAMPLE_PATHS[5] = { "romfs:/samples/bibop.opus", "romfs:/samples/hatClose.opus",
@@ -21,7 +22,7 @@ void SampleBank_init(SampleBank *bank) {
 void SampleBank_deinit(SampleBank *bank) {
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
-            sample_destroy(bank->samples[i]);
+            sample_dec_ref(bank->samples[i]);
             bank->samples[i] = NULL;
         }
     }
@@ -50,7 +51,7 @@ void SampleBank_load_sample(SampleBank *bank, int index, const char *path) {
     }
 
     if (bank->samples[index] != NULL) {
-        sample_destroy(bank->samples[index]);
+        sample_dec_ref(bank->samples[index]);
     }
 
     bank->samples[index] = sample_create(path);

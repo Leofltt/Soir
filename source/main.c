@@ -65,7 +65,7 @@ static void processTrackEvent(Event *event) {
     LightLock_Lock(&tracks_lock);
 
     Track *track = &tracks[event->track_id];
-    updateTrackParameters(track, &event->base_params); // Changed from event->params
+    updateTrackParameters(track, &event->base_params);
 
     if (event->instrument_type == SUB_SYNTH) {
         SubSynthParameters *subsynthParams =
@@ -77,14 +77,23 @@ static void processTrackEvent(Event *event) {
             updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
                            subsynthParams->env_sus_level, subsynthParams->env_rel,
                            subsynthParams->env_dur);
-            triggerEnvelope(ss->env);
+            if (event->type == TRIGGER_STEP) {
+                triggerEnvelope(ss->env);
+            }
         }
     } else if (event->instrument_type == OPUS_SAMPLER) {
         OpusSamplerParameters *opusSamplerParams =
-            &event->instrument_specific_params.sampler_params; // Changed access
+            &event->instrument_specific_params.sampler_params;
         Sampler *s = (Sampler *) track->instrument_data;
         if (opusSamplerParams && s) {
-            s->sample = SampleBank_get_sample(&g_sample_bank, opusSamplerParams->sample_index);
+            Sample *new_sample =
+                SampleBank_get_sample(&g_sample_bank, opusSamplerParams->sample_index);
+            if (new_sample != s->sample) {
+                sample_inc_ref(new_sample);
+                sample_dec_ref(s->sample);
+                s->sample = new_sample;
+            }
+
             s->start_position = opusSamplerParams->start_position;
             s->playback_mode  = opusSamplerParams->playback_mode;
             s->seek_requested = true;
@@ -92,7 +101,9 @@ static void processTrackEvent(Event *event) {
             updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
                            opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
                            opusSamplerParams->env_dur);
-            triggerEnvelope(s->env);
+            if (event->type == TRIGGER_STEP) {
+                triggerEnvelope(s->env);
+            }
         }
     }
 
@@ -260,14 +271,15 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler                  = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
-                                            .start_position  = 0,
-                                            .playback_mode   = ONE_SHOT,
-                                            .samples_per_buf = OPUSSAMPLESPERFBUF,
-                                            .samplerate      = OPUSSAMPLERATE,
-                                            .env             = env1,
-                                            .seek_requested  = false,
-                                            .finished        = true };
+    *sampler = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+                           .start_position  = 0,
+                           .playback_mode   = ONE_SHOT,
+                           .samples_per_buf = OPUSSAMPLESPERFBUF,
+                           .samplerate      = OPUSSAMPLERATE,
+                           .env             = env1,
+                           .seek_requested  = false,
+                           .finished        = true };
+    sample_inc_ref(sampler->sample);
     tracks[1].instrument_data = sampler;
 
     sequence2 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
@@ -591,7 +603,7 @@ int main(int argc, char **argv) {
                                        sizeof(OpusSamplerParameters));
                             }
 
-                            Event event = { .type            = TRIGGER_STEP,
+                            Event event = { .type            = UPDATE_STEP,
                                             .track_id        = track_idx,
                                             .base_params     = *seq_step->data,
                                             .instrument_type = track->instrument_type };
@@ -1277,6 +1289,8 @@ cleanup:
     if (sampler) {
         if (sampler->env)
             linearFree(sampler->env);
+        if (sampler->sample)
+            sample_dec_ref(sampler->sample);
         linearFree(sampler);
     }
     if (opusSamplerParamsArray)
