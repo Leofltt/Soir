@@ -18,6 +18,7 @@
 #include "sample_browser.h"
 #include "audio_utils.h"
 #include "threads/audio_thread.h"
+#include "threads/clock_timer_thread.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -42,15 +43,6 @@ static SampleBrowser         g_sample_browser;
 static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
-
-static Thread clock_thread;
-static Thread timer_thread;
-
-static LightEvent s_clock_event;
-
-void clock_thread_func(void *arg);
-void audio_thread_func(void *arg);
-void timer_thread_func(void *arg);
 
 // Helper function to process events on the audio thread
 
@@ -118,10 +110,6 @@ int main(int argc, char **argv) {
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
 
-    audio_thread_init(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
-                      main_prio);
-    LightEvent_Init(&s_clock_event, RESET_ONESHOT);
-
     // CLOCK //////////////////////////
     MusicalTime mt    = { .bar = 0, .beat = 0, .deltaStep = 0, .steps = 0, .beats_per_bar = 4 };
     Clock       cl    = { .bpm              = 120.0f,
@@ -132,6 +120,11 @@ int main(int argc, char **argv) {
                           .barBeats         = &mt };
     Clock      *clock = &cl;
     setBpm(clock, 127.0f);
+
+    audio_thread_init(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
+                      main_prio);
+    clock_timer_threads_init(clock, &clock_lock, &tracks_lock, &g_event_queue, tracks, &should_exit,
+                             main_prio);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -264,19 +257,7 @@ int main(int argc, char **argv) {
     LightLock_Init(&tracks_lock);
     event_queue_init(&g_event_queue);
 
-    clock_thread = threadCreate(clock_thread_func, clock, STACK_SIZE, main_prio - 1, -2, true);
-    if (clock_thread == NULL) {
-        printf("Failed to create clock thread\n");
-        ret = 1;
-        goto cleanup;
-    }
-
-    timer_thread = threadCreate(timer_thread_func, NULL, STACK_SIZE, main_prio - 1, -2, true);
-    if (timer_thread == NULL) {
-        printf("Failed to create timer thread\n");
-        ret = 1;
-        goto cleanup;
-    }
+    clock_timer_threads_start();
 
     audio_thread_start();
 
@@ -1178,16 +1159,7 @@ int main(int argc, char **argv) {
 cleanup:
     should_exit = true;
 
-    if (clock_thread) {
-        LightEvent_Signal(&s_clock_event);
-        threadJoin(clock_thread, U64_MAX);
-        threadFree(clock_thread);
-    }
-
-    if (timer_thread) {
-        threadJoin(timer_thread, U64_MAX);
-        threadFree(timer_thread);
-    }
+    clock_timer_threads_stop_and_join();
 
     audio_thread_stop_and_join();
 
@@ -1205,66 +1177,4 @@ cleanup:
     ndspExit();
 
     return ret;
-}
-
-void clock_thread_func(void *arg) {
-    Clock *clock = (Clock *) arg;
-    while (!should_exit) {
-        LightEvent_Wait(&s_clock_event);
-        if (should_exit)
-            break;
-
-        LightLock_Lock(&clock_lock);
-        int ticks_to_process = updateClock(clock);
-
-        if (ticks_to_process > 0) {
-            for (int i = 0; i < ticks_to_process; i++) {
-                int totBeats               = clock->barBeats->steps / STEPS_PER_BEAT;
-                clock->barBeats->bar       = totBeats / clock->barBeats->beats_per_bar;
-                clock->barBeats->beat      = (totBeats % clock->barBeats->beats_per_bar);
-                clock->barBeats->deltaStep = clock->barBeats->steps % STEPS_PER_BEAT;
-                clock->barBeats->steps++;
-
-                for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
-                    Track *track = &tracks[track_idx];
-                    if (!track || !track->sequencer || !clock ||
-                        track->sequencer->steps_per_beat == 0) {
-                        continue;
-                    }
-
-                    int clock_steps_per_seq_step =
-                        STEPS_PER_BEAT / track->sequencer->steps_per_beat;
-                    if (clock_steps_per_seq_step == 0)
-                        continue;
-
-                    if ((clock->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
-                        SeqStep step = updateSequencer(track->sequencer);
-                        if (step.active && !track->is_muted && step.data) {
-                            Event event = { .type            = TRIGGER_STEP,
-                                            .track_id        = track_idx,
-                                            .base_params     = *step.data,
-                                            .instrument_type = track->instrument_type };
-
-                            if (track->instrument_type == SUB_SYNTH) {
-                                memcpy(&event.instrument_specific_params.subsynth_params,
-                                       step.data->instrument_data, sizeof(SubSynthParameters));
-                            } else if (track->instrument_type == OPUS_SAMPLER) {
-                                memcpy(&event.instrument_specific_params.sampler_params,
-                                       step.data->instrument_data, sizeof(OpusSamplerParameters));
-                            }
-                            event_queue_push(&g_event_queue, event);
-                        }
-                    }
-                }
-            }
-        }
-        LightLock_Unlock(&clock_lock);
-    }
-}
-
-void timer_thread_func(void *arg) {
-    while (!should_exit) {
-        svcSleepThread(100000);
-        LightEvent_Signal(&s_clock_event);
-    }
 }
