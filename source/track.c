@@ -2,6 +2,7 @@
 #include "audio_utils.h"
 #include "engine_constants.h"
 #include "synth.h"
+#include "fm_osc.h"
 #include "track_parameters.h"
 #include <stdlib.h>
 #ifndef TESTING
@@ -36,6 +37,24 @@ static void updateSamplerFromSequence(Sampler *sampler, OpusSamplerParameters *p
     triggerEnvelope(sampler->env);
 }
 
+static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params) {
+    if (!synth || !params)
+        return;
+
+    FMOperator_set_carrier_frequency(synth->fm_op, params->carrier_freq);
+    FMOperator_set_modulator_frequency_ratio(synth->fm_op, params->mod_freq_ratio);
+    FMOperator_set_mod_index(synth->fm_op, params->mod_index);
+    FMOperator_set_mod_depth(synth->fm_op, params->mod_depth);
+
+    updateEnvelope(synth->carrierEnv, params->carrier_env_atk, params->carrier_env_dec,
+                   params->carrier_env_sus_level, params->carrier_env_rel, params->carrier_env_dur);
+    triggerEnvelope(synth->carrierEnv);
+
+    updateEnvelope(synth->fm_op->modEnvelope, params->mod_env_atk, params->mod_env_dec,
+                   params->mod_env_sus_level, params->mod_env_rel, params->carrier_env_dur);
+    triggerEnvelope(synth->fm_op->modEnvelope);
+}
+
 void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,
                      u32 num_samples, u32 *audio_buffer) {
     track->chan_id         = chan_id;
@@ -62,6 +81,11 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
             instrument_data = linearAlloc(sizeof(OpusSamplerParameters));
             if (instrument_data) {
                 *((OpusSamplerParameters *) instrument_data) = defaultOpusSamplerParameters();
+            }
+        } else if (instrument_type == FM_SYNTH) {
+            instrument_data = linearAlloc(sizeof(FMSynthParameters));
+            if (instrument_data) {
+                *((FMSynthParameters *) instrument_data) = defaultFMSynthParameters();
             }
         }
         *(track->default_parameters) = defaultTrackParameters(chan_id, instrument_data);
@@ -156,6 +180,12 @@ void updateTrack(Track *track, Clock *clock) {
                 Sampler *s = (Sampler *) track->instrument_data;
                 if (opusSamplerParams && s) {
                     updateSamplerFromSequence(s, opusSamplerParams);
+                }
+            } else if (track->instrument_type == FM_SYNTH) {
+                FMSynthParameters *fmSynthParams = (FMSynthParameters *) step.data->instrument_data;
+                FMSynth           *fms           = (FMSynth *) track->instrument_data;
+                if (fmSynthParams && fms) {
+                    updateFMSynthFromSequence(fms, fmSynthParams);
                 }
             }
         }

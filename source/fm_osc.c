@@ -2,37 +2,41 @@
 #include "polybleposc.h"
 #include <math.h>
 
-void setFMOscFrequency(FMOperator *osc, float frequency) {
-    if (!osc || !osc->carrier || !osc->modulator)
+void FMOperator_set_carrier_frequency(FMOperator *op, float freq) {
+    if (!op || !op->carrier)
         return;
-    setOscFrequency(osc->carrier, frequency);
-    // For now, let's assume a simple 1:1 ratio for the modulator
-    setOscFrequency(osc->modulator, frequency);
+    setOscFrequency(op->carrier, freq);
 }
 
-float nextFMOscillatorSample(FMOperator *osc) {
-    if (!osc || !osc->carrier || !osc->modulator || !osc->modEnvelope)
+void FMOperator_set_modulator_frequency_ratio(FMOperator *op, float ratio) {
+    if (!op || !op->modulator || !op->carrier)
+        return;
+    setOscFrequency(op->modulator, op->carrier->frequency * ratio);
+}
+
+float nextFMOscillatorSample(FMOperator *op) {
+    if (!op || !op->carrier || !op->modulator || !op->modEnvelope)
         return 0.0f;
 
-    float mod_env_val = nextEnvelopeSample(osc->modEnvelope);
-    float mod_signal  = nextOscillatorSample(osc->modulator) * osc->modDepth * mod_env_val;
+    float mod_env_val = nextEnvelopeSample(op->modEnvelope);
+    float mod_signal  = nextOscillatorSample(op->modulator) * op->modDepth * mod_env_val;
 
-    float original_freq  = osc->carrier->phase_inc * osc->carrier->samplerate / (2.0f * M_PI);
-    float modulated_freq = original_freq + mod_signal * osc->modIndex * original_freq;
+    float original_freq  = op->carrier->frequency;
+    float modulated_freq = original_freq + mod_signal * op->modIndex * original_freq;
 
-    setOscFrequency(osc->carrier, modulated_freq);
+    setOscFrequency(op->carrier, modulated_freq);
 
-    return nextOscillatorSample(osc->carrier);
+    return nextOscillatorSample(op->carrier);
 }
 
-void setModIndex(FMOperator *osc, float index) {
-    if (!osc)
+void FMOperator_set_mod_index(FMOperator *op, float index) {
+    if (!op)
         return;
-    osc->modIndex = index;
+    op->modIndex = index;
 }
 
-void setModDepth(FMOperator *osc, float depth) {
-    if (!osc)
+void FMOperator_set_mod_depth(FMOperator *op, float depth) {
+    if (!op)
         return;
-    osc->modDepth = depth;
+    op->modDepth = depth;
 }

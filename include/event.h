@@ -16,6 +16,7 @@ typedef struct {
     union {
         SubSynthParameters    subsynth_params;
         OpusSamplerParameters sampler_params;
+        FMSynthParameters     fm_synth_params;
         // Add other instrument types here as needed
     } instrument_specific_params;
 } Event;
