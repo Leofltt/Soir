@@ -1,10 +1,12 @@
 #include "sample_bank.h"
 #include <string.h>
 
-static const char *DEFAULT_SAMPLE_PATHS[5] = {
-    "romfs:/samples/bibop.opus", "romfs:/samples/hatClose.opus", "romfs:/samples/hatOpen.opus",
-    "romfs:/samples/kick909.opus", "romfs:/samples/clap808.opus"
-};
+const char *DEFAULT_SAMPLE_PATHS[5] = { "romfs:/samples/bibop.opus", "romfs:/samples/hatClose.opus",
+                                        "romfs:/samples/hatOpen.opus",
+                                        "romfs:/samples/kick909.opus",
+                                        "romfs:/samples/clap808.opus" };
+
+const char *SAMPLES_FOLDER_PATH = "sdmc:/samples/";
 
 void SampleBank_init(SampleBank *bank) {
     for (int i = 0; i < MAX_SAMPLES; i++) {

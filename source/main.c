@@ -15,6 +15,7 @@
 #include "views.h"
 #include "event_queue.h"
 #include "sample_bank.h"
+#include "sample_browser.h"
 #include "audio_utils.h"
 
 #include <3ds.h>
@@ -36,6 +37,7 @@ static LightLock             tracks_lock;
 static volatile bool         should_exit = false;
 static EventQueue            g_event_queue;
 static SampleBank            g_sample_bank;
+static SampleBrowser         g_sample_browser;
 static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
@@ -106,6 +108,7 @@ int main(int argc, char **argv) {
     C2D_Prepare();
     initViews();
     SampleBank_init(&g_sample_bank);
+    SampleBrowser_init(&g_sample_browser);
 
     int ret = 0;
 
@@ -114,16 +117,18 @@ int main(int argc, char **argv) {
     C3D_RenderTarget *topScreen    = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     C3D_RenderTarget *bottomScreen = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-    int selected_row                = 0;
-    int selected_col                = 0;
-    int selected_settings_option    = 0;
-    int selected_touch_option       = 0;
-    int selected_touch_clock_option = 0;
-    int selected_sample_row         = 0;
-    int selected_sample_col         = 0;
-    int selected_step_option        = 0;
-    int selected_adsr_option        = 0;
-    int selectedQuitOption          = 0;
+    int  selected_row                  = 0;
+    int  selected_col                  = 0;
+    int  selected_settings_option      = 0;
+    int  selected_touch_option         = 0;
+    int  selected_touch_clock_option   = 0;
+    int  selected_sample_row           = 0;
+    int  selected_sample_col           = 0;
+    bool is_selecting_sample           = false;
+    int  selected_sample_browser_index = 0;
+    int  selected_step_option          = 0;
+    int  selected_adsr_option          = 0;
+    int  selectedQuitOption            = 0;
 
     u64 up_timer    = 0;
     u64 down_timer  = 0;
@@ -1012,20 +1017,54 @@ int main(int argc, char **argv) {
                 }
                 break;
             case VIEW_SAMPLE_MANAGER:
-                if (kDown & KEY_UP) {
-                    selected_sample_row = (selected_sample_row > 0) ? selected_sample_row - 1 : 2;
-                }
-                if (kDown & KEY_DOWN) {
-                    selected_sample_row = (selected_sample_row < 2) ? selected_sample_row + 1 : 0;
-                }
-                if (kDown & KEY_LEFT) {
-                    selected_sample_col = (selected_sample_col > 0) ? selected_sample_col - 1 : 3;
-                }
-                if (kDown & KEY_RIGHT) {
-                    selected_sample_col = (selected_sample_col < 3) ? selected_sample_col + 1 : 0;
-                }
-                if (kDown & KEY_B) {
-                    session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                if (is_selecting_sample) {
+                    if (kDown & KEY_UP) {
+                        selected_sample_browser_index =
+                            (selected_sample_browser_index > 0)
+                                ? selected_sample_browser_index - 1
+                                : SampleBrowser_get_sample_count(&g_sample_browser) - 1;
+                    }
+                    if (kDown & KEY_DOWN) {
+                        selected_sample_browser_index =
+                            (selected_sample_browser_index <
+                             SampleBrowser_get_sample_count(&g_sample_browser) - 1)
+                                ? selected_sample_browser_index + 1
+                                : 0;
+                    }
+                    if (kDown & KEY_A) {
+                        int         sample_slot = selected_sample_row * 4 + selected_sample_col;
+                        const char *path        = SampleBrowser_get_sample_path(
+                            &g_sample_browser, selected_sample_browser_index);
+                        SampleBank_load_sample(&g_sample_bank, sample_slot, path);
+                        is_selecting_sample = false;
+                    }
+                    if (kDown & KEY_B) {
+                        is_selecting_sample = false;
+                    }
+                } else {
+                    if (kDown & KEY_UP) {
+                        selected_sample_row =
+                            (selected_sample_row > 0) ? selected_sample_row - 1 : 2;
+                    }
+                    if (kDown & KEY_DOWN) {
+                        selected_sample_row =
+                            (selected_sample_row < 2) ? selected_sample_row + 1 : 0;
+                    }
+                    if (kDown & KEY_LEFT) {
+                        selected_sample_col =
+                            (selected_sample_col > 0) ? selected_sample_col - 1 : 3;
+                    }
+                    if (kDown & KEY_RIGHT) {
+                        selected_sample_col =
+                            (selected_sample_col < 3) ? selected_sample_col + 1 : 0;
+                    }
+                    if (kDown & KEY_A) {
+                        is_selecting_sample           = true;
+                        selected_sample_browser_index = 0;
+                    }
+                    if (kDown & KEY_B) {
+                        session.touch_screen_view = VIEW_TOUCH_SETTINGS;
+                    }
                 }
                 break;
             case VIEW_STEP_SETTINGS: {
@@ -1170,7 +1209,9 @@ int main(int argc, char **argv) {
             drawTouchClockSettingsView(clock, selected_touch_clock_option);
             break;
         case VIEW_SAMPLE_MANAGER:
-            drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col);
+            drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col,
+                                  is_selecting_sample, selected_sample_browser_index,
+                                  &g_sample_browser);
             break;
         case VIEW_STEP_SETTINGS:
             drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option,

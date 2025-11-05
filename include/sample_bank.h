@@ -5,6 +5,9 @@
 
 #define MAX_SAMPLES 12
 
+extern const char *DEFAULT_SAMPLE_PATHS[5];
+extern const char *SAMPLES_FOLDER_PATH;
+
 typedef struct {
     Sample *samples[MAX_SAMPLES];
 } SampleBank;

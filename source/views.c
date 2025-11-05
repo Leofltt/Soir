@@ -8,6 +8,7 @@
 #include "samplers.h"
 #include "sample.h"
 #include "sample_bank.h"
+#include "sample_browser.h"
 #include "session_controller.h"
 #include "ui_constants.h"
 #include <stdio.h>
@@ -412,7 +413,9 @@ void drawTouchClockSettingsView(Clock *clock, int selected_option) {
         C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
     }
 }
-void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col) {
+void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
+                           bool is_selecting_sample, int selected_sample_browser_index,
+                           SampleBrowser *browser) {
     int   num_rows    = 3;
     int   num_cols    = 4;
     float cell_width  = BOTTOM_SCREEN_WIDTH / num_cols;
@@ -442,6 +445,54 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col)
                                   color);
                 C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
             }
+        }
+    }
+
+    if (is_selecting_sample) {
+        if (browser == NULL) {
+            return;
+        }
+
+        float menu_width  = 200;
+        float menu_height = 150;
+        float menu_x      = (BOTTOM_SCREEN_WIDTH - menu_width) / 2;
+        float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
+
+        C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK,
+                          CLR_BLACK, CLR_BLACK);
+        C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
+                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
+                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
+                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
+                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+
+        int start_index = 0;
+        if (selected_sample_browser_index >= 5) {
+            start_index = selected_sample_browser_index - 5;
+        }
+
+        for (int i = 0; i < 10 && (start_index + i) < SampleBrowser_get_sample_count(browser);
+             i++) {
+            int         index = start_index + i;
+            const char *name  = SampleBrowser_get_sample_name(browser, index);
+            C2D_Font    current_font =
+                (index == selected_sample_browser_index) ? font_heavy : font_angular;
+            u32 color = (index == selected_sample_browser_index) ? CLR_YELLOW : CLR_WHITE;
+
+            C2D_TextBufClear(text_buf);
+            C2D_TextFontParse(&text_obj, current_font, text_buf, name);
+            C2D_TextOptimize(&text_obj);
+
+            float text_width, text_height;
+            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+
+            float text_x = menu_x + 10;
+            float text_y = menu_y + 10 + (i * 14);
+
+            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, color);
         }
     }
 }
