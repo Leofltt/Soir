@@ -21,8 +21,8 @@ bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
     return false;
 }
 
-void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
-                                     bool *should_break_loop) {
+void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
+                                  bool *should_break_loop) {
     if (kDown & KEY_START) {
         *ctx->previous_screen_focus    = *ctx->screen_focus;
         *ctx->screen_focus             = FOCUS_TOP;
@@ -247,7 +247,7 @@ void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, 
                             memcpy(&event.instrument_specific_params.sampler_params,
                                    seq_step->data->instrument_data, sizeof(OpusSamplerParameters));
                         }
-                        event_queue_push(ctx->event_queue, event);
+                        eventQueuePush(ctx->event_queue, event);
                     }
 
                     // Update default parameters for the track
@@ -492,7 +492,7 @@ void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, 
                 } else if (is_sampler) {
                     OpusSamplerParameters *sampler_params = ctx->editing_sampler_params;
                     if (*ctx->selected_step_option == 4) { // Sample
-                        int count = SampleBank_get_loaded_sample_count(ctx->sample_bank);
+                        int count = SampleBankGetLoadedSampleCount(ctx->sample_bank);
                         if (count > 0) {
                             if (kDown & KEY_UP)
                                 sampler_params->sample_index =
@@ -507,7 +507,7 @@ void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, 
                                 (sampler_params->playback_mode == ONE_SHOT) ? LOOP : ONE_SHOT;
                     } else if (*ctx->selected_step_option == 6) { // Start Pos
                         Sample *sample =
-                            SampleBank_get_sample(ctx->sample_bank, sampler_params->sample_index);
+                            SampleBankGetSample(ctx->sample_bank, sampler_params->sample_index);
                         if (sample && sample->pcm_length > 0) {
                             float pos = (float) sampler_params->start_position / sample->pcm_length;
                             if (kDown & KEY_UP)
@@ -617,20 +617,20 @@ void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, 
                     *ctx->selected_sample_browser_index =
                         (*ctx->selected_sample_browser_index > 0)
                             ? *ctx->selected_sample_browser_index - 1
-                            : SampleBrowser_get_sample_count(ctx->sample_browser) - 1;
+                            : SampleBrowserGetSampleCount(ctx->sample_browser) - 1;
                 }
                 if (kDown & KEY_DOWN) {
                     *ctx->selected_sample_browser_index =
                         (*ctx->selected_sample_browser_index <
-                         SampleBrowser_get_sample_count(ctx->sample_browser) - 1)
+                         SampleBrowserGetSampleCount(ctx->sample_browser) - 1)
                             ? *ctx->selected_sample_browser_index + 1
                             : 0;
                 }
                 if (kDown & KEY_A) {
                     int sample_slot  = *ctx->selected_sample_row * 4 + *ctx->selected_sample_col;
-                    const char *path = SampleBrowser_get_sample_path(
+                    const char *path = SampleBrowserGetSamplePath(
                         ctx->sample_browser, *ctx->selected_sample_browser_index);
-                    SampleBank_load_sample(ctx->sample_bank, sample_slot, path);
+                    SampleBankLoadSample(ctx->sample_bank, sample_slot, path);
                     *ctx->is_selecting_sample = false;
                 }
                 if (kDown & KEY_B) {

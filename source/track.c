@@ -116,9 +116,9 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
     if (!synth || !params)
         return;
 
-    FMOperator_set_carrier_frequency(synth->fm_op, params->carrier_freq);
-    FMOperator_set_modulator_frequency_ratio(synth->fm_op, params->mod_freq_ratio);
-    FMOperator_set_mod_index(synth->fm_op, params->mod_index);
+    FMOpSetCarrierFrequency(synth->fm_op, params->carrier_freq);
+    FMOpSetModRatio(synth->fm_op, params->mod_freq_ratio);
+    FMOpSetModIndex(synth->fm_op, params->mod_index);
     FMOperator_set_mod_depth(synth->fm_op, params->mod_depth);
 
     updateEnvelope(synth->carrierEnv, params->carrier_env_atk, params->carrier_env_dec,

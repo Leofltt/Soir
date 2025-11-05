@@ -30,7 +30,7 @@ static void add_sample(SampleBrowser *browser, const char *path, const char *pre
     browser->count++;
 }
 
-void SampleBrowser_init(SampleBrowser *browser) {
+void SampleBrowserInit(SampleBrowser *browser) {
     browser->count = 0;
 
     for (int i = 0; i < 5; i++) {
@@ -52,24 +52,24 @@ void SampleBrowser_init(SampleBrowser *browser) {
     }
 }
 
-void SampleBrowser_deinit(SampleBrowser *browser) {
+void SampleBrowserDeinit(SampleBrowser *browser) {
     // Nothing to do
 }
 
-const char *SampleBrowser_get_sample_name(SampleBrowser *browser, int index) {
+const char *SampleBrowserGetSampleName(SampleBrowser *browser, int index) {
     if (index < 0 || index >= browser->count) {
         return NULL;
     }
     return browser->names[index];
 }
 
-const char *SampleBrowser_get_sample_path(SampleBrowser *browser, int index) {
+const char *SampleBrowserGetSamplePath(SampleBrowser *browser, int index) {
     if (index < 0 || index >= browser->count) {
         return NULL;
     }
     return browser->paths[index];
 }
 
-int SampleBrowser_get_sample_count(SampleBrowser *browser) {
+int SampleBrowserGetSampleCount(SampleBrowser *browser) {
     return browser->count;
 }

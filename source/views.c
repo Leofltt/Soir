@@ -428,7 +428,7 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
 
             int sample_index = i * num_cols + j;
             if (sample_index < MAX_SAMPLES) {
-                const char *sample_name = SampleBank_get_sample_name(bank, sample_index);
+                const char *sample_name = SampleBankGetSampleName(bank, sample_index);
                 u32 color = (strcmp(sample_name, "Empty") == 0) ? CLR_DARK_GRAY : CLR_LIGHT_GRAY;
                 color     = (i == selected_row && j == selected_col) ? CLR_YELLOW : color;
                 C2D_TextBufClear(text_buf);
@@ -474,10 +474,9 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
             start_index = selected_sample_browser_index - 5;
         }
 
-        for (int i = 0; i < 10 && (start_index + i) < SampleBrowser_get_sample_count(browser);
-             i++) {
+        for (int i = 0; i < 10 && (start_index + i) < SampleBrowserGetSampleCount(browser); i++) {
             int         index = start_index + i;
-            const char *name  = SampleBrowser_get_sample_name(browser, index);
+            const char *name  = SampleBrowserGetSampleName(browser, index);
             C2D_Font    current_font =
                 (index == selected_sample_browser_index) ? font_heavy : font_angular;
             u32 color = (index == selected_sample_browser_index) ? CLR_YELLOW : CLR_WHITE;
@@ -721,9 +720,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
             C2D_TextBufClear(text_buf);
             switch (i) {
             case 0:
-                snprintf(
-                    buffer, sizeof(buffer), "%s: %s", sampler_params[i],
-                    SampleBank_get_sample_name(sample_bank, sampler_params_data->sample_index));
+                snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
+                         SampleBankGetSampleName(sample_bank, sampler_params_data->sample_index));
                 break;
             case 1:
                 snprintf(buffer, sizeof(buffer), "%s: %s", sampler_params[i],
@@ -731,7 +729,7 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
                 break;
             case 2: {
                 Sample *sample =
-                    SampleBank_get_sample(sample_bank, sampler_params_data->sample_index);
+                    SampleBankGetSample(sample_bank, sampler_params_data->sample_index);
                 float start_pos_normalized = 0.0f;
                 if (sample && sample->pcm_length > 0) {
                     start_pos_normalized =
@@ -865,13 +863,13 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                 (OpusSamplerParameters *) params->instrument_data;
             if (selected_step_option == 4) { // Sample
                 snprintf(text, sizeof(text), "%s",
-                         SampleBank_get_sample_name(sample_bank, sampler_params->sample_index));
+                         SampleBankGetSampleName(sample_bank, sampler_params->sample_index));
             } else if (selected_step_option == 5) { // Playback Mode
                 const char *playback_mode_names[] = { "One Shot", "Loop" };
                 snprintf(text, sizeof(text), "%s",
                          playback_mode_names[sampler_params->playback_mode]);
             } else if (selected_step_option == 6) { // Start Pos
-                Sample *sample = SampleBank_get_sample(sample_bank, sampler_params->sample_index);
+                Sample *sample = SampleBankGetSample(sample_bank, sampler_params->sample_index);
                 float   start_pos_normalized = 0.0f;
                 if (sample && sample->pcm_length > 0) {
                     start_pos_normalized =

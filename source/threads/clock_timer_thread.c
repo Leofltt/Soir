@@ -68,7 +68,7 @@ static void clock_thread_entry(void *arg) {
                                 memcpy(&event.instrument_specific_params.sampler_params,
                                        step.data->instrument_data, sizeof(OpusSamplerParameters));
                             }
-                            event_queue_push(s_event_queue_ptr, event);
+                            eventQueuePush(s_event_queue_ptr, event);
                         }
                     }
                 }
@@ -86,10 +86,9 @@ static void timer_thread_entry(void *arg) {
     }
 }
 
-void clock_timer_threads_init(Clock *clock_ptr, LightLock *clock_lock_ptr,
-                              LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
-                              Track *tracks_ptr, volatile bool *should_exit_ptr,
-                              s32 main_thread_prio) {
+void clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLock *tracks_lock_ptr,
+                           EventQueue *event_queue_ptr, Track *tracks_ptr,
+                           volatile bool *should_exit_ptr, s32 main_thread_prio) {
     s_clock_ptr        = clock_ptr;
     s_clock_lock_ptr   = clock_lock_ptr;
     s_tracks_lock_ptr  = tracks_lock_ptr;
@@ -100,7 +99,7 @@ void clock_timer_threads_init(Clock *clock_ptr, LightLock *clock_lock_ptr,
     LightEvent_Init(&s_clock_event, RESET_ONESHOT);
 }
 
-void clock_timer_threads_start() {
+void clockTimerThreadsStart() {
     s_clock_thread =
         threadCreate(clock_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 1, -2, true);
     if (s_clock_thread == NULL) {
@@ -116,7 +115,7 @@ void clock_timer_threads_start() {
     }
 }
 
-void clock_timer_threads_stop_and_join() {
+void clockTimerThreadsStopAndJoin() {
     if (s_clock_thread) {
         LightEvent_Signal(&s_clock_event);
         threadJoin(s_clock_thread, U64_MAX);

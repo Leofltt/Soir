@@ -13,8 +13,8 @@ typedef struct {
     int  count;
 } SampleBrowser;
 
-void        SampleBrowser_init(SampleBrowser *browser);
-void        SampleBrowser_deinit(SampleBrowser *browser);
-const char *SampleBrowser_get_sample_name(SampleBrowser *browser, int index);
-const char *SampleBrowser_get_sample_path(SampleBrowser *browser, int index);
-int         SampleBrowser_get_sample_count(SampleBrowser *browser);
+void        SampleBrowserInit(SampleBrowser *browser);
+void        SampleBrowserDeinit(SampleBrowser *browser);
+const char *SampleBrowserGetSampleName(SampleBrowser *browser, int index);
+const char *SampleBrowserGetSamplePath(SampleBrowser *browser, int index);
+int         SampleBrowserGetSampleCount(SampleBrowser *browser);

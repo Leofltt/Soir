@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
-    SampleBank_init(&g_sample_bank);
-    SampleBrowser_init(&g_sample_browser);
+    SampleBankInit(&g_sample_bank);
+    SampleBrowserInit(&g_sample_browser);
 
     int ret = 0;
 
@@ -164,10 +164,9 @@ int main(int argc, char **argv) {
                            .HOLD_DELAY_REPEAT  = HOLD_DELAY_REPEAT };
     setBpm(app_clock, 127.0f);
 
-    audio_thread_init(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
-                      main_prio);
-    clock_timer_threads_init(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
-                             &should_exit, main_prio);
+    audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit, main_prio);
+    clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
+                          &should_exit, main_prio);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -254,7 +253,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+    *sampler = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
                            .start_position  = 0,
                            .playback_mode   = ONE_SHOT,
                            .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -317,7 +316,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler2 = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+    *sampler2 = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
                             .start_position  = 0,
                             .playback_mode   = ONE_SHOT,
                             .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -361,11 +360,11 @@ int main(int argc, char **argv) {
 
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
-    event_queue_init(&g_event_queue);
+    eventQueueInit(&g_event_queue);
 
-    clock_timer_threads_start();
+    clockTimerThreadsStart();
 
-    audio_thread_start();
+    audioThreadStart();
 
     startClock(app_clock);
 
@@ -380,7 +379,7 @@ int main(int argc, char **argv) {
         u32 kDown = hidKeysDown();
         u32 kHeld = hidKeysHeld();
 
-        session_controller_handle_input(&ctx, kDown, kHeld, now, &should_break_loop);
+        sessionControllerHandleInput(&ctx, kDown, kHeld, now, &should_break_loop);
 
         if (should_break_loop) {
             break;
@@ -441,9 +440,9 @@ int main(int argc, char **argv) {
 cleanup:
     should_exit = true;
 
-    clock_timer_threads_stop_and_join();
+    clockTimerThreadsStopAndJoin();
 
-    audio_thread_stop_and_join();
+    audioThreadStopAndJoin();
 
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
@@ -454,7 +453,7 @@ cleanup:
         Track_deinit(&tracks[i]);
     }
 
-    SampleBank_deinit(&g_sample_bank);
+    SampleBankDeinit(&g_sample_bank);
     deinitViews();
     C2D_Fini();
     C3D_Fini();

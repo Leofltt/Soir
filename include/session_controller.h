@@ -84,7 +84,7 @@ typedef struct {
 
 } SessionContext;
 
-void session_controller_handle_input(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
-                                     bool *should_break_loop);
+void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
+                                  bool *should_break_loop);
 
 #endif
