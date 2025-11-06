@@ -103,14 +103,12 @@ void clockTimerThreadsStart() {
     s_clock_thread =
         threadCreate(clock_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 1, -2, true);
     if (s_clock_thread == NULL) {
-        printf("Failed to create clock thread\n");
         // Handle error appropriately, maybe set a flag or exit
     }
 
     s_timer_thread =
         threadCreate(timer_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 1, -2, true);
     if (s_timer_thread == NULL) {
-        printf("Failed to create timer thread\n");
         // Handle error appropriately
     }
 }

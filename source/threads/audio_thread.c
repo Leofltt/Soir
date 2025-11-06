@@ -82,10 +82,10 @@ static void processTrackEvent(Event *event) {
             FMOperator_set_mod_depth(fs->fm_op, fmSynthParams->mod_depth);
             updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
                            fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
-                           fmSynthParams->carrier_env_rel, fmSynthParams->carrier_env_dur);
+                           fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
             updateEnvelope(fs->fm_op->modEnvelope, fmSynthParams->mod_env_atk,
                            fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
-                           fmSynthParams->mod_env_rel, fmSynthParams->mod_env_dur);
+                           fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
             if (event->type == TRIGGER_STEP) {
                 triggerEnvelope(fs->carrierEnv);
                 triggerEnvelope(fs->fm_op->modEnvelope);
@@ -156,7 +156,6 @@ void audioThreadStart() {
     s_audio_thread =
         threadCreate(audio_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 2, -2, true);
     if (s_audio_thread == NULL) {
-        printf("Failed to create audio thread\n");
         // Handle error appropriately, e.g., exit or set a flag
     }
 }

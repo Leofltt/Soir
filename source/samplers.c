@@ -102,9 +102,9 @@ void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler
 #ifdef DEBUG
     // Print timing info
     osTickCounterUpdate(&timer);
-    printf("fillBuffer %lfms in %lfms\n", totalSamples * 1000.0 / SAMPLE_RATE,
+
            osTickCounterRead(&timer));
 #endif // DEBUG
 
-    return;
+           return;
 };

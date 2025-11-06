@@ -122,11 +122,11 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
     FMOperator_set_mod_depth(synth->fm_op, params->mod_depth);
 
     updateEnvelope(synth->carrierEnv, params->carrier_env_atk, params->carrier_env_dec,
-                   params->carrier_env_sus_level, params->carrier_env_rel, params->carrier_env_dur);
+                   params->carrier_env_sus_level, params->carrier_env_rel, params->env_dur);
     triggerEnvelope(synth->carrierEnv);
 
     updateEnvelope(synth->fm_op->modEnvelope, params->mod_env_atk, params->mod_env_dec,
-                   params->mod_env_sus_level, params->mod_env_rel, params->carrier_env_dur);
+                   params->mod_env_sus_level, params->mod_env_rel, params->env_dur);
     triggerEnvelope(synth->fm_op->modEnvelope);
 }
 

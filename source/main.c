@@ -266,16 +266,16 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     // Initialize the allocated PolyBLEPOscillator and Envelope structs
-    *fm_op->carrier = (PolyBLEPOscillator) {
-        .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
-    };
-    setOscFrequency(fm_op->carrier, 220.0f); // Initialize phase_inc correctly
-
-    *fm_op->modulator = (PolyBLEPOscillator) {
-        .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
-    };
-    setOscFrequency(fm_op->modulator, 220.0f); // Initialize phase_inc correctly
-
+    *fm_op->carrier     = (PolyBLEPOscillator) { .frequency  = 220.0f,
+                                                 .samplerate = SAMPLERATE,
+                                                 .waveform   = SINE,
+                                                 .phase      = 0.0f,
+                                                 .phase_inc  = 0.0f };
+    *fm_op->modulator   = (PolyBLEPOscillator) { .frequency  = 0.0f,
+                                                 .samplerate = SAMPLERATE,
+                                                 .waveform   = SINE,
+                                                 .phase      = 0.0f,
+                                                 .phase_inc  = 0.0f };
     *fm_op->modEnvelope = defaultEnvelopeStruct(SAMPLERATE);
     updateEnvelope(fm_op->modEnvelope, 20, 200, 0.6, 50, 300);
 
