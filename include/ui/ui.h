@@ -3,7 +3,9 @@
 
 #include "clock.h"
 #include "track.h"
-#include "session.h"
+
+typedef enum ScreenFocus ScreenFocus;
+typedef struct Session   Session;
 #include "sample_bank.h"
 #include "sample_browser.h"
 #include <citro2d.h>

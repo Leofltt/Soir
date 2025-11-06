@@ -1,6 +1,7 @@
 #include "ui/ui.h"
 #include "ui_constants.h"
 #include "engine_constants.h"
+#include "session.h"
 #include "filters.h"
 #include "sample_bank.h"
 #include "sample.h"

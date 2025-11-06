@@ -1,6 +1,7 @@
 #include "ui/ui.h"
 #include "ui_constants.h"
 #include "engine_constants.h"
+#include "session.h"
 #include <citro2d.h>
 #include <stdio.h>
 #include <string.h>

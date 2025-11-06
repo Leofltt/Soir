@@ -11,6 +11,7 @@
 #include "track_parameters.h"
 #include "synth.h"
 #include "samplers.h"
+#include "ui/ui.h"
 
 typedef enum {
     VIEW_MAIN               = 0,
@@ -27,14 +28,15 @@ typedef enum {
     VIEW_STEP_SETTINGS        = 3
 } BottomScreenView;
 
-typedef enum { FOCUS_TOP, FOCUS_BOTTOM } ScreenFocus;
+enum ScreenFocus { FOCUS_TOP, FOCUS_BOTTOM };
+typedef enum ScreenFocus ScreenFocus;
 
-typedef struct {
+struct Session {
     TopScreenView    main_screen_view;
     BottomScreenView touch_screen_view;
     BottomScreenView previous_touch_screen_view;
-
-} Session;
+};
+typedef struct Session Session;
 
 typedef struct {
     // Pointers to main() local state
@@ -73,6 +75,10 @@ typedef struct {
     FMSynthParameters     *editing_fm_synth_params;
     LightLock             *clock_lock;
     LightLock             *tracks_lock;
+
+    int           last_edited_param_unique_id;
+    ParameterType last_edited_param_type;
+    const char   *last_edited_param_label;
 
     // Hold constants
     const u64 HOLD_DELAY_INITIAL;

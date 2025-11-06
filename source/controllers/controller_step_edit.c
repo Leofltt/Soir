@@ -40,25 +40,116 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
         if (*ctx->selected_col == 0) {
             // Apply to all steps
             for (int i = 0; i < track->sequencer->n_beats * track->sequencer->steps_per_beat; i++) {
-                SeqStep *seq_step                 = &track->sequencer->steps[i];
-                void    *original_instrument_data = seq_step->data->instrument_data;
-                memcpy(seq_step->data, ctx->editing_step_params, sizeof(TrackParameters));
-                seq_step->data->instrument_data = original_instrument_data;
+                SeqStep *seq_step = &track->sequencer->steps[i];
 
-                if (track->instrument_type == SUB_SYNTH) {
-                    memcpy(seq_step->data->instrument_data, ctx->editing_subsynth_params,
-                           sizeof(SubSynthParameters));
-                } else if (track->instrument_type == OPUS_SAMPLER) {
-                    memcpy(seq_step->data->instrument_data, ctx->editing_sampler_params,
-                           sizeof(OpusSamplerParameters));
-                } else if (track->instrument_type == FM_SYNTH) {
-                    memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
-                           sizeof(FMSynthParameters));
+                // Only update the specific parameter that was edited
+                switch (ctx->last_edited_param_type) {
+                case PARAM_TYPE_FLOAT_0_1:
+                    if (strcmp(ctx->last_edited_param_label, "Volume") == 0) {
+                        seq_step->data->volume = ctx->editing_step_params->volume;
+                    } else if (strcmp(ctx->last_edited_param_label, "Mod Index") == 0) {
+                        if (track->instrument_type == FM_SYNTH) {
+                            ((FMSynthParameters *) seq_step->data->instrument_data)->mod_index =
+                                ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_index;
+                        }
+                    } else if (strcmp(ctx->last_edited_param_label, "Start Pos") == 0) {
+                        if (track->instrument_type == OPUS_SAMPLER) {
+                            ((OpusSamplerParameters *) seq_step->data->instrument_data)
+                                ->start_position =
+                                ((OpusSamplerParameters *) ctx->editing_sampler_params)
+                                    ->start_position;
+                        }
+                    } else if (strcmp(ctx->last_edited_param_label, "Mod Depth") == 0) {
+                        if (track->instrument_type == FM_SYNTH) {
+                            ((FMSynthParameters *) seq_step->data->instrument_data)->mod_depth =
+                                ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_depth;
+                        }
+                    }
+                    break;
+                case PARAM_TYPE_FLOAT_N1_1:
+                    if (strcmp(ctx->last_edited_param_label, "Pan") == 0) {
+                        seq_step->data->pan = ctx->editing_step_params->pan;
+                    }
+                    break;
+                case PARAM_TYPE_HZ:
+                    if (strcmp(ctx->last_edited_param_label, "Filter Cf") == 0) {
+                        seq_step->data->ndsp_filter_cutoff =
+                            ctx->editing_step_params->ndsp_filter_cutoff;
+                    }
+                    break;
+                case PARAM_TYPE_MIDI_NOTE:
+                    if (track->instrument_type == SUB_SYNTH) {
+                        ((SubSynthParameters *) seq_step->data->instrument_data)->osc_freq =
+                            ((SubSynthParameters *) ctx->editing_subsynth_params)->osc_freq;
+                    } else if (track->instrument_type == FM_SYNTH) {
+                        ((FMSynthParameters *) seq_step->data->instrument_data)->carrier_freq =
+                            ((FMSynthParameters *) ctx->editing_fm_synth_params)->carrier_freq;
+                    }
+                    break;
+                case PARAM_TYPE_MOD_RATIO:
+                    if (track->instrument_type == FM_SYNTH) {
+                        ((FMSynthParameters *) seq_step->data->instrument_data)->mod_freq_ratio =
+                            ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_freq_ratio;
+                    }
+                    break;
+                case PARAM_TYPE_FILTER_TYPE:
+                    seq_step->data->ndsp_filter_type = ctx->editing_step_params->ndsp_filter_type;
+                    break;
+                case PARAM_TYPE_WAVEFORM:
+                    if (track->instrument_type == SUB_SYNTH) {
+                        ((SubSynthParameters *) seq_step->data->instrument_data)->osc_waveform =
+                            ((SubSynthParameters *) ctx->editing_subsynth_params)->osc_waveform;
+                    }
+                    break;
+                case PARAM_TYPE_PLAYBACK_MODE:
+                    if (track->instrument_type == OPUS_SAMPLER) {
+                        ((OpusSamplerParameters *) seq_step->data->instrument_data)->playback_mode =
+                            ((OpusSamplerParameters *) ctx->editing_sampler_params)->playback_mode;
+                    }
+                    break;
+                case PARAM_TYPE_SAMPLE_INDEX:
+                    if (track->instrument_type == OPUS_SAMPLER) {
+                        ((OpusSamplerParameters *) seq_step->data->instrument_data)->sample_index =
+                            ((OpusSamplerParameters *) ctx->editing_sampler_params)->sample_index;
+                    }
+                    break;
+                case PARAM_TYPE_INT:
+                    if (track->instrument_type == SUB_SYNTH) {
+                        ((SubSynthParameters *) seq_step->data->instrument_data)->env_dur =
+                            ((SubSynthParameters *) ctx->editing_subsynth_params)->env_dur;
+                    } else if (track->instrument_type == OPUS_SAMPLER) {
+                        ((OpusSamplerParameters *) seq_step->data->instrument_data)->env_dur =
+                            ((OpusSamplerParameters *) ctx->editing_sampler_params)->env_dur;
+                    } else if (track->instrument_type == FM_SYNTH) {
+                        ((FMSynthParameters *) seq_step->data->instrument_data)->env_dur =
+                            ((FMSynthParameters *) ctx->editing_fm_synth_params)->env_dur;
+                    }
+                    break;
+                case PARAM_TYPE_ENVELOPE_BUTTON:
+                    // This is more complex, as it depends on selected_adsr_option and instrument
+                    // type For now, I'll copy the entire envelope if any part of it was edited. A
+                    // more granular approach would be to check selected_adsr_option.
+                    if (track->instrument_type == SUB_SYNTH) {
+                        memcpy(seq_step->data->instrument_data, ctx->editing_subsynth_params,
+                               sizeof(SubSynthParameters));
+                    } else if (track->instrument_type == FM_SYNTH) {
+                        memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
+                               sizeof(FMSynthParameters));
+                    } else if (track->instrument_type == OPUS_SAMPLER) {
+                        memcpy(seq_step->data->instrument_data, ctx->editing_sampler_params,
+                               sizeof(OpusSamplerParameters));
+                    }
+                    break;
+                default:
+                    // Should not happen if all parameter types are handled
+                    break;
                 }
 
-                Event event = { .type            = UPDATE_STEP,
-                                .track_id        = track_idx,
-                                .base_params     = *seq_step->data,
+                // Update event queue
+                Event event = { .type     = UPDATE_STEP,
+                                .track_id = track_idx,
+                                .base_params =
+                                    *seq_step->data, // This will be updated by the switch
                                 .instrument_type = track->instrument_type };
 
                 if (track->instrument_type == SUB_SYNTH) {
@@ -75,19 +166,110 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
             }
 
             // Update default parameters for the track
-            void *original_instrument_data = track->default_parameters->instrument_data;
-            memcpy(track->default_parameters, ctx->editing_step_params, sizeof(TrackParameters));
-            track->default_parameters->instrument_data = original_instrument_data;
-
-            if (track->instrument_type == SUB_SYNTH) {
-                memcpy(track->default_parameters->instrument_data, ctx->editing_subsynth_params,
-                       sizeof(SubSynthParameters));
-            } else if (track->instrument_type == OPUS_SAMPLER) {
-                memcpy(track->default_parameters->instrument_data, ctx->editing_sampler_params,
-                       sizeof(OpusSamplerParameters));
-            } else if (track->instrument_type == FM_SYNTH) {
-                memcpy(track->default_parameters->instrument_data, ctx->editing_fm_synth_params,
-                       sizeof(FMSynthParameters));
+            switch (ctx->last_edited_param_type) {
+            case PARAM_TYPE_FLOAT_0_1:
+                if (strcmp(ctx->last_edited_param_label, "Volume") == 0) {
+                    track->default_parameters->volume = ctx->editing_step_params->volume;
+                } else if (strcmp(ctx->last_edited_param_label, "Mod Index") == 0) {
+                    if (track->instrument_type == FM_SYNTH) {
+                        ((FMSynthParameters *) track->default_parameters->instrument_data)
+                            ->mod_index =
+                            ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_index;
+                    }
+                } else if (strcmp(ctx->last_edited_param_label, "Start Pos") == 0) {
+                    if (track->instrument_type == OPUS_SAMPLER) {
+                        ((OpusSamplerParameters *) track->default_parameters->instrument_data)
+                            ->start_position =
+                            ((OpusSamplerParameters *) ctx->editing_sampler_params)->start_position;
+                    }
+                } else if (strcmp(ctx->last_edited_param_label, "Mod Depth") == 0) {
+                    if (track->instrument_type == FM_SYNTH) {
+                        ((FMSynthParameters *) track->default_parameters->instrument_data)
+                            ->mod_depth =
+                            ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_depth;
+                    }
+                }
+                break;
+            case PARAM_TYPE_FLOAT_N1_1:
+                if (strcmp(ctx->last_edited_param_label, "Pan") == 0) {
+                    track->default_parameters->pan = ctx->editing_step_params->pan;
+                }
+                break;
+            case PARAM_TYPE_HZ:
+                if (strcmp(ctx->last_edited_param_label, "Filter Cf") == 0) {
+                    track->default_parameters->ndsp_filter_cutoff =
+                        ctx->editing_step_params->ndsp_filter_cutoff;
+                }
+                break;
+            case PARAM_TYPE_MIDI_NOTE:
+                if (track->instrument_type == SUB_SYNTH) {
+                    ((SubSynthParameters *) track->default_parameters->instrument_data)->osc_freq =
+                        ((SubSynthParameters *) ctx->editing_subsynth_params)->osc_freq;
+                } else if (track->instrument_type == FM_SYNTH) {
+                    ((FMSynthParameters *) track->default_parameters->instrument_data)
+                        ->carrier_freq =
+                        ((FMSynthParameters *) ctx->editing_fm_synth_params)->carrier_freq;
+                }
+                break;
+            case PARAM_TYPE_MOD_RATIO:
+                if (track->instrument_type == FM_SYNTH) {
+                    ((FMSynthParameters *) track->default_parameters->instrument_data)
+                        ->mod_freq_ratio =
+                        ((FMSynthParameters *) ctx->editing_fm_synth_params)->mod_freq_ratio;
+                }
+                break;
+            case PARAM_TYPE_FILTER_TYPE:
+                track->default_parameters->ndsp_filter_type =
+                    ctx->editing_step_params->ndsp_filter_type;
+                break;
+            case PARAM_TYPE_WAVEFORM:
+                if (track->instrument_type == SUB_SYNTH) {
+                    ((SubSynthParameters *) track->default_parameters->instrument_data)
+                        ->osc_waveform =
+                        ((SubSynthParameters *) ctx->editing_subsynth_params)->osc_waveform;
+                }
+                break;
+            case PARAM_TYPE_PLAYBACK_MODE:
+                if (track->instrument_type == OPUS_SAMPLER) {
+                    ((OpusSamplerParameters *) track->default_parameters->instrument_data)
+                        ->playback_mode =
+                        ((OpusSamplerParameters *) ctx->editing_sampler_params)->playback_mode;
+                }
+                break;
+            case PARAM_TYPE_SAMPLE_INDEX:
+                if (track->instrument_type == OPUS_SAMPLER) {
+                    ((OpusSamplerParameters *) track->default_parameters->instrument_data)
+                        ->sample_index =
+                        ((OpusSamplerParameters *) ctx->editing_sampler_params)->sample_index;
+                }
+                break;
+            case PARAM_TYPE_INT:
+                if (track->instrument_type == SUB_SYNTH) {
+                    ((SubSynthParameters *) track->default_parameters->instrument_data)->env_dur =
+                        ((SubSynthParameters *) ctx->editing_subsynth_params)->env_dur;
+                } else if (track->instrument_type == OPUS_SAMPLER) {
+                    ((OpusSamplerParameters *) track->default_parameters->instrument_data)
+                        ->env_dur =
+                        ((OpusSamplerParameters *) ctx->editing_sampler_params)->env_dur;
+                } else if (track->instrument_type == FM_SYNTH) {
+                    ((FMSynthParameters *) track->default_parameters->instrument_data)->env_dur =
+                        ((FMSynthParameters *) ctx->editing_fm_synth_params)->env_dur;
+                }
+                break;
+            case PARAM_TYPE_ENVELOPE_BUTTON:
+                if (track->instrument_type == SUB_SYNTH) {
+                    memcpy(track->default_parameters->instrument_data, ctx->editing_subsynth_params,
+                           sizeof(SubSynthParameters));
+                } else if (track->instrument_type == FM_SYNTH) {
+                    memcpy(track->default_parameters->instrument_data, ctx->editing_fm_synth_params,
+                           sizeof(FMSynthParameters));
+                } else if (track->instrument_type == OPUS_SAMPLER) {
+                    memcpy(track->default_parameters->instrument_data, ctx->editing_sampler_params,
+                           sizeof(OpusSamplerParameters));
+                }
+                break;
+            default:
+                break;
             }
         } else {
             int step_idx = *ctx->selected_col - 1;
@@ -212,7 +394,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                         *value_ptr = clamp(*value_ptr, 0.0f, 1.0f);
                     }
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -234,7 +418,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                         clamp(ctx->editing_step_params->pan, -1.0f, 1.0f);
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -256,7 +442,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                         clamp(ctx->editing_step_params->ndsp_filter_cutoff, 0, 20000);
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -290,7 +478,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                     *freq_ptr = midiToHertz(midi_note);
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -314,7 +504,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                         fm_params->mod_freq_ratio = 0.0f;
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -333,6 +525,10 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                 break;
             }
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
+                break;
 
             case PARAM_TYPE_WAVEFORM: {
                 if (track->instrument_type == SUB_SYNTH) {
@@ -350,7 +546,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                             (synth_params->osc_waveform - 1 + WAVEFORM_COUNT) % WAVEFORM_COUNT;
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -364,7 +562,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                             (sampler_params->playback_mode == ONE_SHOT) ? LOOP : ONE_SHOT;
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -388,7 +588,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                                 (sampler_params->sample_index - 1 + count) % count;
                     }
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -409,26 +611,22 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                 if (value_ptr) {
                     if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
-
-                                                ctx->HOLD_DELAY_INITIAL,
-
-                                                ctx->HOLD_DELAY_REPEAT))
-
+                                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
                         *value_ptr -= 10;
+                    }
 
                     if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
-
-                                                ctx->HOLD_DELAY_INITIAL,
-
-                                                ctx->HOLD_DELAY_REPEAT))
-
+                                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
                         *value_ptr += 10;
+                    }
 
-                    if (*value_ptr < 0)
-
+                    if (*value_ptr < 0) {
                         *value_ptr = 0;
+                    }
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
 
@@ -814,7 +1012,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                             sampler_params->env_rel = 0;
                     }
                 }
-
+                ctx->last_edited_param_unique_id = param_to_edit->unique_id;
+                ctx->last_edited_param_type      = param_to_edit->type;
+                ctx->last_edited_param_label     = param_to_edit->label;
                 break;
             }
             }
