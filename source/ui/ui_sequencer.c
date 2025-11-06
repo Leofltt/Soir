@@ -10,12 +10,33 @@ extern C2D_Font    font_heavy;
 extern C2D_TextBuf text_buf;
 extern C2D_Text    text_obj;
 
-void drawStepsBar(int cur_step) {
+void drawStepsBar(int cur_step, int steps_per_beat) {
     for (int i = 0; i < 16; i++) {
         u32 color = (i == cur_step) ? CLR_RED : CLR_DARK_GRAY;
         C2D_DrawRectangle(HOME_TRACKS_WIDTH + HOME_STEPS_SPACER_W * (i + 1) +
                               HOME_STEPS_HEADER_W * i,
                           0, 0, HOME_STEPS_HEADER_W, HOME_STEPS_HEIGHT, color, color, color, color);
+
+        // Draw beat indicator
+        if (steps_per_beat > 0 && i % steps_per_beat == 0) {
+            u32 indicator_color =
+                (i == cur_step) ? CLR_DARK_GRAY : CLR_BLACK; // Invert color when active
+            float rect_x =
+                HOME_TRACKS_WIDTH + HOME_STEPS_SPACER_W * (i + 1) + HOME_STEPS_HEADER_W * i;
+            float rect_y = 0;
+            float rect_w = HOME_STEPS_HEADER_W;
+            float rect_h = HOME_STEPS_HEIGHT;
+
+            // Calculate position and size for the smaller square (e.g., 1/3 of the main square
+            // size, centered)
+            float indicator_w = rect_w / 3.0f;
+            float indicator_h = rect_h / 3.0f;
+            float indicator_x = rect_x + (rect_w - indicator_w) / 2.0f;
+            float indicator_y = rect_y + (rect_h - indicator_h) / 2.0f;
+
+            C2D_DrawRectangle(indicator_x, indicator_y, 0, indicator_w, indicator_h,
+                              indicator_color, indicator_color, indicator_color, indicator_color);
+        }
     }
 }
 
@@ -178,10 +199,12 @@ static void drawSelectionOverlay(int row, int col, bool is_focused) {
 
 void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col,
                   ScreenFocus focus) {
-    int cur_step = -1; // Default to no active step
+    int cur_step       = -1; // Default to no active step
+    int steps_per_beat = 4;  // Default value, will be updated if tracks[0].sequencer exists
+
     if (tracks && tracks[0].sequencer) {
-        int steps_per_beat = tracks[0].sequencer->steps_per_beat;
-        int total_steps    = tracks[0].sequencer->n_beats * steps_per_beat;
+        steps_per_beat  = tracks[0].sequencer->steps_per_beat;
+        int total_steps = tracks[0].sequencer->n_beats * steps_per_beat;
 
         if (clock->status == PLAYING || clock->status == PAUSED) {
             if (steps_per_beat > 0) {
@@ -197,7 +220,7 @@ void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_co
         }
     }
 
-    drawStepsBar(cur_step);
+    drawStepsBar(cur_step, steps_per_beat);
     drawTrackbar(clock, tracks);
     drawTracksSequencers(tracks, cur_step);
     drawSelectionOverlay(selected_row, selected_col, focus == FOCUS_TOP);

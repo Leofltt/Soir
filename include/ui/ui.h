@@ -42,7 +42,7 @@ extern C2D_Text    text_obj;
 
 extern void initViews();
 extern void deinitViews();
-extern void drawStepsBar(int cur_step);
+extern void drawStepsBar(int cur_step, int steps_per_beat);
 extern void drawTrackbar(Clock *clock, Track *tracks);
 extern void drawTracksSequencers(Track *tracks, int cur_step);
 extern void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col,
