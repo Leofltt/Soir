@@ -79,7 +79,7 @@ static void processTrackEvent(Event *event) {
             FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
             FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
             FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
-            FMOperator_set_mod_depth(fs->fm_op, fmSynthParams->mod_depth);
+            FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
             updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
                            fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
                            fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);

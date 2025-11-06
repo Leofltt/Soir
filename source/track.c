@@ -118,7 +118,7 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
     FMOpSetCarrierFrequency(synth->fm_op, params->carrier_freq);
     FMOpSetModRatio(synth->fm_op, params->mod_freq_ratio);
     FMOpSetModIndex(synth->fm_op, params->mod_index);
-    FMOperator_set_mod_depth(synth->fm_op, params->mod_depth);
+    FMOpSetModDepth(synth->fm_op, params->mod_depth);
 
     updateEnvelope(synth->carrierEnv, params->carrier_env_atk, params->carrier_env_dec,
                    params->carrier_env_sus_level, params->carrier_env_rel, params->env_dur);

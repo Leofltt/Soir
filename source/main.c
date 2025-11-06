@@ -258,9 +258,10 @@ int main(int argc, char **argv) {
     *fm_op =
         (FMOperator) { .carrier   = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
                        .modulator = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
-                       .modEnvelope = (Envelope *) linearAlloc(sizeof(Envelope)),
-                       .modIndex    = 1.0f,
-                       .modDepth    = 100.0f };
+                       .modEnvelope    = (Envelope *) linearAlloc(sizeof(Envelope)),
+                       .modIndex       = 1.0f,
+                       .modDepth       = 100.0f,
+                       .base_frequency = 220.0f };
     if (!fm_op->carrier || !fm_op->modulator || !fm_op->modEnvelope) {
         ret = 1;
         goto cleanup;
