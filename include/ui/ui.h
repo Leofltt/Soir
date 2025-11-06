@@ -3,6 +3,7 @@
 
 #include "clock.h"
 #include "track.h"
+#include <stdbool.h>
 
 typedef enum ScreenFocus ScreenFocus;
 typedef struct Session   Session;
@@ -11,7 +12,6 @@ typedef struct Session   Session;
 #include <citro2d.h>
 
 #define MAX_VIEW_PARAMS 16
-
 typedef enum {
     PARAM_TYPE_GENERIC,
     PARAM_TYPE_FLOAT_0_1,   // e.g., Volume
@@ -24,7 +24,7 @@ typedef enum {
     PARAM_TYPE_PLAYBACK_MODE,
     PARAM_TYPE_MOD_RATIO,       // For FM_SYNTH
     PARAM_TYPE_ENVELOPE_BUTTON, // This replaces your bool is_envelope_button
-    PARAM_TYPE_INT
+    PARAM_TYPE_INT,
     // ... add more types as needed
 } ParameterType;
 
@@ -42,7 +42,7 @@ extern C2D_Font    font_heavy;
 extern C2D_TextBuf text_buf;
 extern C2D_Text    text_obj;
 
-extern void initViews();
+extern bool initViews();
 extern void deinitViews();
 extern void drawStepsBar(int cur_step, int steps_per_beat);
 extern void drawTrackbar(Clock *clock, Track *tracks);

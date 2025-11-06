@@ -6,13 +6,13 @@ void FMOpSetCarrierFrequency(FMOperator *op, float freq) {
     if (!op || !op->carrier)
         return;
     setOscFrequency(op->carrier, freq);
-    op->base_frequency = freq;
+    op->baseFrequency = freq;
 }
 
 void FMOpSetModRatio(FMOperator *op, float ratio) {
     if (!op || !op->modulator || !op->carrier)
         return;
-    setOscFrequency(op->modulator, op->base_frequency * ratio);
+    setOscFrequency(op->modulator, op->baseFrequency * ratio);
 }
 
 float nextFMOscillatorSample(FMOperator *op) {
@@ -22,7 +22,7 @@ float nextFMOscillatorSample(FMOperator *op) {
     float mod_env_val = nextEnvelopeSample(op->modEnvelope);
     float mod_signal  = nextOscillatorSample(op->modulator) * op->modDepth * mod_env_val;
 
-    float original_freq  = op->base_frequency;
+    float original_freq  = op->baseFrequency;
     float modulated_freq = original_freq + mod_signal * op->modIndex * original_freq;
 
     setOscFrequency(op->carrier, modulated_freq);

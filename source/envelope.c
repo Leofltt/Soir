@@ -168,7 +168,7 @@ bool updateDuration(Envelope *env, int dur_ms) {
                 env->buffer_size = new_size;
             }
         }
-        env->dur = new_size;
+        env->dur = dur_ms;
         updated  = true;
     }
     return updated;

@@ -51,7 +51,7 @@ typedef struct {
     int     *selected_sample_browser_index;
     int     *selected_step_option;
     int     *selected_adsr_option;
-    int     *selectedQuitOption;
+    int     *selected_quit_option;
     bool    *is_selecting_sample;
 
     u64 *up_timer;

@@ -3,7 +3,7 @@
 #include "sample_bank.h"
 #include <stdio.h>
 #include <string.h>
-#include <sys/dirent.h>
+#include <dirent.h>
 #include <3ds.h>
 
 static void add_sample(SampleBrowser *browser, const char *path, const char *prefix) {
@@ -56,20 +56,20 @@ void SampleBrowserDeinit(SampleBrowser *browser) {
     // Nothing to do
 }
 
-const char *SampleBrowserGetSampleName(SampleBrowser *browser, int index) {
+const char *SampleBrowserGetSampleName(const SampleBrowser *browser, int index) {
     if (index < 0 || index >= browser->count) {
         return NULL;
     }
     return browser->names[index];
 }
 
-const char *SampleBrowserGetSamplePath(SampleBrowser *browser, int index) {
+const char *SampleBrowserGetSamplePath(const SampleBrowser *browser, int index) {
     if (index < 0 || index >= browser->count) {
         return NULL;
     }
     return browser->paths[index];
 }
 
-int SampleBrowserGetSampleCount(SampleBrowser *browser) {
+int SampleBrowserGetSampleCount(const SampleBrowser *browser) {
     return browser->count;
 }

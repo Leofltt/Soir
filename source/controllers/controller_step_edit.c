@@ -29,7 +29,7 @@ extern int     generateParameterList(Track *track, TrackParameters *params, Samp
 
 void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
     int track_idx = *ctx->selected_row - 1;
-    if (track_idx < 0)
+    if (track_idx < 0 || track_idx >= N_TRACKS)
         return;
     Track *track = &ctx->tracks[track_idx];
 
@@ -523,12 +523,11 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                         (ctx->editing_step_params->ndsp_filter_type - 1 + 6) % 6;
 
-                break;
-            }
                 ctx->last_edited_param_unique_id = param_to_edit->unique_id;
                 ctx->last_edited_param_type      = param_to_edit->type;
                 ctx->last_edited_param_label     = param_to_edit->label;
                 break;
+            }
 
             case PARAM_TYPE_WAVEFORM: {
                 if (track->instrument_type == SUB_SYNTH) {

@@ -37,7 +37,7 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
         *ctx->previous_screen_focus    = *ctx->screen_focus;
         *ctx->screen_focus             = FOCUS_TOP;
         ctx->session->main_screen_view = VIEW_QUIT;
-        *ctx->selectedQuitOption       = 0;
+        *ctx->selected_quit_option     = 0;
         LightLock_Lock(ctx->clock_lock);
         pauseClock(ctx->clock);
         LightLock_Unlock(ctx->clock_lock);
@@ -57,7 +57,8 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
             if (ctx->session->previous_touch_screen_view == VIEW_SAMPLE_MANAGER) {
                 ctx->session->touch_screen_view = VIEW_SAMPLE_MANAGER;
             } else {
-                ctx->session->touch_screen_view = VIEW_TOUCH_SETTINGS;
+                ctx->session->previous_touch_screen_view = VIEW_TOUCH_SETTINGS;
+                ctx->session->touch_screen_view          = VIEW_TOUCH_SETTINGS;
             }
         } else if (ctx->session->touch_screen_view == VIEW_SAMPLE_MANAGER) {
             ctx->session->previous_touch_screen_view = VIEW_SAMPLE_MANAGER;

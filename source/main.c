@@ -45,8 +45,6 @@ static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
 static FMSynthParameters     g_editing_fm_synth_params;
 
-// Helper function to process events on the audio thread
-
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -76,7 +74,7 @@ int main(int argc, char **argv) {
     int  selected_sample_browser_index = 0;
     int  selected_step_option          = 0;
     int  selected_adsr_option          = 0;
-    int  selectedQuitOption            = 0;
+    int  selected_quit_option          = 0;
 
     u64 up_timer    = 0;
     u64 down_timer  = 0;
@@ -120,8 +118,11 @@ int main(int argc, char **argv) {
     OpusSamplerParameters *opusSamplerParamsArray2 = NULL;
     Sequencer             *seq3                    = NULL;
 
-    s32 main_prio;
-    svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
+    s32    main_prio;
+    Result rc = svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
+    if (R_FAILED(rc)) {
+        main_prio = 0x30; // default priority
+    }
 
     ndspInit();
     ndspSetOutputMode(NDSP_OUTPUT_STEREO);
@@ -148,7 +149,7 @@ int main(int argc, char **argv) {
                            .selected_sample_browser_index = &selected_sample_browser_index,
                            .selected_step_option          = &selected_step_option,
                            .selected_adsr_option          = &selected_adsr_option,
-                           .selectedQuitOption            = &selectedQuitOption,
+                           .selected_quit_option          = &selected_quit_option,
 
                            .up_timer    = &up_timer,
                            .down_timer  = &down_timer,
@@ -258,10 +259,10 @@ int main(int argc, char **argv) {
     *fm_op =
         (FMOperator) { .carrier   = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
                        .modulator = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
-                       .modEnvelope    = (Envelope *) linearAlloc(sizeof(Envelope)),
-                       .modIndex       = 1.0f,
-                       .modDepth       = 100.0f,
-                       .base_frequency = 220.0f };
+                       .modEnvelope   = (Envelope *) linearAlloc(sizeof(Envelope)),
+                       .modIndex      = 1.0f,
+                       .modDepth      = 100.0f,
+                       .baseFrequency = 220.0f };
     if (!fm_op->carrier || !fm_op->modulator || !fm_op->modEnvelope) {
         ret = 1;
         goto cleanup;
@@ -491,7 +492,7 @@ int main(int argc, char **argv) {
             break;
         case VIEW_QUIT:
             drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
-            drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selectedQuitOption);
+            drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selected_quit_option);
             break;
         case VIEW_STEP_SETTINGS_EDIT:
             drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);

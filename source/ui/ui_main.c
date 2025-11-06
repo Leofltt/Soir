@@ -18,10 +18,25 @@ C2D_Font    font_heavy;
 C2D_TextBuf text_buf;
 C2D_Text    text_obj;
 
-void initViews() {
+bool initViews() {
     font_angular = C2D_FontLoad(FONTPATH_F500ANGULAR);
-    font_heavy   = C2D_FontLoad(FONTPATH_2197HEAVY);
-    text_buf     = C2D_TextBufNew(128);
+    if (!font_angular)
+        return false;
+
+    font_heavy = C2D_FontLoad(FONTPATH_2197HEAVY);
+    if (!font_heavy) {
+        C2D_FontFree(font_angular);
+        return false;
+    }
+
+    text_buf = C2D_TextBufNew(128);
+    if (!text_buf) {
+        C2D_FontFree(font_angular);
+        C2D_FontFree(font_heavy);
+        return false;
+    }
+
+    return true;
 }
 
 void deinitViews() {

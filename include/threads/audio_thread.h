@@ -5,6 +5,7 @@
 #include "track.h"
 #include "event_queue.h"
 #include "sample_bank.h"
+#include "engine_constants.h"
 
 // Define STACK_SIZE if it's not already defined globally
 #ifndef STACK_SIZE

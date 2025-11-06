@@ -22,8 +22,10 @@ void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
             int         sample_slot = *ctx->selected_sample_row * 4 + *ctx->selected_sample_col;
             const char *path        = SampleBrowserGetSamplePath(ctx->sample_browser,
                                                                  *ctx->selected_sample_browser_index);
-            SampleBankLoadSample(ctx->sample_bank, sample_slot, path);
-            *ctx->is_selecting_sample = false;
+            if (path != NULL) {
+                SampleBankLoadSample(ctx->sample_bank, sample_slot, path);
+                *ctx->is_selecting_sample = false;
+            }
         }
         if (kDown & KEY_B) {
             *ctx->is_selecting_sample = false;

@@ -15,6 +15,6 @@ typedef struct {
 
 void        SampleBrowserInit(SampleBrowser *browser);
 void        SampleBrowserDeinit(SampleBrowser *browser);
-const char *SampleBrowserGetSampleName(SampleBrowser *browser, int index);
-const char *SampleBrowserGetSamplePath(SampleBrowser *browser, int index);
-int         SampleBrowserGetSampleCount(SampleBrowser *browser);
+const char *SampleBrowserGetSampleName(const SampleBrowser *browser, int index);
+const char *SampleBrowserGetSamplePath(const SampleBrowser *browser, int index);
+int         SampleBrowserGetSampleCount(const SampleBrowser *browser);

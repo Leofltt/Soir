@@ -10,7 +10,7 @@ typedef struct {
     Envelope           *modEnvelope;
     float               modIndex;
     float               modDepth;
-    float               base_frequency;
+    float               baseFrequency;
 } FMOperator;
 
 extern void  FMOpSetCarrierFrequency(FMOperator *op, float freq);

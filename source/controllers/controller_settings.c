@@ -23,7 +23,7 @@ void handleInputSettingsView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                                 ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
         if (*ctx->selected_settings_option == 0) { // BPM
             setBpm(ctx->clock, ctx->clock->bpm - 1);
-        } else if (*ctx->selected_touch_clock_option == 1) { // Beats per bar
+        } else if (*ctx->selected_settings_option == 1) { // Beats per bar
             setBeatsPerBar(ctx->clock, ctx->clock->barBeats->beats_per_bar - 1);
         }
     }

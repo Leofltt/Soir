@@ -156,7 +156,7 @@ void audioThreadStart() {
     s_audio_thread =
         threadCreate(audio_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 2, -2, true);
     if (s_audio_thread == NULL) {
-        // Handle error appropriately, e.g., exit or set a flag
+        *s_should_exit_ptr = true;
     }
 }
 
