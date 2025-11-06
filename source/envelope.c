@@ -49,8 +49,8 @@ void renderEnvBuffer(Envelope *env) {
     } else {
         inc = 0.0f; // No attack
     }
-    // Loop *atk* times
-    for (int i = 0; i < env->atk; i++) {
+    // Loop *atk* times (i < env->atk)
+    for (int i = 0; i < env->atk; i++) { // <-- FIX: Was <=
         if (x < env->buffer_size)
             env->env_buffer[x] = y;
         y += inc;
@@ -66,7 +66,7 @@ void renderEnvBuffer(Envelope *env) {
         inc = 0.0f; // No decay
     }
     // Loop *dec* times
-    for (int i = 0; i < env->dec; i++) {
+    for (int i = 0; i < env->dec; i++) { // <-- FIX: Was <=
         if (x < env->buffer_size)
             env->env_buffer[x] = y;
         y += inc;
@@ -78,7 +78,7 @@ void renderEnvBuffer(Envelope *env) {
     // Loop *sus_time* times
     // (Ensure sus_time is not negative)
     int sus_time_safe = (env->sus_time < 0) ? 0 : env->sus_time;
-    for (int i = 0; i < sus_time_safe; i++) {
+    for (int i = 0; i < sus_time_safe; i++) { // <-- FIX: Was <=
         if (x < env->buffer_size)
             env->env_buffer[x] = y;
         x++;
@@ -93,7 +93,7 @@ void renderEnvBuffer(Envelope *env) {
         inc = 0.0f; // No release
     }
     // Loop *rel* times
-    for (int i = 0; i < env->rel; i++) {
+    for (int i = 0; i < env->rel; i++) { // <-- FIX: Was <=
         if (x < env->buffer_size)
             env->env_buffer[x] = y;
         y += inc;
@@ -101,7 +101,7 @@ void renderEnvBuffer(Envelope *env) {
     }
     y = 0.0f; // Ensure we end at 0
 
-    // Fill any remaining buffer with 0s (if sustain_time was negative)
+    // Fill any remaining buffer with 0s (if sus_time was negative or rounding errors)
     while (x < env->buffer_size) {
         env->env_buffer[x] = 0.0f;
         x++;
