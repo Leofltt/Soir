@@ -1,9 +1,9 @@
-#ifndef VIEWS_H
-#define VIEWS_H
+#ifndef UI_H
+#define UI_H
 
 #include "clock.h"
 #include "track.h"
-#include "session_controller.h"
+#include "session.h"
 #include "sample_bank.h"
 #include "sample_browser.h"
 #include <citro2d.h>
@@ -53,7 +53,7 @@ extern void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus);
 extern void drawTouchClockSettingsView(Clock *clock, int selected_option);
 extern void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                                   bool is_selecting_sample, int selected_sample_browser_index,
-                                  SampleBrowser *browser);
+                                  SampleBrowser *browser, ScreenFocus focus);
 extern void drawStepSettingsView(Session *session, Track *tracks, int selected_row,
                                  int selected_col, int selected_step_option,
                                  SampleBank *sample_bank, ScreenFocus focus);
@@ -64,4 +64,4 @@ extern void drawStepSettingsEditView(Track *track, TrackParameters *params,
 extern int generateParameterList(Track *track, TrackParameters *params, SampleBank *sample_bank,
                                  ParameterInfo *list_buffer, int max_params);
 
-#endif // VIEWS_H
+#endif // UI_H

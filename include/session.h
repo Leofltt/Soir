@@ -1,5 +1,5 @@
-#ifndef SESSION_CONTROLLER_H
-#define SESSION_CONTROLLER_H
+#ifndef SESSION_H
+#define SESSION_H
 
 #include <3ds.h>
 #include <stdbool.h>
@@ -11,13 +11,6 @@
 #include "track_parameters.h"
 #include "synth.h"
 #include "samplers.h"
-
-/**
- * @brief Checks for a continuous key press (down or held).
- * @return true if the key is newly pressed OR if the hold repeat delay has passed.
- */
-bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
-                             const u64 delay_initial, const u64 delay_repeat);
 
 typedef enum {
     VIEW_MAIN               = 0,
@@ -39,6 +32,7 @@ typedef enum { FOCUS_TOP, FOCUS_BOTTOM } ScreenFocus;
 typedef struct {
     TopScreenView    main_screen_view;
     BottomScreenView touch_screen_view;
+    BottomScreenView previous_touch_screen_view;
 
 } Session;
 
@@ -63,8 +57,9 @@ typedef struct {
     u64 *left_timer;
     u64 *right_timer;
 
-    ScreenFocus *screen_focus;
-    ScreenFocus *previous_screen_focus;
+    ScreenFocus     *screen_focus;
+    ScreenFocus     *previous_screen_focus;
+    BottomScreenView previous_touch_screen_view;
 
     // Pointers to global state
     Track                 *tracks;
@@ -85,7 +80,4 @@ typedef struct {
 
 } SessionContext;
 
-void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
-                                  bool *should_break_loop);
-
-#endif
+#endif // SESSION_H

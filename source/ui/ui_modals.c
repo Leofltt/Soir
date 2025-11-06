@@ -1,4 +1,4 @@
-#include "views.h"
+#include "ui/ui.h"
 #include "ui_constants.h"
 #include <stdio.h>
 #include <string.h>
@@ -197,7 +197,7 @@ void drawTouchClockSettingsView(Clock *clock, int selected_option) {
 }
 void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                            bool is_selecting_sample, int selected_sample_browser_index,
-                           SampleBrowser *browser) {
+                           SampleBrowser *browser, ScreenFocus focus) {
     int   num_rows    = 3;
     int   num_cols    = 4;
     float cell_width  = BOTTOM_SCREEN_WIDTH / num_cols;
@@ -211,8 +211,18 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
             int sample_index = i * num_cols + j;
             if (sample_index < MAX_SAMPLES) {
                 const char *sample_name = SampleBankGetSampleName(bank, sample_index);
-                u32 color = (strcmp(sample_name, "Empty") == 0) ? CLR_DARK_GRAY : CLR_LIGHT_GRAY;
-                color     = (i == selected_row && j == selected_col) ? CLR_YELLOW : color;
+                u32         fill_color =
+                    (strcmp(sample_name, "Empty") == 0) ? CLR_DARK_GRAY : CLR_LIGHT_GRAY;
+                u32 border_color = fill_color; // Default to fill color
+
+                if (i == selected_row && j == selected_col) {
+                    if (focus == FOCUS_BOTTOM) {
+                        fill_color = CLR_YELLOW;
+                    } else { // FOCUS_TOP
+                        border_color = CLR_YELLOW;
+                    }
+                }
+
                 C2D_TextBufClear(text_buf);
                 C2D_TextFontParse(&text_obj, font_angular, text_buf, sample_name);
                 C2D_TextOptimize(&text_obj);
@@ -223,8 +233,19 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                 float text_x = x + (cell_width - text_width) / 2;
                 float text_y = y + (cell_height - text_height) / 2;
 
-                C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, color, color, color,
-                                  color);
+                C2D_DrawRectangle(x, y, 0, cell_width - 2, cell_height - 2, fill_color, fill_color,
+                                  fill_color, fill_color);
+                // Draw border if focus is TOP and this is the selected cell
+                if (i == selected_row && j == selected_col && focus == FOCUS_TOP) {
+                    C2D_DrawRectangle(x, y, 0, cell_width - 2, 1, border_color, border_color,
+                                      border_color, border_color); // Top
+                    C2D_DrawRectangle(x, y + cell_height - 3, 0, cell_width - 2, 1, border_color,
+                                      border_color, border_color, border_color); // Bottom
+                    C2D_DrawRectangle(x, y, 0, 1, cell_height - 2, border_color, border_color,
+                                      border_color, border_color); // Left
+                    C2D_DrawRectangle(x + cell_width - 3, y, 0, 1, cell_height - 2, border_color,
+                                      border_color, border_color, border_color); // Right
+                }
                 C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
             }
         }

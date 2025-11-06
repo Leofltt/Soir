@@ -1,0 +1,38 @@
+#include "controllers/controller_settings.h"
+#include "audio_utils.h"
+#include "clock.h"
+#include "session.h"
+#include "controllers/session_controller.h"
+
+void handleInputSettingsView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
+    if (kDown & KEY_UP) {
+        *ctx->selected_settings_option =
+            (*ctx->selected_settings_option > 0) ? *ctx->selected_settings_option - 1 : 2;
+    }
+    if (kDown & KEY_DOWN) {
+        *ctx->selected_settings_option =
+            (*ctx->selected_settings_option < 2) ? *ctx->selected_settings_option + 1 : 0;
+    }
+    if (kDown & KEY_B) {
+        ctx->session->main_screen_view = VIEW_MAIN;
+    }
+    if (kDown & KEY_A && *ctx->selected_settings_option == 2) {
+        ctx->session->main_screen_view = VIEW_MAIN;
+    }
+    if (handle_continuous_press(kDown, kHeld, now, KEY_LEFT, ctx->left_timer,
+                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
+        if (*ctx->selected_settings_option == 0) { // BPM
+            setBpm(ctx->clock, ctx->clock->bpm - 1);
+        } else if (*ctx->selected_touch_clock_option == 1) { // Beats per bar
+            setBeatsPerBar(ctx->clock, ctx->clock->barBeats->beats_per_bar - 1);
+        }
+    }
+    if (handle_continuous_press(kDown, kHeld, now, KEY_RIGHT, ctx->right_timer,
+                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
+        if (*ctx->selected_settings_option == 0) { // BPM
+            setBpm(ctx->clock, ctx->clock->bpm + 1);
+        } else if (*ctx->selected_settings_option == 1) { // Beats per bar
+            setBeatsPerBar(ctx->clock, ctx->clock->barBeats->beats_per_bar + 1);
+        }
+    }
+}

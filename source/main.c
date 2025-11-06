@@ -7,12 +7,12 @@
 #include "samplers.h"
 #include "sample.h"
 #include "sequencer.h"
-#include "session_controller.h"
+#include "controllers/session_controller.h"
 #include "synth.h"
 #include "track.h"
 #include "track_parameters.h"
 #include "ui_constants.h"
-#include "views.h"
+#include "ui/ui.h"
 #include "event_queue.h"
 #include "sample_bank.h"
 #include "sample_browser.h"
@@ -516,7 +516,7 @@ int main(int argc, char **argv) {
         case VIEW_SAMPLE_MANAGER:
             drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col,
                                   is_selecting_sample, selected_sample_browser_index,
-                                  &g_sample_browser);
+                                  &g_sample_browser, screen_focus);
             break;
         case VIEW_STEP_SETTINGS:
             drawStepSettingsView(&session, tracks, selected_row, selected_col, selected_step_option,

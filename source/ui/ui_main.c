@@ -1,4 +1,4 @@
-#include "views.h"
+#include "ui/ui.h"
 
 #include "audio_utils.h"
 #include <string.h>
@@ -9,7 +9,7 @@
 #include "sample.h"
 #include "sample_bank.h"
 #include "sample_browser.h"
-#include "session_controller.h"
+#include "session.h"
 #include "ui_constants.h"
 #include <stdio.h>
 

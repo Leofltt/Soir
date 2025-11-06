@@ -33,9 +33,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/threads
+SOURCES		:=	source source/threads source/ui source/controllers
 DATA		:=	data
-INCLUDES	:=	include include/threads
+INCLUDES	:=	include include/threads include/ui include/controllers
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 APP_AUTHOR  := leofltt
