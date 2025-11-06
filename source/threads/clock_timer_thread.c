@@ -67,6 +67,9 @@ static void clock_thread_entry(void *arg) {
                             } else if (track->instrument_type == OPUS_SAMPLER) {
                                 memcpy(&event.instrument_specific_params.sampler_params,
                                        step.data->instrument_data, sizeof(OpusSamplerParameters));
+                            } else if (track->instrument_type == FM_SYNTH) { // <-- ADD THIS
+                                memcpy(&event.instrument_specific_params.fm_synth_params,
+                                       step.data->instrument_data, sizeof(FMSynthParameters));
                             }
                             eventQueuePush(s_event_queue_ptr, event);
                         }
