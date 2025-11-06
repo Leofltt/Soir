@@ -16,11 +16,11 @@
 
 #include <string.h>
 
-bool sampler_is_looping(Sampler *sampler) {
+bool samplerIsLooping(Sampler *sampler) {
     return sampler->playback_mode == LOOP;
 }
 
-void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
+void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
 #ifdef DEBUG
     // Setup timer for performance stats
     TickCounter timer;
@@ -53,7 +53,7 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
         // storing the number of samples that were decoded (or error)
         const int samples = op_read_stereo(sampler->sample->opusFile, buffer, bufferSize);
         if (samples <= 0) {
-            if (sampler_is_looping(sampler)) {
+            if (samplerIsLooping(sampler)) {
                 op_raw_seek(sampler->sample->opusFile, 0);
                 continue;
             } else {
@@ -89,7 +89,7 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
 
     // If no samples were read in the last decode cycle and looping is on,
     // seek back to the start of the sample
-    if (totalSamples == 0 && sampler_is_looping(sampler)) {
+    if (totalSamples == 0 && samplerIsLooping(sampler)) {
         if (sampler->sample && sampler->sample->opusFile) { // Defensive check
             op_raw_seek(sampler->sample->opusFile, 0);
         }
@@ -102,9 +102,9 @@ void sampler_fill_buffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
 #ifdef DEBUG
     // Print timing info
     osTickCounterUpdate(&timer);
-    printf("fillBuffer %lfms in %lfms\n", totalSamples * 1000.0 / SAMPLE_RATE,
+
            osTickCounterRead(&timer));
 #endif // DEBUG
 
-    return;
+           return;
 };

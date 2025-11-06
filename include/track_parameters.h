@@ -50,7 +50,7 @@ typedef struct {
 
     int carrier_env_rel;
 
-    int carrier_env_dur;
+    int env_dur;
 
     int mod_env_atk;
 
@@ -59,8 +59,6 @@ typedef struct {
     float mod_env_sus_level;
 
     int mod_env_rel;
-
-    int mod_env_dur;
 
     float mod_index;
 

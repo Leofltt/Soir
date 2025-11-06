@@ -9,7 +9,7 @@ const char *DEFAULT_SAMPLE_PATHS[5] = { "romfs:/samples/bibop.opus", "romfs:/sam
 
 const char *SAMPLES_FOLDER_PATH = "sdmc:/samples/";
 
-void SampleBank_init(SampleBank *bank) {
+void SampleBankInit(SampleBank *bank) {
     for (int i = 0; i < MAX_SAMPLES; i++) {
         bank->samples[i] = NULL;
     }
@@ -19,7 +19,7 @@ void SampleBank_init(SampleBank *bank) {
     }
 }
 
-void SampleBank_deinit(SampleBank *bank) {
+void SampleBankDeinit(SampleBank *bank) {
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
             sample_dec_ref(bank->samples[i]);
@@ -28,14 +28,14 @@ void SampleBank_deinit(SampleBank *bank) {
     }
 }
 
-Sample *SampleBank_get_sample(SampleBank *bank, int index) {
+Sample *SampleBankGetSample(SampleBank *bank, int index) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return NULL;
     }
     return bank->samples[index];
 }
 
-const char *SampleBank_get_sample_name(SampleBank *bank, int index) {
+const char *SampleBankGetSampleName(SampleBank *bank, int index) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return "Invalid";
     }
@@ -45,7 +45,7 @@ const char *SampleBank_get_sample_name(SampleBank *bank, int index) {
     return sample_get_name(bank->samples[index]);
 }
 
-void SampleBank_load_sample(SampleBank *bank, int index, const char *path) {
+void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return;
     }
@@ -57,7 +57,7 @@ void SampleBank_load_sample(SampleBank *bank, int index, const char *path) {
     bank->samples[index] = sample_create(path);
 }
 
-int SampleBank_get_loaded_sample_count(SampleBank *bank) {
+int SampleBankGetLoadedSampleCount(SampleBank *bank) {
     int count = 0;
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {

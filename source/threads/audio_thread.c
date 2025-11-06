@@ -54,7 +54,7 @@ static void processTrackEvent(Event *event) {
         Sampler *s = (Sampler *) track->instrument_data;
         if (opusSamplerParams && s) {
             Sample *new_sample =
-                SampleBank_get_sample(s_sample_bank_ptr, opusSamplerParams->sample_index);
+                SampleBankGetSample(s_sample_bank_ptr, opusSamplerParams->sample_index);
             if (new_sample != s->sample) {
                 sample_inc_ref(new_sample);
                 sample_dec_ref(s->sample);
@@ -72,6 +72,25 @@ static void processTrackEvent(Event *event) {
                 triggerEnvelope(s->env);
             }
         }
+    } else if (event->instrument_type == FM_SYNTH) {
+        FMSynthParameters *fmSynthParams = &event->instrument_specific_params.fm_synth_params;
+        FMSynth           *fs            = (FMSynth *) track->instrument_data;
+        if (fmSynthParams && fs) {
+            FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
+            FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
+            FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
+            FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
+            updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
+                           fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
+                           fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
+            updateEnvelope(fs->fm_op->modEnvelope, fmSynthParams->mod_env_atk,
+                           fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
+                           fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
+            if (event->type == TRIGGER_STEP) {
+                triggerEnvelope(fs->carrierEnv);
+                triggerEnvelope(fs->fm_op->modEnvelope);
+            }
+        }
     }
 
     LightLock_Unlock(s_tracks_lock_ptr);
@@ -80,7 +99,7 @@ static void processTrackEvent(Event *event) {
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
         Event event;
-        while (event_queue_pop(s_event_queue_ptr, &event)) {
+        while (eventQueuePop(s_event_queue_ptr, &event)) {
             processTrackEvent(&event);
         }
 
@@ -102,7 +121,10 @@ static void audio_thread_entry(void *arg) {
                         op_pcm_seek(sampler->sample->opusFile, sampler->start_position);
                         sampler->seek_requested = false;
                     }
-                    sampler_fill_buffer(waveBuf, waveBuf->nsamples, sampler);
+                    fillSamplerAudioBuffer(waveBuf, waveBuf->nsamples, sampler);
+                } else if (s_tracks_ptr[i].instrument_type == FM_SYNTH) {
+                    FMSynth *fm_synth = (FMSynth *) s_tracks_ptr[i].instrument_data;
+                    fillFMSynthAudiobuffer(waveBuf, waveBuf->nsamples, fm_synth);
                 }
 
                 ndspChnWaveBufAdd(s_tracks_ptr[i].chan_id, waveBuf);
@@ -117,9 +139,9 @@ static void audio_thread_entry(void *arg) {
     }
 }
 
-void audio_thread_init(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
-                       SampleBank *sample_bank_ptr, volatile bool *should_exit_ptr,
-                       s32 main_thread_prio) {
+void audioThreadInit(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
+                     SampleBank *sample_bank_ptr, volatile bool *should_exit_ptr,
+                     s32 main_thread_prio) {
     s_tracks_ptr       = tracks_ptr;
     s_tracks_lock_ptr  = tracks_lock_ptr;
     s_event_queue_ptr  = event_queue_ptr;
@@ -130,16 +152,15 @@ void audio_thread_init(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue
     ndspSetCallback(audio_callback, NULL);
 }
 
-void audio_thread_start() {
+void audioThreadStart() {
     s_audio_thread =
         threadCreate(audio_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 2, -2, true);
     if (s_audio_thread == NULL) {
-        printf("Failed to create audio thread\n");
         // Handle error appropriately, e.g., exit or set a flag
     }
 }
 
-void audio_thread_stop_and_join() {
+void audioThreadStopAndJoin() {
     if (s_audio_thread) {
         LightEvent_Signal(&s_audio_event);
         threadJoin(s_audio_thread, U64_MAX);

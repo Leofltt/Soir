@@ -12,11 +12,11 @@ typedef struct {
     Sample *samples[MAX_SAMPLES];
 } SampleBank;
 
-void        SampleBank_init(SampleBank *bank);
-void        SampleBank_deinit(SampleBank *bank);
-Sample     *SampleBank_get_sample(SampleBank *bank, int index);
-const char *SampleBank_get_sample_name(SampleBank *bank, int index);
-void        SampleBank_load_sample(SampleBank *bank, int index, const char *path);
-int         SampleBank_get_loaded_sample_count(SampleBank *bank);
+void        SampleBankInit(SampleBank *bank);
+void        SampleBankDeinit(SampleBank *bank);
+Sample     *SampleBankGetSample(SampleBank *bank, int index);
+const char *SampleBankGetSampleName(SampleBank *bank, int index);
+void        SampleBankLoadSample(SampleBank *bank, int index, const char *path);
+int         SampleBankGetLoadedSampleCount(SampleBank *bank);
 
 #endif // SAMPLE_BANK_H

@@ -2,16 +2,17 @@
 #include "polybleposc.h"
 #include <math.h>
 
-void FMOperator_set_carrier_frequency(FMOperator *op, float freq) {
+void FMOpSetCarrierFrequency(FMOperator *op, float freq) {
     if (!op || !op->carrier)
         return;
     setOscFrequency(op->carrier, freq);
+    op->base_frequency = freq;
 }
 
-void FMOperator_set_modulator_frequency_ratio(FMOperator *op, float ratio) {
+void FMOpSetModRatio(FMOperator *op, float ratio) {
     if (!op || !op->modulator || !op->carrier)
         return;
-    setOscFrequency(op->modulator, op->carrier->frequency * ratio);
+    setOscFrequency(op->modulator, op->base_frequency * ratio);
 }
 
 float nextFMOscillatorSample(FMOperator *op) {
@@ -21,7 +22,7 @@ float nextFMOscillatorSample(FMOperator *op) {
     float mod_env_val = nextEnvelopeSample(op->modEnvelope);
     float mod_signal  = nextOscillatorSample(op->modulator) * op->modDepth * mod_env_val;
 
-    float original_freq  = op->carrier->frequency;
+    float original_freq  = op->base_frequency;
     float modulated_freq = original_freq + mod_signal * op->modIndex * original_freq;
 
     setOscFrequency(op->carrier, modulated_freq);
@@ -29,13 +30,13 @@ float nextFMOscillatorSample(FMOperator *op) {
     return nextOscillatorSample(op->carrier);
 }
 
-void FMOperator_set_mod_index(FMOperator *op, float index) {
+void FMOpSetModIndex(FMOperator *op, float index) {
     if (!op)
         return;
     op->modIndex = index;
 }
 
-void FMOperator_set_mod_depth(FMOperator *op, float depth) {
+void FMOpSetModDepth(FMOperator *op, float depth) {
     if (!op)
         return;
     op->modDepth = depth;

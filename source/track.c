@@ -44,6 +44,12 @@ void Track_deinit(Track *track) {
         } else if (track->instrument_type == FM_SYNTH) {
             FMSynth *fmsynth = (FMSynth *) track->instrument_data;
             if (fmsynth->fm_op) {
+                if (fmsynth->fm_op->carrier) {
+                    linearFree(fmsynth->fm_op->carrier);
+                }
+                if (fmsynth->fm_op->modulator) {
+                    linearFree(fmsynth->fm_op->modulator);
+                }
                 if (fmsynth->fm_op->modEnvelope) {
                     linearFree(fmsynth->fm_op->modEnvelope);
                 }
@@ -59,16 +65,9 @@ void Track_deinit(Track *track) {
     // Deallocate sequencer
     if (track->sequencer) {
         if (track->sequencer->steps) {
-            // Need to free instrument_data within each step's TrackParameters
-            for (int i = 0; i < track->sequencer->n_beats * track->sequencer->steps_per_beat; i++) {
-                SeqStep *step = &track->sequencer->steps[i];
-                if (step->active && step->data && step->data->instrument_data) {
-                    linearFree(step->data->instrument_data);
-                }
-                if (step->data) {
-                    linearFree(step->data);
-                }
-            }
+            // The step->data and step->data->instrument_data are pointers to arrays
+            // managed and freed in main.c. We ONLY free the steps array itself,
+            // which was allocated in main.c (e.g., sequence1 = linearAlloc(...)).
             linearFree(track->sequencer->steps);
         }
         linearFree(track->sequencer);
@@ -116,17 +115,17 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
     if (!synth || !params)
         return;
 
-    FMOperator_set_carrier_frequency(synth->fm_op, params->carrier_freq);
-    FMOperator_set_modulator_frequency_ratio(synth->fm_op, params->mod_freq_ratio);
-    FMOperator_set_mod_index(synth->fm_op, params->mod_index);
-    FMOperator_set_mod_depth(synth->fm_op, params->mod_depth);
+    FMOpSetCarrierFrequency(synth->fm_op, params->carrier_freq);
+    FMOpSetModRatio(synth->fm_op, params->mod_freq_ratio);
+    FMOpSetModIndex(synth->fm_op, params->mod_index);
+    FMOpSetModDepth(synth->fm_op, params->mod_depth);
 
     updateEnvelope(synth->carrierEnv, params->carrier_env_atk, params->carrier_env_dec,
-                   params->carrier_env_sus_level, params->carrier_env_rel, params->carrier_env_dur);
+                   params->carrier_env_sus_level, params->carrier_env_rel, params->env_dur);
     triggerEnvelope(synth->carrierEnv);
 
     updateEnvelope(synth->fm_op->modEnvelope, params->mod_env_atk, params->mod_env_dec,
-                   params->mod_env_sus_level, params->mod_env_rel, params->carrier_env_dur);
+                   params->mod_env_sus_level, params->mod_env_rel, params->env_dur);
     triggerEnvelope(synth->fm_op->modEnvelope);
 }
 

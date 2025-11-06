@@ -38,32 +38,73 @@ void renderEnvBuffer(Envelope *env) {
         return;
     }
 
-    int   x = 0;
-    float y = 0.;
+    int   x   = 0;
+    float y   = 0.0f;
+    float inc = 0.0f;
 
-    float inc = 1. / (float) env->atk;
-    for (int i = 0; i <= env->atk; i++) {
-        env->env_buffer[i] = y;
-        y += inc;
+    // --- Attack Phase ---
+    // Handle 0 attack to prevent divide-by-zero
+    if (env->atk > 0) {
+        inc = 1.0f / (float) env->atk;
+    } else {
+        inc = 0.0f; // No attack
     }
-
-    inc = env->sus_level - 1. / (float) env->dec;
-    x += env->atk;
-    for (int i = 0; i <= env->dec; i++) {
-        env->env_buffer[i + x] = y;
+    // Loop *atk* times (i < env->atk)
+    for (int i = 0; i < env->atk; i++) { // <-- FIX: Was <=
+        if (x < env->buffer_size)
+            env->env_buffer[x] = y;
         y += inc;
+        x++;
     }
+    y = 1.0f; // Ensure we are at peak
 
-    x += env->dec;
-    for (int i = 0; i <= env->sus_time; i++) {
-        env->env_buffer[i + x] = y;
+    // --- Decay Phase ---
+    // Handle 0 decay
+    if (env->dec > 0) {
+        inc = (env->sus_level - 1.0f) / (float) env->dec;
+    } else {
+        inc = 0.0f; // No decay
     }
-
-    inc = 0. - env->sus_level / (float) env->rel;
-    x += env->sus_time;
-    for (int i = 0; i <= env->rel; i++) {
-        env->env_buffer[i + x] = y;
+    // Loop *dec* times
+    for (int i = 0; i < env->dec; i++) { // <-- FIX: Was <=
+        if (x < env->buffer_size)
+            env->env_buffer[x] = y;
         y += inc;
+        x++;
+    }
+    y = env->sus_level; // Ensure we are at sustain level
+
+    // --- Sustain Phase ---
+    // Loop *sus_time* times
+    // (Ensure sus_time is not negative)
+    int sus_time_safe = (env->sus_time < 0) ? 0 : env->sus_time;
+    for (int i = 0; i < sus_time_safe; i++) { // <-- FIX: Was <=
+        if (x < env->buffer_size)
+            env->env_buffer[x] = y;
+        x++;
+    }
+    // y is still env->sus_level
+
+    // --- Release Phase ---
+    // Handle 0 release
+    if (env->rel > 0) {
+        inc = (0.0f - env->sus_level) / (float) env->rel;
+    } else {
+        inc = 0.0f; // No release
+    }
+    // Loop *rel* times
+    for (int i = 0; i < env->rel; i++) { // <-- FIX: Was <=
+        if (x < env->buffer_size)
+            env->env_buffer[x] = y;
+        y += inc;
+        x++;
+    }
+    y = 0.0f; // Ensure we end at 0
+
+    // Fill any remaining buffer with 0s (if sus_time was negative or rounding errors)
+    while (x < env->buffer_size) {
+        env->env_buffer[x] = 0.0f;
+        x++;
     }
 };
 
@@ -88,7 +129,8 @@ bool updateDecay(Envelope *env, int decay) {
 };
 
 bool updateSustain(Envelope *env, float sustain) {
-    int  sustain_time = env->dur - (env->atk + env->dec + env->rel);
+    int  dur_samples  = (int) (env->dur * env->sr * 0.001);
+    int  sustain_time = dur_samples - (env->atk + env->dec + env->rel);
     bool updated      = false;
     if (env->sus_level != sustain) {
         env->sus_level = sustain;
@@ -126,7 +168,7 @@ bool updateDuration(Envelope *env, int dur_ms) {
                 env->buffer_size = new_size;
             }
         }
-        env->dur = dur_ms;
+        env->dur = new_size;
         updated  = true;
     }
     return updated;

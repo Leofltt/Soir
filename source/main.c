@@ -43,6 +43,7 @@ static SampleBrowser         g_sample_browser;
 static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
+static FMSynthParameters     g_editing_fm_synth_params;
 
 // Helper function to process events on the audio thread
 
@@ -54,8 +55,8 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
-    SampleBank_init(&g_sample_bank);
-    SampleBrowser_init(&g_sample_browser);
+    SampleBankInit(&g_sample_bank);
+    SampleBrowserInit(&g_sample_browser);
 
     int ret = 0;
 
@@ -96,6 +97,14 @@ int main(int argc, char **argv) {
     TrackParameters       *trackParamsArray1       = NULL;
     SubSynthParameters    *subsynthParamsArray     = NULL;
     Sequencer             *seq1                    = NULL;
+    u32                   *audioBufferFM           = NULL;
+    Envelope              *fm_env                  = NULL;
+    FMOperator            *fm_op                   = NULL;
+    FMSynth               *fm_synth                = NULL;
+    SeqStep               *sequenceFM              = NULL;
+    TrackParameters       *trackParamsArrayFM      = NULL;
+    FMSynthParameters     *fmSynthParamsArray      = NULL;
+    Sequencer             *seqFM                   = NULL;
     u32                   *audioBuffer2            = NULL;
     Envelope              *env1                    = NULL;
     Sampler               *sampler                 = NULL;
@@ -157,6 +166,7 @@ int main(int argc, char **argv) {
                            .editing_step_params     = &g_editing_step_params,
                            .editing_subsynth_params = &g_editing_subsynth_params,
                            .editing_sampler_params  = &g_editing_sampler_params,
+                           .editing_fm_synth_params = &g_editing_fm_synth_params,
                            .clock_lock              = &clock_lock,
                            .tracks_lock             = &tracks_lock,
 
@@ -164,10 +174,9 @@ int main(int argc, char **argv) {
                            .HOLD_DELAY_REPEAT  = HOLD_DELAY_REPEAT };
     setBpm(app_clock, 127.0f);
 
-    audio_thread_init(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
-                      main_prio);
-    clock_timer_threads_init(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
-                             &should_exit, main_prio);
+    audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit, main_prio);
+    clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
+                          &should_exit, main_prio);
 
     // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -233,13 +242,95 @@ int main(int argc, char **argv) {
     *seq1 = (Sequencer) { .cur_step = 0, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
     tracks[0].sequencer = seq1;
 
+    // TRACK 1 (FM_SYNTH) ///////////////////////////////////////////
+    audioBufferFM = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
+    if (!audioBufferFM) {
+        ret = 1;
+        goto cleanup;
+    }
+    initializeTrack(&tracks[1], 1, FM_SYNTH, SAMPLERATE, SAMPLESPERBUF, audioBufferFM);
+
+    fm_op = (FMOperator *) linearAlloc(sizeof(FMOperator));
+    if (!fm_op) {
+        ret = 1;
+        goto cleanup;
+    }
+    *fm_op =
+        (FMOperator) { .carrier   = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
+                       .modulator = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
+                       .modEnvelope    = (Envelope *) linearAlloc(sizeof(Envelope)),
+                       .modIndex       = 1.0f,
+                       .modDepth       = 100.0f,
+                       .base_frequency = 220.0f };
+    if (!fm_op->carrier || !fm_op->modulator || !fm_op->modEnvelope) {
+        ret = 1;
+        goto cleanup;
+    }
+    *fm_op->carrier = (PolyBLEPOscillator) {
+        .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
+    };
+    setOscFrequency(fm_op->carrier, fm_op->carrier->frequency);
+
+    *fm_op->modulator = (PolyBLEPOscillator) {
+        .frequency = 0.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
+    };
+    setOscFrequency(fm_op->modulator, fm_op->modulator->frequency);
+
+    *fm_op->modEnvelope = defaultEnvelopeStruct(SAMPLERATE);
+    updateEnvelope(fm_op->modEnvelope, 20, 200, 0.6, 50, 300);
+
+    fm_env = (Envelope *) linearAlloc(sizeof(Envelope));
+    if (!fm_env) {
+        ret = 1;
+        goto cleanup;
+    }
+    *fm_env = defaultEnvelopeStruct(SAMPLERATE);
+    updateEnvelope(fm_env, 20, 200, 0.6, 50, 300);
+
+    fm_synth = (FMSynth *) linearAlloc(sizeof(FMSynth));
+    if (!fm_synth) {
+        ret = 1;
+        goto cleanup;
+    }
+    *fm_synth                 = (FMSynth) { .carrierEnv = fm_env, .fm_op = fm_op };
+    tracks[1].instrument_data = fm_synth;
+
+    sequenceFM = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
+    if (!sequenceFM) {
+        ret = 1;
+        goto cleanup;
+    }
+    trackParamsArrayFM = (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
+    if (!trackParamsArrayFM) {
+        ret = 1;
+        goto cleanup;
+    }
+    fmSynthParamsArray = (FMSynthParameters *) linearAlloc(16 * sizeof(FMSynthParameters));
+    if (!fmSynthParamsArray) {
+        ret = 1;
+        goto cleanup;
+    }
+    for (int i = 0; i < 16; i++) {
+        fmSynthParamsArray[i] = defaultFMSynthParameters();
+        trackParamsArrayFM[i] = defaultTrackParameters(1, &fmSynthParamsArray[i]);
+        sequenceFM[i]         = (SeqStep) { .active = false };
+        sequenceFM[i].data    = &trackParamsArrayFM[i];
+    }
+    seqFM = (Sequencer *) linearAlloc(sizeof(Sequencer));
+    if (!seqFM) {
+        ret = 1;
+        goto cleanup;
+    }
+    *seqFM = (Sequencer) { .cur_step = 0, .steps = sequenceFM, .n_beats = 4, .steps_per_beat = 4 };
+    tracks[1].sequencer = seqFM;
+
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
     audioBuffer2 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer2) {
         ret = 1;
         goto cleanup;
     }
-    initializeTrack(&tracks[1], 1, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer2);
+    initializeTrack(&tracks[2], 2, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer2);
 
     env1 = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env1) {
@@ -254,7 +345,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+    *sampler = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
                            .start_position  = 0,
                            .playback_mode   = ONE_SHOT,
                            .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -263,7 +354,7 @@ int main(int argc, char **argv) {
                            .seek_requested  = false,
                            .finished        = true };
     sample_inc_ref(sampler->sample);
-    tracks[1].instrument_data = sampler;
+    tracks[2].instrument_data = sampler;
 
     sequence2 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
     if (!sequence2) {
@@ -284,7 +375,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         opusSamplerParamsArray[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray[i].sample_index = 0;
-        trackParamsArray2[i] = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
+        trackParamsArray2[i] = defaultTrackParameters(2, &opusSamplerParamsArray[i]);
         sequence2[i]         = (SeqStep) { .active = false };
         sequence2[i].data    = &trackParamsArray2[i];
     }
@@ -294,7 +385,7 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
-    tracks[1].sequencer = seq2;
+    tracks[2].sequencer = seq2;
 
     // TRACK 3 (OPUS_SAMPLER) ///////////////////////////////////////////
     audioBuffer3 = (u32 *) linearAlloc(2 * OPUSSAMPLESPERFBUF * BYTESPERSAMPLE * NCHANNELS);
@@ -302,7 +393,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    initializeTrack(&tracks[2], 2, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer3);
+    initializeTrack(&tracks[3], 3, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer3);
 
     env2 = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env2) {
@@ -317,7 +408,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler2 = (Sampler) { .sample          = SampleBank_get_sample(&g_sample_bank, 0),
+    *sampler2 = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
                             .start_position  = 0,
                             .playback_mode   = ONE_SHOT,
                             .samples_per_buf = OPUSSAMPLESPERFBUF,
@@ -326,7 +417,7 @@ int main(int argc, char **argv) {
                             .seek_requested  = false,
                             .finished        = true };
     sample_inc_ref(sampler2->sample);
-    tracks[2].instrument_data = sampler2;
+    tracks[3].instrument_data = sampler2;
 
     sequence3 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
     if (!sequence3) {
@@ -347,7 +438,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         opusSamplerParamsArray2[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray2[i].sample_index = 0;
-        trackParamsArray3[i] = defaultTrackParameters(2, &opusSamplerParamsArray2[i]);
+        trackParamsArray3[i] = defaultTrackParameters(3, &opusSamplerParamsArray2[i]);
         sequence3[i]         = (SeqStep) { .active = false };
         sequence3[i].data    = &trackParamsArray3[i];
     }
@@ -357,15 +448,15 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
     *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
-    tracks[2].sequencer = seq3;
+    tracks[3].sequencer = seq3;
 
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
-    event_queue_init(&g_event_queue);
+    eventQueueInit(&g_event_queue);
 
-    clock_timer_threads_start();
+    clockTimerThreadsStart();
 
-    audio_thread_start();
+    audioThreadStart();
 
     startClock(app_clock);
 
@@ -380,7 +471,7 @@ int main(int argc, char **argv) {
         u32 kDown = hidKeysDown();
         u32 kHeld = hidKeysHeld();
 
-        session_controller_handle_input(&ctx, kDown, kHeld, now, &should_break_loop);
+        sessionControllerHandleInput(&ctx, kDown, kHeld, now, &should_break_loop);
 
         if (should_break_loop) {
             break;
@@ -441,9 +532,9 @@ int main(int argc, char **argv) {
 cleanup:
     should_exit = true;
 
-    clock_timer_threads_stop_and_join();
+    clockTimerThreadsStopAndJoin();
 
-    audio_thread_stop_and_join();
+    audioThreadStopAndJoin();
 
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
@@ -454,7 +545,35 @@ cleanup:
         Track_deinit(&tracks[i]);
     }
 
-    SampleBank_deinit(&g_sample_bank);
+    linearFree(audioBuffer1);
+    linearFree(osc);
+    linearFree(env);
+    linearFree(sequence1);
+    linearFree(trackParamsArray1);
+    linearFree(subsynthParamsArray);
+    linearFree(seq1);
+
+    linearFree(audioBufferFM);
+    linearFree(sequenceFM);
+    linearFree(trackParamsArrayFM);
+    linearFree(fmSynthParamsArray);
+    linearFree(seqFM);
+
+    linearFree(audioBuffer2);
+    linearFree(env1);
+    linearFree(sequence2);
+    linearFree(trackParamsArray2);
+    linearFree(opusSamplerParamsArray);
+    linearFree(seq2);
+
+    linearFree(audioBuffer3);
+    linearFree(env2);
+    linearFree(sequence3);
+    linearFree(trackParamsArray3);
+    linearFree(opusSamplerParamsArray2);
+    linearFree(seq3);
+
+    SampleBankDeinit(&g_sample_bank);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
