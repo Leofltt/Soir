@@ -71,7 +71,12 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             // Draw bar.beat text
             C2D_TextBufClear(text_buf);
             char buf[64];
-            snprintf(buf, sizeof(buf), "%d.%d", clock->barBeats->bar, clock->barBeats->beat + 1);
+            if (!clock || !clock->barBeats) {
+                snprintf(buf, sizeof(buf), "0.0");
+            } else {
+                snprintf(buf, sizeof(buf), "%d.%d", clock->barBeats->bar,
+                         clock->barBeats->beat + 1);
+            }
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buf);
             C2D_TextOptimize(&text_obj);
 

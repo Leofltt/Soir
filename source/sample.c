@@ -1,6 +1,7 @@
 #include "sample.h"
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 static void _sample_destroy(Sample *sample) {
     if (!sample) {
@@ -49,6 +50,10 @@ void sample_inc_ref(Sample *sample) {
     if (!sample)
         return;
     LightLock_Lock(&sample->lock);
+    if (sample->ref_count == INT_MAX) {
+        LightLock_Unlock(&sample->lock);
+        return; // or abort/log error
+    }
     sample->ref_count++;
     LightLock_Unlock(&sample->lock);
 }

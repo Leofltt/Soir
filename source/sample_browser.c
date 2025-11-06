@@ -33,7 +33,7 @@ static void add_sample(SampleBrowser *browser, const char *path, const char *pre
 void SampleBrowserInit(SampleBrowser *browser) {
     browser->count = 0;
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < DEFAULT_SAMPLE_PATHS_COUNT; i++) {
         add_sample(browser, DEFAULT_SAMPLE_PATHS[i], "I");
     }
 
@@ -44,8 +44,11 @@ void SampleBrowserInit(SampleBrowser *browser) {
             size_t len = strlen(entry->d_name);
             if (len > 5 && strcmp(entry->d_name + len - 5, ".opus") == 0) {
                 char full_path[256];
-                snprintf(full_path, sizeof(full_path), "%s%s", SAMPLES_FOLDER_PATH, entry->d_name);
-                add_sample(browser, full_path, "SD");
+                int  written = snprintf(full_path, sizeof(full_path), "%s%s", SAMPLES_FOLDER_PATH,
+                                        entry->d_name);
+                if (written >= 0 && written < sizeof(full_path)) {
+                    add_sample(browser, full_path, "SD");
+                }
             }
         }
         closedir(dir);

@@ -103,8 +103,8 @@ void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler
     // Print timing info
     osTickCounterUpdate(&timer);
 
-           osTickCounterRead(&timer));
+    osTickCounterRead(&timer);
 #endif // DEBUG
 
-           return;
+    return;
 };

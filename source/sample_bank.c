@@ -2,10 +2,10 @@
 #include "audio_utils.h"
 #include <string.h>
 
-const char *DEFAULT_SAMPLE_PATHS[5] = { "romfs:/samples/bibop.opus", "romfs:/samples/hatClose.opus",
-                                        "romfs:/samples/hatOpen.opus",
-                                        "romfs:/samples/kick909.opus",
-                                        "romfs:/samples/clap808.opus" };
+const char *DEFAULT_SAMPLE_PATHS[DEFAULT_SAMPLE_PATHS_COUNT] = {
+    "romfs:/samples/bibop.opus", "romfs:/samples/hatClose.opus", "romfs:/samples/hatOpen.opus",
+    "romfs:/samples/kick909.opus", "romfs:/samples/clap808.opus"
+};
 
 const char *SAMPLES_FOLDER_PATH = "sdmc:/samples/";
 

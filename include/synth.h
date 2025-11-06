@@ -21,6 +21,6 @@ typedef struct {
 } FMSynth;
 
 extern void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsynth);
-extern void fillFMSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, FMSynth *fm_synth);
+extern void fillFMSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, FMSynth *fmsynth);
 
 #endif // SYNTH_H

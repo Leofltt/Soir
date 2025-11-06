@@ -13,11 +13,6 @@
 #include "controllers/controller_sample_manager.h"
 #include "controllers/controller_step_settings.h"
 
-// Global variables from main.c that are now passed via SessionContext
-extern EventQueue    g_event_queue;
-extern SampleBank    g_sample_bank;
-extern SampleBrowser g_sample_browser;
-
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
                              const u64 delay_initial, const u64 delay_repeat) {
     if (kDown & key) {

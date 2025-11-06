@@ -273,7 +273,8 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
             }
         } else {
             int step_idx = *ctx->selected_col - 1;
-            if (step_idx >= 0) {
+            if (step_idx >= 0 &&
+                step_idx < track->sequencer->n_beats * track->sequencer->steps_per_beat) {
                 SeqStep *seq_step = &track->sequencer->steps[step_idx];
 
                 void *original_instrument_data = seq_step->data->instrument_data;

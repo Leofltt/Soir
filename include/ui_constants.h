@@ -30,4 +30,26 @@
 #define HOME_STEPS_SPACER_W 4
 #define HOME_STEPS_HEADER_W 14
 
+// Menu dimensions
+#define CLOCK_MENU_WIDTH 300.0f
+#define CLOCK_MENU_HEIGHT 100.0f
+#define QUIT_MENU_WIDTH 150.0f
+#define QUIT_MENU_HEIGHT 80.0f
+#define SAMPLE_BROWSER_WIDTH 200.0f
+#define SAMPLE_BROWSER_HEIGHT 150.0f
+
+// Grid layout
+#define SAMPLE_GRID_ROWS 3
+#define SAMPLE_GRID_COLS 4
+#define SAMPLE_BROWSER_VISIBLE_ITEMS 10
+
+// Spacing and offsets
+#define MENU_ITEM_SPACING 25.0f
+#define BROWSER_ITEM_SPACING 14.0f
+#define CELL_BORDER_OFFSET 2.0f
+
+// Text scaling
+#define TEXT_SCALE_NORMAL 0.5f
+#define TEXT_SCALE_SMALL 0.4f
+
 #endif // UI_CONSTANTS_H

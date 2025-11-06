@@ -83,12 +83,12 @@ static void processTrackEvent(Event *event) {
             updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
                            fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
                            fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
-            updateEnvelope(fs->fm_op->modEnvelope, fmSynthParams->mod_env_atk,
+            updateEnvelope(fs->fm_op->mod_envelope, fmSynthParams->mod_env_atk,
                            fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
                            fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
             if (event->type == TRIGGER_STEP) {
                 triggerEnvelope(fs->carrierEnv);
-                triggerEnvelope(fs->fm_op->modEnvelope);
+                triggerEnvelope(fs->fm_op->mod_envelope);
             }
         }
     }

@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
     clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
                           &should_exit, main_prio);
 
-    // TRACK 1 (SUB_SYNTH) ///////////////////////////////////////////
+    // TRACK 0 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer1) {
         ret = 1;
@@ -256,17 +256,25 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *fm_op =
-        (FMOperator) { .carrier   = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
-                       .modulator = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator)),
-                       .modEnvelope   = (Envelope *) linearAlloc(sizeof(Envelope)),
-                       .modIndex      = 1.0f,
-                       .modDepth      = 100.0f,
-                       .baseFrequency = 220.0f };
-    if (!fm_op->carrier || !fm_op->modulator || !fm_op->modEnvelope) {
+    fm_op->carrier = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator));
+    if (!fm_op->carrier) {
         ret = 1;
         goto cleanup;
     }
+    fm_op->modulator = (PolyBLEPOscillator *) linearAlloc(sizeof(PolyBLEPOscillator));
+    if (!fm_op->modulator) {
+        ret = 1;
+        goto cleanup;
+    }
+    fm_op->mod_envelope = (Envelope *) linearAlloc(sizeof(Envelope));
+    if (!fm_op->mod_envelope) {
+        ret = 1;
+        goto cleanup;
+    }
+    fm_op->mod_index      = 1.0f;
+    fm_op->mod_depth      = 100.0f;
+    fm_op->base_frequency = 220.0f;
+
     *fm_op->carrier = (PolyBLEPOscillator) {
         .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
     };
@@ -277,8 +285,8 @@ int main(int argc, char **argv) {
     };
     setOscFrequency(fm_op->modulator, fm_op->modulator->frequency);
 
-    *fm_op->modEnvelope = defaultEnvelopeStruct(SAMPLERATE);
-    updateEnvelope(fm_op->modEnvelope, 20, 200, 0.6, 50, 300);
+    *fm_op->mod_envelope = defaultEnvelopeStruct(SAMPLERATE);
+    updateEnvelope(fm_op->mod_envelope, 20, 200, 0.6, 50, 300);
 
     fm_env = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!fm_env) {
@@ -451,6 +459,10 @@ int main(int argc, char **argv) {
     *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
     tracks[3].sequencer = seq3;
 
+    audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit, main_prio);
+    clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
+                          &should_exit, main_prio);
+
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
     eventQueueInit(&g_event_queue);
@@ -482,25 +494,22 @@ int main(int argc, char **argv) {
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
 
+        drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
+
         switch (session.main_screen_view) {
         case VIEW_MAIN:
-            drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
             break;
         case VIEW_SETTINGS:
-            drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
             drawClockSettingsView(app_clock, selected_settings_option);
             break;
         case VIEW_QUIT:
-            drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
             drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selected_quit_option);
             break;
         case VIEW_STEP_SETTINGS_EDIT:
-            drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
             drawStepSettingsEditView(&tracks[selected_row - 1], &g_editing_step_params,
                                      selected_step_option, selected_adsr_option, &g_sample_bank);
             break;
         default:
-            drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
             break;
         }
 
@@ -553,8 +562,17 @@ cleanup:
     linearFree(trackParamsArray1);
     linearFree(subsynthParamsArray);
     linearFree(seq1);
+    linearFree(subsynth);
 
     linearFree(audioBufferFM);
+    if (fm_op) {
+        linearFree(fm_op->carrier);
+        linearFree(fm_op->modulator);
+        linearFree(fm_op->mod_envelope);
+        linearFree(fm_op);
+    }
+    linearFree(fm_env);
+    linearFree(fm_synth);
     linearFree(sequenceFM);
     linearFree(trackParamsArrayFM);
     linearFree(fmSynthParamsArray);
@@ -562,6 +580,7 @@ cleanup:
 
     linearFree(audioBuffer2);
     linearFree(env1);
+    linearFree(sampler);
     linearFree(sequence2);
     linearFree(trackParamsArray2);
     linearFree(opusSamplerParamsArray);
@@ -569,10 +588,17 @@ cleanup:
 
     linearFree(audioBuffer3);
     linearFree(env2);
+    linearFree(sampler2);
     linearFree(sequence3);
     linearFree(trackParamsArray3);
     linearFree(opusSamplerParamsArray2);
     linearFree(seq3);
+    if (sampler && sampler->sample) {
+        sample_dec_ref(sampler->sample);
+    }
+    if (sampler2 && sampler2->sample) {
+        sample_dec_ref(sampler2->sample);
+    }
 
     SampleBankDeinit(&g_sample_bank);
     deinitViews();

@@ -7,10 +7,10 @@
 typedef struct {
     PolyBLEPOscillator *carrier;
     PolyBLEPOscillator *modulator;
-    Envelope           *modEnvelope;
-    float               modIndex;
-    float               modDepth;
-    float               baseFrequency;
+    Envelope           *mod_envelope;
+    float               mod_index;
+    float               mod_depth;
+    float               base_frequency;
 } FMOperator;
 
 extern void  FMOpSetCarrierFrequency(FMOperator *op, float freq);

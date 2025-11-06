@@ -8,11 +8,6 @@
 #include "sample_bank.h"
 #include <string.h>
 
-// Helper for clamping values (assuming it's defined elsewhere or will be defined)
-#ifndef clamp
-#define clamp(val, min, max) ((val) > (max) ? (max) : ((val) < (min) ? (min) : (val)))
-#endif
-
 extern int generateParameterList(Track *track, TrackParameters *params, SampleBank *sample_bank,
                                  ParameterInfo *list_buffer, int max_params);
 
@@ -50,7 +45,7 @@ void initEditingParams(SessionContext *ctx, Track *track, int selected_col) {
 
 void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
     int track_idx = *ctx->selected_row - 1;
-    if (track_idx < 0)
+    if (track_idx < 0 || track_idx >= N_TRACKS)
         return;
     Track *track = &ctx->tracks[track_idx];
 
@@ -95,7 +90,7 @@ void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
             current_row++;
     }
     if (kDown & KEY_LEFT) {
-        if (current_col > 0) {
+        if (current_col > 0 && num_left > 0) {
             current_col = 0;
             if (current_row >= num_left) {
                 current_row = num_left - 1;
@@ -103,18 +98,13 @@ void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
         }
     }
     if (kDown & KEY_RIGHT) {
-        if (current_col < 1) {
+        if (current_col < 1 && num_right > 0) {
             current_col = 1;
             if (current_row >= num_right) {
                 current_row = num_right - 1;
             }
         }
     }
-
-    if (kDown & KEY_X) {
-        *ctx->selected_col = (*ctx->selected_col % 16) + 1;
-    }
-
     if (kDown & KEY_B) {
         *ctx->selected_row = (*ctx->selected_row % N_TRACKS) + 1;
     }

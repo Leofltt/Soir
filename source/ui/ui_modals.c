@@ -5,17 +5,17 @@
 #include <stdio.h>
 #include <string.h>
 
-void drawClockSettingsView(Clock *clock, int selected_option) {
-    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128),
-                      C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128),
-                      C2D_Color32(0, 0, 0, 128));
+static void drawClockSettingsCommon(Clock *clock, int selected_option, float screen_width) {
+    if (!clock || !clock->barBeats)
+        return;
+
     const char *options[]   = { "BPM", "Beats per Bar", "Back" };
     int         num_options = sizeof(options) / sizeof(options[0]);
 
     // Menu box
-    float menu_width  = 300;
-    float menu_height = 100;
-    float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_width  = CLOCK_MENU_WIDTH;
+    float menu_height = CLOCK_MENU_HEIGHT;
+    float menu_x      = (screen_width - menu_width) / 2;
     float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
     C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
                       CLR_BLACK);
@@ -47,13 +47,23 @@ void drawClockSettingsView(Clock *clock, int selected_option) {
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                              &text_height);
 
         float text_x = menu_x + (menu_width - text_width) / 2;
         float text_y = menu_y + 20 + (i * 25);
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                     TEXT_SCALE_NORMAL, color);
     }
+}
+
+void drawClockSettingsView(Clock *clock, int selected_option) {
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128),
+                      C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128),
+                      C2D_Color32(0, 0, 0, 128));
+
+    drawClockSettingsCommon(clock, selected_option, (float) TOP_SCREEN_WIDTH);
 }
 
 void drawQuitMenu(const char *options[], int num_options, int selected_option) {
@@ -63,8 +73,8 @@ void drawQuitMenu(const char *options[], int num_options, int selected_option) {
                       C2D_Color32(0, 0, 0, 128));
 
     // Menu box
-    float menu_width  = 150;
-    float menu_height = 80;
+    float menu_width  = QUIT_MENU_WIDTH;
+    float menu_height = QUIT_MENU_HEIGHT;
     float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
     float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
     C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
@@ -89,12 +99,14 @@ void drawQuitMenu(const char *options[], int num_options, int selected_option) {
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                              &text_height);
 
         float text_x = menu_x + (menu_width - text_width) / 2;
         float text_y = menu_y + 20 + (i * 25);
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                     TEXT_SCALE_NORMAL, color);
     }
 }
 
@@ -141,67 +153,28 @@ void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus) {
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
 
         float text_x = rect_x + (rect_width - text_width) / 2;
         float text_y = rect_y + (rect_height - text_height) / 2;
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, text_color);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_SMALL,
+                     TEXT_SCALE_SMALL, text_color);
     }
 }
 
 void drawTouchClockSettingsView(Clock *clock, int selected_option) {
-    const char *options[]   = { "BPM", "Beats per Bar", "Back" };
-    int         num_options = sizeof(options) / sizeof(options[0]);
-
-    // Menu box
-    float menu_width  = 300;
-    float menu_height = 100;
-    float menu_x      = (BOTTOM_SCREEN_WIDTH - menu_width) / 2;
-    float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
-    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
-                      CLR_BLACK);
-    // Border
-    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-
-    for (int i = 0; i < num_options; i++) {
-        C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
-        u32      color        = (i == selected_option) ? CLR_YELLOW : CLR_WHITE;
-
-        C2D_TextBufClear(text_buf);
-        char text[64];
-        if (i == 0) {
-            snprintf(text, sizeof(text), "%s %.0f", options[i], clock->bpm);
-        } else if (i == 1) {
-            snprintf(text, sizeof(text), "%s %d", options[i], clock->barBeats->beats_per_bar);
-        } else {
-            snprintf(text, sizeof(text), "%s", options[i]);
-        }
-
-        C2D_TextFontParse(&text_obj, current_font, text_buf, text);
-        C2D_TextOptimize(&text_obj);
-
-        float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
-
-        float text_x = menu_x + (menu_width - text_width) / 2;
-        float text_y = menu_y + 20 + (i * 25);
-
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, color);
-    }
+    drawClockSettingsCommon(clock, selected_option, (float) BOTTOM_SCREEN_WIDTH);
 }
+
 void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                            bool is_selecting_sample, int selected_sample_browser_index,
                            SampleBrowser *browser, ScreenFocus focus) {
-    int   num_rows    = 3;
-    int   num_cols    = 4;
+    if (!bank)
+        return;
+    int   num_rows    = SAMPLE_GRID_ROWS;
+    int   num_cols    = SAMPLE_GRID_COLS;
     float cell_width  = BOTTOM_SCREEN_WIDTH / num_cols;
     float cell_height = SCREEN_HEIGHT / num_rows;
 
@@ -230,7 +203,8 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                 C2D_TextOptimize(&text_obj);
 
                 float text_width, text_height;
-                C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+                C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                                      &text_height);
 
                 float text_x = x + (cell_width - text_width) / 2;
                 float text_y = y + (cell_height - text_height) / 2;
@@ -248,7 +222,8 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                     C2D_DrawRectangle(x + cell_width - 3, y, 0, 1, cell_height - 2, border_color,
                                       border_color, border_color, border_color); // Right
                 }
-                C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, CLR_BLACK);
+                C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_SMALL,
+                             TEXT_SCALE_SMALL, CLR_BLACK);
             }
         }
     }
@@ -258,8 +233,8 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
             return;
         }
 
-        float menu_width  = 200;
-        float menu_height = 150;
+        float menu_width  = SAMPLE_BROWSER_WIDTH;
+        float menu_height = SAMPLE_BROWSER_HEIGHT;
         float menu_x      = (BOTTOM_SCREEN_WIDTH - menu_width) / 2;
         float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
 
@@ -279,7 +254,9 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
             start_index = selected_sample_browser_index - 5;
         }
 
-        for (int i = 0; i < 10 && (start_index + i) < SampleBrowserGetSampleCount(browser); i++) {
+        for (int i = 0; i < SAMPLE_BROWSER_VISIBLE_ITEMS &&
+                        (start_index + i) < SampleBrowserGetSampleCount(browser);
+             i++) {
             int         index = start_index + i;
             const char *name  = SampleBrowserGetSampleName(browser, index);
             C2D_Font    current_font =
@@ -291,12 +268,14 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
             C2D_TextOptimize(&text_obj);
 
             float text_width, text_height;
-            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                                  &text_height);
 
             float text_x = menu_x + 10;
             float text_y = menu_y + 10 + (i * 14);
 
-            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.4f, 0.4f, color);
+            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_SMALL,
+                         TEXT_SCALE_SMALL, color);
         }
     }
 }

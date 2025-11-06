@@ -4,8 +4,9 @@
 #include "sample.h"
 
 #define MAX_SAMPLES 12
+#define DEFAULT_SAMPLE_PATHS_COUNT 5
 
-extern const char *DEFAULT_SAMPLE_PATHS[5];
+extern const char *DEFAULT_SAMPLE_PATHS[DEFAULT_SAMPLE_PATHS_COUNT];
 extern const char *SAMPLES_FOLDER_PATH;
 
 typedef struct {

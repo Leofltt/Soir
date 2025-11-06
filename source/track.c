@@ -50,8 +50,8 @@ void Track_deinit(Track *track) {
                 if (fmsynth->fm_op->modulator) {
                     linearFree(fmsynth->fm_op->modulator);
                 }
-                if (fmsynth->fm_op->modEnvelope) {
-                    linearFree(fmsynth->fm_op->modEnvelope);
+                if (fmsynth->fm_op->mod_envelope) {
+                    linearFree(fmsynth->fm_op->mod_envelope);
                 }
                 linearFree(fmsynth->fm_op);
             }
@@ -124,9 +124,9 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
                    params->carrier_env_sus_level, params->carrier_env_rel, params->env_dur);
     triggerEnvelope(synth->carrierEnv);
 
-    updateEnvelope(synth->fm_op->modEnvelope, params->mod_env_atk, params->mod_env_dec,
+    updateEnvelope(synth->fm_op->mod_envelope, params->mod_env_atk, params->mod_env_dec,
                    params->mod_env_sus_level, params->mod_env_rel, params->env_dur);
-    triggerEnvelope(synth->fm_op->modEnvelope);
+    triggerEnvelope(synth->fm_op->mod_envelope);
 }
 
 void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,

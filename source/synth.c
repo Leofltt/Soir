@@ -11,6 +11,10 @@
 #include "engine_constants.h"
 
 void fillFMSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, FMSynth *fm_synth) {
+    if (!waveBuf) {
+        return;
+    }
+
     if (!fm_synth || !fm_synth->fm_op || !fm_synth->carrierEnv) {
         fillBufferWithZeros(waveBuf->data_pcm16, size * NCHANNELS * sizeof(int16_t));
         return;
