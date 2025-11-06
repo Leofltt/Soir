@@ -907,10 +907,24 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
             int track_idx = *ctx->selected_row - 1;
             if (track_idx < 0)
                 break;
-            Track        *track = &ctx->tracks[track_idx];
+            Track *track = &ctx->tracks[track_idx];
+
+            TrackParameters *params_to_show;
+            bool             is_all_steps = (*ctx->selected_col == 0);
+            if (is_all_steps) {
+                params_to_show = track->default_parameters;
+            } else {
+                int step_idx = *ctx->selected_col - 1;
+                if (step_idx >= 0 && track->sequencer && track->sequencer->steps) {
+                    params_to_show = track->sequencer->steps[step_idx].data;
+                } else {
+                    params_to_show = track->default_parameters; // Fallback
+                }
+            }
+
             ParameterInfo param_list[MAX_VIEW_PARAMS];
-            int           param_count = generateParameterList(track, ctx->editing_step_params,
-                                                              ctx->sample_bank, param_list, MAX_VIEW_PARAMS);
+            int param_count = generateParameterList(track, params_to_show, ctx->sample_bank,
+                                                    param_list, MAX_VIEW_PARAMS);
 
             int num_left  = 0;
             int num_right = 0;
