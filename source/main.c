@@ -265,17 +265,16 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    // Initialize the allocated PolyBLEPOscillator and Envelope structs
-    *fm_op->carrier     = (PolyBLEPOscillator) { .frequency  = 220.0f,
-                                                 .samplerate = SAMPLERATE,
-                                                 .waveform   = SINE,
-                                                 .phase      = 0.0f,
-                                                 .phase_inc  = 0.0f };
-    *fm_op->modulator   = (PolyBLEPOscillator) { .frequency  = 0.0f,
-                                                 .samplerate = SAMPLERATE,
-                                                 .waveform   = SINE,
-                                                 .phase      = 0.0f,
-                                                 .phase_inc  = 0.0f };
+    *fm_op->carrier = (PolyBLEPOscillator) {
+        .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
+    };
+    setOscFrequency(fm_op->carrier, fm_op->carrier->frequency);
+
+    *fm_op->modulator = (PolyBLEPOscillator) {
+        .frequency = 0.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
+    };
+    setOscFrequency(fm_op->modulator, fm_op->modulator->frequency);
+
     *fm_op->modEnvelope = defaultEnvelopeStruct(SAMPLERATE);
     updateEnvelope(fm_op->modEnvelope, 20, 200, 0.6, 50, 300);
 
@@ -330,7 +329,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    initializeTrack(&tracks[2], 1, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer2);
+    initializeTrack(&tracks[2], 2, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer2);
 
     env1 = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env1) {
@@ -375,7 +374,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         opusSamplerParamsArray[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray[i].sample_index = 0;
-        trackParamsArray2[i] = defaultTrackParameters(1, &opusSamplerParamsArray[i]);
+        trackParamsArray2[i] = defaultTrackParameters(2, &opusSamplerParamsArray[i]);
         sequence2[i]         = (SeqStep) { .active = false };
         sequence2[i].data    = &trackParamsArray2[i];
     }
@@ -393,7 +392,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    initializeTrack(&tracks[3], 2, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer3);
+    initializeTrack(&tracks[3], 3, OPUS_SAMPLER, OPUSSAMPLERATE, OPUSSAMPLESPERFBUF, audioBuffer3);
 
     env2 = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env2) {
@@ -438,7 +437,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         opusSamplerParamsArray2[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray2[i].sample_index = 0;
-        trackParamsArray3[i] = defaultTrackParameters(2, &opusSamplerParamsArray2[i]);
+        trackParamsArray3[i] = defaultTrackParameters(3, &opusSamplerParamsArray2[i]);
         sequence3[i]         = (SeqStep) { .active = false };
         sequence3[i].data    = &trackParamsArray3[i];
     }
@@ -554,9 +553,6 @@ cleanup:
     linearFree(seq1);
 
     linearFree(audioBufferFM);
-    linearFree(fm_op->carrier);
-    linearFree(fm_op->modulator);
-    linearFree(fm_op->modEnvelope);
     linearFree(sequenceFM);
     linearFree(trackParamsArrayFM);
     linearFree(fmSynthParamsArray);

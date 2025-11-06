@@ -44,6 +44,12 @@ void Track_deinit(Track *track) {
         } else if (track->instrument_type == FM_SYNTH) {
             FMSynth *fmsynth = (FMSynth *) track->instrument_data;
             if (fmsynth->fm_op) {
+                if (fmsynth->fm_op->carrier) {
+                    linearFree(fmsynth->fm_op->carrier);
+                }
+                if (fmsynth->fm_op->modulator) {
+                    linearFree(fmsynth->fm_op->modulator);
+                }
                 if (fmsynth->fm_op->modEnvelope) {
                     linearFree(fmsynth->fm_op->modEnvelope);
                 }
