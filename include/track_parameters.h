@@ -4,6 +4,7 @@
 #include "filters.h"
 #include "polybleposc.h"
 #include "samplers.h"
+#include "noise_synth.h"
 
 // a poor attempt at serialisable track parameters for each step
 
@@ -76,6 +77,8 @@ extern SubSynthParameters defaultSubSynthParameters();
 extern OpusSamplerParameters defaultOpusSamplerParameters();
 
 extern FMSynthParameters defaultFMSynthParameters();
+
+extern NoiseSynthParameters defaultNoiseSynthParameters();
 
 extern TrackParameters defaultTrackParameters(int track_id, void *instrument_data);
 

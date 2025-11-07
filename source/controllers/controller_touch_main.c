@@ -22,23 +22,18 @@ void handleInputTouchSettings(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now
         *ctx->selected_sample_col       = 0;
     }
     if (kDown & KEY_Y && *ctx->selected_touch_option == 0) {
-        LightLock_Lock(ctx->clock_lock);
-        if (ctx->clock->status == PLAYING) {
-            pauseClock(ctx->clock);
-        } else if (ctx->clock->status == PAUSED) {
-            resumeClock(ctx->clock);
-        }
-        LightLock_Unlock(ctx->clock_lock);
+        Event event = { .type = (ctx->clock->status == PLAYING) ? PAUSE_CLOCK : RESUME_CLOCK };
+        eventQueuePush(ctx->event_queue, event);
     }
     if (kDown & KEY_X && *ctx->selected_touch_option == 0) {
-        LightLock_Lock(ctx->clock_lock);
-        if (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED) {
-            stopClock(ctx->clock);
-            Event event = { .type = RESET_SEQUENCERS };
-            eventQueuePush(ctx->event_queue, event);
-        } else {
-            startClock(ctx->clock);
+        Event event = { .type = (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED)
+                                    ? STOP_CLOCK
+                                    : START_CLOCK };
+        eventQueuePush(ctx->event_queue, event);
+
+        if (event.type == STOP_CLOCK) {
+            Event resetEvent = { .type = RESET_SEQUENCERS };
+            eventQueuePush(ctx->event_queue, resetEvent);
         }
-        LightLock_Unlock(ctx->clock_lock);
     }
 }

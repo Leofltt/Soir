@@ -126,6 +126,8 @@ void drawTrackbar(Clock *clock, Track *tracks) {
                 instrument_name = "FM Synth";
             } else if (tracks[track_idx].instrument_type == OPUS_SAMPLER) {
                 instrument_name = "Sampler";
+            } else if (tracks[track_idx].instrument_type == NOISE_SYNTH) {
+                instrument_name = "GB Noize";
             }
 
             C2D_TextBufClear(text_buf);

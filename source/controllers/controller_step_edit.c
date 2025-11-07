@@ -112,6 +112,9 @@ static void applyParameterUpdate(TrackParameters *target_params, InstrumentType 
         } else if (instrument_type == FM_SYNTH) {
             ((FMSynthParameters *) target_params->instrument_data)->env_dur =
                 ((FMSynthParameters *) ctx->editing_fm_synth_params)->env_dur;
+        } else if (instrument_type == NOISE_SYNTH) {
+            ((NoiseSynthParameters *) target_params->instrument_data)->env_dur =
+                ((NoiseSynthParameters *) ctx->editing_noise_synth_params)->env_dur;
         }
         break;
     case PARAM_TYPE_ENVELOPE_BUTTON:
@@ -127,6 +130,9 @@ static void applyParameterUpdate(TrackParameters *target_params, InstrumentType 
         } else if (instrument_type == OPUS_SAMPLER) {
             memcpy(target_params->instrument_data, ctx->editing_sampler_params,
                    sizeof(OpusSamplerParameters));
+        } else if (instrument_type == NOISE_SYNTH) {
+            memcpy(target_params->instrument_data, ctx->editing_noise_synth_params,
+                   sizeof(NoiseSynthParameters));
         }
         break;
     default:
@@ -166,6 +172,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 } else if (track->instrument_type == FM_SYNTH) {
                     memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
                            seq_step->data->instrument_data, sizeof(FMSynthParameters));
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.noise_synth_params,
+                           seq_step->data->instrument_data, sizeof(NoiseSynthParameters));
                 }
                 eventQueuePush(ctx->event_queue, event);
             }
@@ -191,6 +200,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 } else if (track->instrument_type == FM_SYNTH) {
                     memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
                            sizeof(FMSynthParameters));
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    memcpy(seq_step->data->instrument_data, ctx->editing_noise_synth_params,
+                           sizeof(NoiseSynthParameters));
                 }
 
                 // Push event for the single step update
@@ -206,6 +218,9 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 } else if (track->instrument_type == FM_SYNTH) {
                     memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
                            seq_step->data->instrument_data, sizeof(FMSynthParameters));
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.noise_synth_params,
+                           seq_step->data->instrument_data, sizeof(NoiseSynthParameters));
                 }
                 eventQueuePush(ctx->event_queue, event);
             }
@@ -534,6 +549,11 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                     value_ptr = &((FMSynthParameters *) ctx->editing_fm_synth_params)->env_dur;
 
+                else if (track->instrument_type == NOISE_SYNTH)
+
+                    value_ptr =
+                        &((NoiseSynthParameters *) ctx->editing_noise_synth_params)->env_dur;
+
                 if (value_ptr) {
                     if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
                                                 ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT)) {
@@ -845,6 +865,54 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                         }
                     }
 
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    NoiseSynthParameters *noise_params = ctx->editing_noise_synth_params;
+
+                    if (*ctx->selected_adsr_option == 0) { // Attack
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_atk += 10;
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_atk -= 10;
+                        if (noise_params->env_atk < 0)
+                            noise_params->env_atk = 0;
+                    } else if (*ctx->selected_adsr_option == 1) { // Decay
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_dec += 10;
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_dec -= 10;
+                        if (noise_params->env_dec < 0)
+                            noise_params->env_dec = 0;
+                    } else if (*ctx->selected_adsr_option == 2) { // Sustain
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_sus_level += 0.1f;
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_sus_level -= 0.1f;
+                        noise_params->env_sus_level =
+                            clamp(noise_params->env_sus_level, 0.0f, 1.0f);
+                    } else if (*ctx->selected_adsr_option == 3) { // Release
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_rel += 10;
+                        if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                    ctx->HOLD_DELAY_INITIAL,
+                                                    ctx->HOLD_DELAY_REPEAT))
+                            noise_params->env_rel -= 10;
+                        if (noise_params->env_rel < 0)
+                            noise_params->env_rel = 0;
+                    }
                 } else if (track->instrument_type == OPUS_SAMPLER) {
                     OpusSamplerParameters *sampler_params = ctx->editing_sampler_params;
 
@@ -962,6 +1030,10 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
             memcpy(ctx->editing_step_params->instrument_data, ctx->editing_fm_synth_params,
 
                    sizeof(FMSynthParameters));
+        } else if (track->instrument_type == NOISE_SYNTH) {
+            memcpy(ctx->editing_step_params->instrument_data, ctx->editing_noise_synth_params,
+
+                   sizeof(NoiseSynthParameters));
         }
     }
 }

@@ -18,7 +18,7 @@
 #include "sample_browser.h"
 #include "audio_utils.h"
 #include "threads/audio_thread.h"
-#include "threads/clock_timer_thread.h"
+#include "noise_synth.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -43,6 +43,7 @@ static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
 static OpusSamplerParameters g_editing_sampler_params;
 static FMSynthParameters     g_editing_fm_synth_params;
+static NoiseSynthParameters  g_editing_noise_synth_params;
 
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
@@ -118,6 +119,14 @@ int main(int argc, char **argv) {
     OpusSamplerParameters *opusSamplerParamsArray2 = NULL;
     Sequencer             *seq3                    = NULL;
 
+    u32                  *audioBuffer4          = NULL;
+    Envelope             *env3                  = NULL;
+    NoiseSynth           *noise_synth           = NULL;
+    SeqStep              *sequence4             = NULL;
+    TrackParameters      *trackParamsArray4     = NULL;
+    NoiseSynthParameters *noiseSynthParamsArray = NULL;
+    Sequencer            *seq4                  = NULL;
+
     s32    main_prio;
     Result rc = svcGetThreadPriority(&main_prio, CUR_THREAD_HANDLE);
     if (R_FAILED(rc)) {
@@ -159,16 +168,17 @@ int main(int argc, char **argv) {
                            .screen_focus          = &screen_focus,
                            .previous_screen_focus = &previous_screen_focus,
 
-                           .tracks                  = tracks,
-                           .clock                   = app_clock,
-                           .event_queue             = &g_event_queue,
-                           .sample_bank             = &g_sample_bank,
-                           .sample_browser          = &g_sample_browser,
-                           .editing_step_params     = &g_editing_step_params,
-                           .editing_subsynth_params = &g_editing_subsynth_params,
-                           .editing_sampler_params  = &g_editing_sampler_params,
-                           .editing_fm_synth_params = &g_editing_fm_synth_params,
-                           .clock_lock              = &clock_lock,
+                           .tracks                     = tracks,
+                           .clock                      = app_clock,
+                           .event_queue                = &g_event_queue,
+                           .sample_bank                = &g_sample_bank,
+                           .sample_browser             = &g_sample_browser,
+                           .editing_step_params        = &g_editing_step_params,
+                           .editing_subsynth_params    = &g_editing_subsynth_params,
+                           .editing_sampler_params     = &g_editing_sampler_params,
+                           .editing_fm_synth_params    = &g_editing_fm_synth_params,
+                           .editing_noise_synth_params = &g_editing_noise_synth_params,
+                           .clock_lock                 = &clock_lock,
 
                            .HOLD_DELAY_INITIAL = HOLD_DELAY_INITIAL,
                            .HOLD_DELAY_REPEAT  = HOLD_DELAY_REPEAT };
@@ -459,6 +469,59 @@ int main(int argc, char **argv) {
     *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
     tracks[3].sequencer = seq3;
 
+    // TRACK 4 (NOISE_SYNTH) ///////////////////////////////////////////
+    audioBuffer4 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
+    if (!audioBuffer4) {
+        ret = 1;
+        goto cleanup;
+    }
+    initializeTrack(&tracks[4], 4, NOISE_SYNTH, SAMPLERATE, SAMPLESPERBUF, audioBuffer4);
+
+    env3 = (Envelope *) linearAlloc(sizeof(Envelope));
+    if (!env3) {
+        ret = 1;
+        goto cleanup;
+    }
+    *env3 = defaultEnvelopeStruct(SAMPLERATE);
+    updateEnvelope(env3, 1, 50, 1.0, 50, 100);
+
+    noise_synth = (NoiseSynth *) linearAlloc(sizeof(NoiseSynth));
+    if (!noise_synth) {
+        ret = 1;
+        goto cleanup;
+    }
+    *noise_synth = (NoiseSynth) { .env = env3, .lfsr_register = 0x4000 }; // Initial seed
+    tracks[4].instrument_data = noise_synth;
+
+    sequence4 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
+    if (!sequence4) {
+        ret = 1;
+        goto cleanup;
+    }
+    trackParamsArray4 = (TrackParameters *) linearAlloc(16 * sizeof(TrackParameters));
+    if (!trackParamsArray4) {
+        ret = 1;
+        goto cleanup;
+    }
+    noiseSynthParamsArray = (NoiseSynthParameters *) linearAlloc(16 * sizeof(NoiseSynthParameters));
+    if (!noiseSynthParamsArray) {
+        ret = 1;
+        goto cleanup;
+    }
+    for (int i = 0; i < 16; i++) {
+        noiseSynthParamsArray[i] = defaultNoiseSynthParameters();
+        trackParamsArray4[i]     = defaultTrackParameters(4, &noiseSynthParamsArray[i]);
+        sequence4[i]             = (SeqStep) { .active = false };
+        sequence4[i].data        = &trackParamsArray4[i];
+    }
+    seq4 = (Sequencer *) linearAlloc(sizeof(Sequencer));
+    if (!seq4) {
+        ret = 1;
+        goto cleanup;
+    }
+    *seq4 = (Sequencer) { .cur_step = 0, .steps = sequence4, .n_beats = 4, .steps_per_beat = 4 };
+    tracks[4].sequencer = seq4;
+
     LightLock_Init(&clock_lock);
     eventQueueInit(&g_event_queue);
 
@@ -467,23 +530,10 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    if (R_FAILED(clockTimerThreadsInit(app_clock, &clock_lock, &g_event_queue, &should_exit,
-                                       main_prio))) {
-        ret = 1;
-        goto cleanup;
-    }
-
-    if (R_FAILED(clockTimerThreadsStart())) {
-        ret = 1;
-        goto cleanup;
-    }
-
     if (R_FAILED(audioThreadStart())) {
         ret = 1;
         goto cleanup;
     }
-
-    startClock(app_clock);
 
     const char *quitMenuOptions[]  = { "Quit", "Cancel" };
     const int   numQuitMenuOptions = sizeof(quitMenuOptions) / sizeof(quitMenuOptions[0]);
@@ -556,8 +606,6 @@ int main(int argc, char **argv) {
 cleanup:
     should_exit = true;
 
-    clockTimerThreadsStopAndJoin();
-
     audioThreadStopAndJoin();
 
     for (int i = 0; i < N_TRACKS; i++) {
@@ -569,51 +617,20 @@ cleanup:
         Track_deinit(&tracks[i]);
     }
 
-    linearFree(audioBuffer1);
-    linearFree(osc);
-    linearFree(env);
-    linearFree(sequence1);
     linearFree(trackParamsArray1);
     linearFree(subsynthParamsArray);
-    linearFree(seq1);
-    linearFree(subsynth);
 
-    linearFree(audioBufferFM);
-    if (fm_op) {
-        linearFree(fm_op->carrier);
-        linearFree(fm_op->modulator);
-        linearFree(fm_op->mod_envelope);
-        linearFree(fm_op);
-    }
-    linearFree(fm_env);
-    linearFree(fm_synth);
-    linearFree(sequenceFM);
     linearFree(trackParamsArrayFM);
     linearFree(fmSynthParamsArray);
-    linearFree(seqFM);
 
-    linearFree(audioBuffer2);
-    linearFree(env1);
-    linearFree(sampler);
-    linearFree(sequence2);
     linearFree(trackParamsArray2);
     linearFree(opusSamplerParamsArray);
-    linearFree(seq2);
 
-    linearFree(audioBuffer3);
-    linearFree(env2);
-    linearFree(sampler2);
-    linearFree(sequence3);
     linearFree(trackParamsArray3);
     linearFree(opusSamplerParamsArray2);
-    linearFree(seq3);
-    if (sampler && sampler->sample) {
-        sample_dec_ref(sampler->sample);
-    }
-    if (sampler2 && sampler2->sample) {
-        sample_dec_ref(sampler2->sample);
-    }
 
+    linearFree(trackParamsArray4);
+    linearFree(noiseSynthParamsArray);
     sample_cleanup_process();
     SampleBankDeinit(&g_sample_bank);
     deinitViews();

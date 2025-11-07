@@ -59,6 +59,12 @@ void Track_deinit(Track *track) {
                 linearFree(fmsynth->carrierEnv);
             }
             linearFree(fmsynth);
+        } else if (track->instrument_type == NOISE_SYNTH) {
+            NoiseSynth *noise_synth = (NoiseSynth *) track->instrument_data;
+            if (noise_synth->env) {
+                linearFree(noise_synth->env);
+            }
+            linearFree(noise_synth);
         }
     }
 
@@ -137,6 +143,15 @@ static void updateFMSynthFromSequence(FMSynth *synth, FMSynthParameters *params)
     triggerEnvelope(synth->fm_op->mod_envelope);
 }
 
+static void updateNoiseSynthFromSequence(NoiseSynth *synth, NoiseSynthParameters *params) {
+    if (!synth || !params)
+        return;
+
+    updateEnvelope(synth->env, params->env_atk, params->env_dec, params->env_sus_level,
+                   params->env_rel, params->env_dur);
+    triggerEnvelope(synth->env);
+}
+
 void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, float rate,
                      u32 num_samples, u32 *audio_buffer) {
     track->chan_id         = chan_id;
@@ -168,6 +183,11 @@ void initializeTrack(Track *track, int chan_id, InstrumentType instrument_type, 
             instrument_data = linearAlloc(sizeof(FMSynthParameters));
             if (instrument_data) {
                 *((FMSynthParameters *) instrument_data) = defaultFMSynthParameters();
+            }
+        } else if (instrument_type == NOISE_SYNTH) {
+            instrument_data = linearAlloc(sizeof(NoiseSynthParameters));
+            if (instrument_data) {
+                *((NoiseSynthParameters *) instrument_data) = defaultNoiseSynthParameters();
             }
         }
         *(track->default_parameters) = defaultTrackParameters(chan_id, instrument_data);
@@ -268,6 +288,13 @@ void updateTrack(Track *track, Clock *clock) {
                 FMSynth           *fms           = (FMSynth *) track->instrument_data;
                 if (fmSynthParams && fms) {
                     updateFMSynthFromSequence(fms, fmSynthParams);
+                }
+            } else if (track->instrument_type == NOISE_SYNTH) {
+                NoiseSynthParameters *noiseSynthParams =
+                    (NoiseSynthParameters *) step.data->instrument_data;
+                NoiseSynth *ns = (NoiseSynth *) track->instrument_data;
+                if (noiseSynthParams && ns) {
+                    updateNoiseSynthFromSequence(ns, noiseSynthParams);
                 }
             }
         }

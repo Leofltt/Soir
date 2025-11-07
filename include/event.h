@@ -2,9 +2,10 @@
 #define EVENT_H
 
 #include "track_parameters.h"
-#include "synth.h"    // For SubSynthParameters
-#include "samplers.h" // For OpusSamplerParameters
-#include "track.h"    // For InstrumentType
+#include "synth.h"       // For SubSynthParameters
+#include "samplers.h"    // For OpusSamplerParameters
+#include "noise_synth.h" // For NoiseSynthParameters
+#include "track.h"       // For InstrumentType
 #include <stdbool.h>
 
 typedef enum {
@@ -13,7 +14,14 @@ typedef enum {
     CLOCK_TICK,
     TOGGLE_STEP,
     SET_MUTE,
-    RESET_SEQUENCERS
+    RESET_SEQUENCERS,
+    START_CLOCK,
+    STOP_CLOCK,
+    PAUSE_CLOCK,
+    RESUME_CLOCK,
+    SET_BPM,
+    SET_BEATS_PER_BAR
+
 } EventType;
 
 typedef struct {
@@ -29,6 +37,7 @@ typedef struct {
                 SubSynthParameters    subsynth_params;
                 OpusSamplerParameters sampler_params;
                 FMSynthParameters     fm_synth_params;
+                NoiseSynthParameters  noise_synth_params;
             } instrument_specific_params;
         } step_data;
 
@@ -46,6 +55,17 @@ typedef struct {
         struct {
             bool muted;
         } mute_data;
+
+        // For SET_BPM
+        struct {
+            float bpm;
+        } bpm_data;
+
+        // For SET_BEATS_PER_BAR
+        struct {
+            int beats;
+        } beats_data;
+
     } data;
 } Event;
 

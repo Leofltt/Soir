@@ -29,13 +29,8 @@ void handleInputMainView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
 
     if (kDown & KEY_Y) {
         if (*ctx->selected_row == 0 && *ctx->selected_col == 0) {
-            LightLock_Lock(ctx->clock_lock);
-            if (ctx->clock->status == PLAYING) {
-                pauseClock(ctx->clock);
-            } else if (ctx->clock->status == PAUSED) {
-                resumeClock(ctx->clock);
-            }
-            LightLock_Unlock(ctx->clock_lock);
+            Event event = { .type = (ctx->clock->status == PLAYING) ? PAUSE_CLOCK : RESUME_CLOCK };
+            eventQueuePush(ctx->event_queue, event);
         } else if (*ctx->selected_row > 0 && *ctx->selected_col > 0) {
             ctx->session->touch_screen_view = VIEW_STEP_SETTINGS;
             *ctx->screen_focus              = FOCUS_BOTTOM;
@@ -44,9 +39,8 @@ void handleInputMainView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
 
     if (kDown & KEY_A) {
         if (*ctx->selected_row == 0 && *ctx->selected_col == 0) {
-            LightLock_Lock(ctx->clock_lock);
-            stopClock(ctx->clock);
-            LightLock_Unlock(ctx->clock_lock);
+            Event event = { .type = STOP_CLOCK };
+            eventQueuePush(ctx->event_queue, event);
             ctx->session->main_screen_view = VIEW_SETTINGS;
             *ctx->selected_settings_option = 0;
         } else if (*ctx->selected_row > 0 && *ctx->selected_col == 0) {
@@ -75,15 +69,16 @@ void handleInputMainView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
 
     if (kDown & KEY_X) {
         if (*ctx->selected_row == 0 && *ctx->selected_col == 0) {
-            LightLock_Lock(ctx->clock_lock);
-            if (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED) {
-                stopClock(ctx->clock);
-                Event event = { .type = RESET_SEQUENCERS };
-                eventQueuePush(ctx->event_queue, event);
-            } else {
-                startClock(ctx->clock);
+            Event event = { .type = (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED)
+                                        ? STOP_CLOCK
+                                        : START_CLOCK };
+            eventQueuePush(ctx->event_queue, event);
+
+            if (event.type == STOP_CLOCK) {
+                // We can also send the reset event from here
+                Event resetEvent = { .type = RESET_SEQUENCERS };
+                eventQueuePush(ctx->event_queue, resetEvent);
             }
-            LightLock_Unlock(ctx->clock_lock);
         }
     }
 }

@@ -235,6 +235,29 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         id++;
         break;
     }
+    case NOISE_SYNTH: {
+        NoiseSynthParameters *noise_params = (NoiseSynthParameters *) params->instrument_data;
+        if (!noise_params) {
+            break;
+        }
+        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
+                                            .unique_id     = id,
+                                            .column        = 1,
+                                            .row_in_column = 0,
+                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
+        id++;
+
+        list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
+                                            .unique_id     = id,
+                                            .column        = 1,
+                                            .row_in_column = 1,
+                                            .type          = PARAM_TYPE_INT };
+        snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
+                 noise_params->env_dur);
+        id++;
+        break;
+    }
     }
 
     return id;
@@ -283,6 +306,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         instrument_name = "FM Synth";
     } else if (track->instrument_type == OPUS_SAMPLER) {
         instrument_name = "Sampler";
+    } else if (track->instrument_type == NOISE_SYNTH) {
+        instrument_name = "GB Noize";
     }
 
     C2D_TextBufClear(text_buf);
@@ -437,6 +462,13 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                         values[3] = fm_synth_params->mod_env_rel;
                     }
                 }
+            } else if (track->instrument_type == NOISE_SYNTH) {
+                NoiseSynthParameters *noise_params =
+                    (NoiseSynthParameters *) params->instrument_data;
+                values[0] = noise_params->env_atk;
+                values[1] = noise_params->env_dec;
+                values[2] = noise_params->env_sus_level;
+                values[3] = noise_params->env_rel;
             } else { // is_sampler
                 OpusSamplerParameters *sampler_params =
                     (OpusSamplerParameters *) params->instrument_data;

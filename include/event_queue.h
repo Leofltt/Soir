@@ -4,17 +4,19 @@
 #include <stdbool.h>
 #include <stdatomic.h>
 #include "event.h"
+#include <3ds/synchronization.h> // <-- ADD THIS
 
 #define EVENT_QUEUE_SIZE 16
 
 /**
- * @brief A thread-safe, single-producer, single-consumer (SPSC) circular event queue.
+ * @brief A thread-safe, multi-producer, single-consumer (MPSC) circular event queue.
  * The queue has a capacity of EVENT_QUEUE_SIZE - 1.
  */
 typedef struct {
     Event      events[EVENT_QUEUE_SIZE];
     atomic_int head;
     atomic_int tail;
+    LightLock  lock; // <-- ADD THIS
 } EventQueue;
 
 /**
