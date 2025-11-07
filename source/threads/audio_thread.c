@@ -73,15 +73,22 @@ static void processSequencerTick() {
 
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
+        int ticks_to_process = updateClock(s_clock_ptr);
+
+        if (ticks_to_process > 0) {
+            // Clock ticked. We call processSequencerTick directly.
+            // It will push TRIGGER_STEP events onto our *own* queue (MPSC push is safe).
+            for (int i = 0; i < ticks_to_process; i++) {
+                processSequencerTick();
+            }
+        }
+
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
             switch (event.type) {
             case CLOCK_TICK: {
-                LightLock_Lock(s_clock_lock_ptr);
-                for (int i = 0; i < event.data.clock_data.ticks_to_process; i++) {
-                    processSequencerTick();
-                }
-                LightLock_Unlock(s_clock_lock_ptr);
+                // This event is no longer used, but we'll
+                // harmlessly consume it just in case.
                 break;
             }
             case TRIGGER_STEP:
@@ -188,6 +195,25 @@ static void audio_thread_entry(void *arg) {
                 }
                 break;
             }
+
+            case START_CLOCK:
+                startClock(s_clock_ptr);
+                break;
+            case STOP_CLOCK:
+                stopClock(s_clock_ptr);
+                break;
+            case PAUSE_CLOCK:
+                pauseClock(s_clock_ptr);
+                break;
+            case RESUME_CLOCK:
+                resumeClock(s_clock_ptr);
+                break;
+            case SET_BPM:
+                setBpm(s_clock_ptr, event.data.bpm_data.bpm);
+                break;
+            case SET_BEATS_PER_BAR:
+                setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
+                break;
             }
         }
 

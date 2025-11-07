@@ -18,7 +18,6 @@
 #include "sample_browser.h"
 #include "audio_utils.h"
 #include "threads/audio_thread.h"
-#include "threads/clock_timer_thread.h"
 #include "noise_synth.h"
 
 #include <3ds.h>
@@ -531,23 +530,10 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    if (R_FAILED(clockTimerThreadsInit(app_clock, &clock_lock, &g_event_queue, &should_exit,
-                                       main_prio))) {
-        ret = 1;
-        goto cleanup;
-    }
-
-    if (R_FAILED(clockTimerThreadsStart())) {
-        ret = 1;
-        goto cleanup;
-    }
-
     if (R_FAILED(audioThreadStart())) {
         ret = 1;
         goto cleanup;
     }
-
-    startClock(app_clock);
 
     const char *quitMenuOptions[]  = { "Quit", "Cancel" };
     const int   numQuitMenuOptions = sizeof(quitMenuOptions) / sizeof(quitMenuOptions[0]);
@@ -619,8 +605,6 @@ int main(int argc, char **argv) {
 
 cleanup:
     should_exit = true;
-
-    clockTimerThreadsStopAndJoin();
 
     audioThreadStopAndJoin();
 

@@ -14,7 +14,14 @@ typedef enum {
     CLOCK_TICK,
     TOGGLE_STEP,
     SET_MUTE,
-    RESET_SEQUENCERS
+    RESET_SEQUENCERS,
+    START_CLOCK,
+    STOP_CLOCK,
+    PAUSE_CLOCK,
+    RESUME_CLOCK,
+    SET_BPM,
+    SET_BEATS_PER_BAR
+
 } EventType;
 
 typedef struct {
@@ -48,6 +55,17 @@ typedef struct {
         struct {
             bool muted;
         } mute_data;
+
+        // For SET_BPM
+        struct {
+            float bpm;
+        } bpm_data;
+
+        // For SET_BEATS_PER_BAR
+        struct {
+            int beats;
+        } beats_data;
+
     } data;
 } Event;
 
