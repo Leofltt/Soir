@@ -175,10 +175,6 @@ int main(int argc, char **argv) {
                            .HOLD_DELAY_REPEAT  = HOLD_DELAY_REPEAT };
     setBpm(app_clock, 127.0f);
 
-    audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit, main_prio);
-    clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
-                          &should_exit, main_prio);
-
     // TRACK 0 (SUB_SYNTH) ///////////////////////////////////////////
     audioBuffer1 = (u32 *) linearAlloc(2 * SAMPLESPERBUF * BYTESPERSAMPLE * NCHANNELS);
     if (!audioBuffer1) {
@@ -459,17 +455,30 @@ int main(int argc, char **argv) {
     *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
     tracks[3].sequencer = seq3;
 
-    audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit, main_prio);
-    clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
-                          &should_exit, main_prio);
-
     LightLock_Init(&clock_lock);
     LightLock_Init(&tracks_lock);
     eventQueueInit(&g_event_queue);
 
-    clockTimerThreadsStart();
+    if (R_FAILED(audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
+                                 main_prio))) {
+        ret = 1;
+        goto cleanup;
+    }
+    if (R_FAILED(clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
+                                       &should_exit, main_prio))) {
+        ret = 1;
+        goto cleanup;
+    }
 
-    audioThreadStart();
+    if (R_FAILED(clockTimerThreadsStart())) {
+        ret = 1;
+        goto cleanup;
+    }
+
+    if (R_FAILED(audioThreadStart())) {
+        ret = 1;
+        goto cleanup;
+    }
 
     startClock(app_clock);
 

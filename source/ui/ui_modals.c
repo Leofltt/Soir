@@ -5,6 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 
+static void drawBorder(float x, float y, float w, float h, u32 color) {
+    C2D_DrawRectangle(x, y, 0, w, 1, color, color, color, color);         // Top
+    C2D_DrawRectangle(x, y + h - 1, 0, w, 1, color, color, color, color); // Bottom
+    C2D_DrawRectangle(x, y, 0, 1, h, color, color, color, color);         // Left
+    C2D_DrawRectangle(x + w - 1, y, 0, 1, h, color, color, color, color); // Right
+}
+
 static void drawClockSettingsCommon(Clock *clock, int selected_option, float screen_width) {
     if (!clock || !clock->barBeats)
         return;
@@ -20,14 +27,7 @@ static void drawClockSettingsCommon(Clock *clock, int selected_option, float scr
     C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
                       CLR_BLACK);
     // Border
-    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    drawBorder(menu_x, menu_y, menu_width, menu_height, CLR_LIGHT_GRAY);
 
     for (int i = 0; i < num_options; i++) {
         C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
@@ -80,14 +80,7 @@ void drawQuitMenu(const char *options[], int num_options, int selected_option) {
     C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
                       CLR_BLACK);
     // Border
-    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-    C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
-                      CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+    drawBorder(menu_x, menu_y, menu_width, menu_height, CLR_LIGHT_GRAY);
 
     // Menu options
     for (int i = 0; i < num_options; i++) {
@@ -131,14 +124,7 @@ void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus) {
                 C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, CLR_LIGHT_GRAY,
                                   CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
                 u32 border_color = CLR_YELLOW;
-                C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, 1, border_color, border_color,
-                                  border_color, border_color); // Top
-                C2D_DrawRectangle(rect_x, rect_y + rect_height - 1, 0, rect_width, 1, border_color,
-                                  border_color, border_color, border_color); // Bottom
-                C2D_DrawRectangle(rect_x, rect_y, 0, 1, rect_height, border_color, border_color,
-                                  border_color, border_color); // Left
-                C2D_DrawRectangle(rect_x + rect_width - 1, rect_y, 0, 1, rect_height, border_color,
-                                  border_color, border_color, border_color); // Right
+                drawBorder(rect_x, rect_y, rect_width, rect_height, border_color);
             }
         } else {
             C2D_DrawRectangle(rect_x, rect_y, 0, rect_width, rect_height, CLR_LIGHT_GRAY,
@@ -240,14 +226,7 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
 
         C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK,
                           CLR_BLACK, CLR_BLACK);
-        C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, 1, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-        C2D_DrawRectangle(menu_x, menu_y + menu_height - 1, 0, menu_width, 1, CLR_LIGHT_GRAY,
-                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-        C2D_DrawRectangle(menu_x, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY,
-                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
-        C2D_DrawRectangle(menu_x + menu_width - 1, menu_y, 0, 1, menu_height, CLR_LIGHT_GRAY,
-                          CLR_LIGHT_GRAY, CLR_LIGHT_GRAY, CLR_LIGHT_GRAY);
+        drawBorder(menu_x, menu_y, menu_width, menu_height, CLR_LIGHT_GRAY);
 
         int start_index = 0;
         if (selected_sample_browser_index >= 5) {

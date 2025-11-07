@@ -81,13 +81,14 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             C2D_TextOptimize(&text_obj);
 
             float text_width, text_height;
-            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                                  &text_height);
 
             float text_x = (HOME_TRACKS_WIDTH / 2.0f);
             float text_y = (track_height - text_height) / 2.0f;
 
-            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x / 2, text_y, 0.0f, 0.4f,
-                         0.4f, CLR_LIGHT_GRAY);
+            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x / 2, text_y, 0.0f,
+                         TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_LIGHT_GRAY);
 
             // Draw bpm status text
             C2D_TextBufClear(text_buf);

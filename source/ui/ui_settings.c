@@ -65,11 +65,14 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
     switch (track->instrument_type) {
     case SUB_SYNTH: {
         SubSynthParameters *synth_params = (SubSynthParameters *) params->instrument_data;
-        list_buffer[id]                  = (ParameterInfo) { .label         = "MIDI Note",
-                                                             .unique_id     = id,
-                                                             .column        = 1,
-                                                             .row_in_column = 0,
-                                                             .type          = PARAM_TYPE_MIDI_NOTE };
+        if (!synth_params) {
+            break;
+        }
+        list_buffer[id] = (ParameterInfo) { .label         = "MIDI Note",
+                                            .unique_id     = id,
+                                            .column        = 1,
+                                            .row_in_column = 0,
+                                            .type          = PARAM_TYPE_MIDI_NOTE };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  hertzToMidi(synth_params->osc_freq));
         id++;
@@ -103,11 +106,14 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
     }
     case FM_SYNTH: {
         FMSynthParameters *fm_params = (FMSynthParameters *) params->instrument_data;
-        list_buffer[id]              = (ParameterInfo) { .label         = "Mod Depth",
-                                                         .unique_id     = id,
-                                                         .column        = 0,
-                                                         .row_in_column = 4,
-                                                         .type          = PARAM_TYPE_FLOAT_0_1 };
+        if (!fm_params) {
+            break;
+        }
+        list_buffer[id] = (ParameterInfo) { .label         = "Mod Depth",
+                                            .unique_id     = id,
+                                            .column        = 0,
+                                            .row_in_column = 4,
+                                            .type          = PARAM_TYPE_FLOAT_0_1 };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
                  fm_params->mod_depth);
         id++;
@@ -167,11 +173,14 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
     }
     case OPUS_SAMPLER: {
         OpusSamplerParameters *sampler_params = (OpusSamplerParameters *) params->instrument_data;
-        list_buffer[id]                       = (ParameterInfo) { .label         = "Sample",
-                                                                  .unique_id     = id,
-                                                                  .column        = 1,
-                                                                  .row_in_column = 0,
-                                                                  .type          = PARAM_TYPE_SAMPLE_INDEX };
+        if (!sampler_params) {
+            break;
+        }
+        list_buffer[id] = (ParameterInfo) { .label         = "Sample",
+                                            .unique_id     = id,
+                                            .column        = 1,
+                                            .row_in_column = 0,
+                                            .type          = PARAM_TYPE_SAMPLE_INDEX };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
                  SampleBankGetSampleName(sample_bank, sampler_params->sample_index));
         id++;
@@ -230,12 +239,14 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         C2D_TextOptimize(&text_obj);
 
         float text_width, text_height;
-        C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                              &text_height);
 
         float text_x = (BOTTOM_SCREEN_WIDTH - text_width) / 2;
         float text_y = (SCREEN_HEIGHT - text_height) / 2;
 
-        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                     TEXT_SCALE_NORMAL, CLR_LIGHT_GRAY);
         return;
     }
 
@@ -268,7 +279,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
     C2D_TextBufClear(text_buf);
     C2D_TextFontParse(&text_obj, font_angular, text_buf, instrument_name);
     C2D_TextOptimize(&text_obj);
-    C2D_DrawText(&text_obj, C2D_WithColor, 10, 10, 0.0f, 0.5f, 0.5f, CLR_LIGHT_GRAY);
+    C2D_DrawText(&text_obj, C2D_WithColor, 10, 10, 0.0f, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL,
+                 CLR_LIGHT_GRAY);
 
     float cell_width  = 140;
     float cell_height = 20;
@@ -330,8 +342,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
         snprintf(buffer, sizeof(buffer), "%s: %s", p->label, p->value_string);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
         C2D_TextOptimize(&text_obj);
-        C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, 0.3f, 0.3f,
-                     text_color);
+        C2D_DrawText(&text_obj, C2D_WithColor, x + padding, y + padding, 0.0f, TEXT_SCALE_TINY,
+                     TEXT_SCALE_TINY, text_color);
     }
 
     // Track and Step Info
@@ -344,7 +356,8 @@ void drawStepSettingsView(Session *session, Track *tracks, int selected_row, int
     C2D_TextBufClear(text_buf);
     C2D_TextFontParse(&text_obj, font_angular, text_buf, buffer);
     C2D_TextOptimize(&text_obj);
-    C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, 0.4f, 0.4f, CLR_LIGHT_GRAY);
+    C2D_DrawText(&text_obj, C2D_WithColor, 200, 10, 0.0f, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL,
+                 CLR_LIGHT_GRAY);
 }
 
 void drawStepSettingsEditView(Track *track, TrackParameters *params, int selected_step_option,
@@ -400,7 +413,9 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                 values[3]                        = synth_params->env_rel;
             } else if (track->instrument_type == FM_SYNTH) {
                 FMSynthParameters *fm_synth_params = (FMSynthParameters *) params->instrument_data;
-                if (fm_synth_params) {
+                if (!fm_synth_params) {
+                    values[0] = values[1] = values[2] = values[3] = 0;
+                } else {
                     if (strcmp(param_to_edit->label, "Car Env") == 0) {
                         values[0] = fm_synth_params->carrier_env_atk;
                         values[1] = fm_synth_params->carrier_env_dec;
@@ -412,11 +427,6 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                         values[2] = fm_synth_params->mod_env_sus_level;
                         values[3] = fm_synth_params->mod_env_rel;
                     }
-                } else {
-                    values[0] = 0;
-                    values[1] = 0;
-                    values[2] = 0;
-                    values[3] = 0;
                 }
             } else { // is_sampler
                 OpusSamplerParameters *sampler_params =
@@ -443,9 +453,11 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
                 C2D_TextOptimize(&text_obj);
 
                 float text_width, text_height;
-                C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+                C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                                      &text_height);
                 float text_y = menu_y + (menu_height - text_height) / 2;
-                C2D_DrawText(&text_obj, C2D_WithColor, start_x, text_y, 0.0f, 0.5f, 0.5f, color);
+                C2D_DrawText(&text_obj, C2D_WithColor, start_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                             TEXT_SCALE_NORMAL, color);
                 start_x += text_width + 15;
             }
             break;
@@ -456,12 +468,14 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
             C2D_TextOptimize(&text_obj);
 
             float text_width, text_height;
-            C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                                  &text_height);
 
             float text_x = menu_x + (menu_width - text_width) / 2;
             float text_y = menu_y + (menu_height - text_height) / 2;
 
-            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_YELLOW);
+            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                         TEXT_SCALE_NORMAL, CLR_YELLOW);
             break;
         }
         default: {
@@ -470,12 +484,14 @@ void drawStepSettingsEditView(Track *track, TrackParameters *params, int selecte
             C2D_TextOptimize(&text_obj);
 
             float text_width, text_height;
-            C2D_TextGetDimensions(&text_obj, 0.5f, 0.5f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                                  &text_height);
 
             float text_x = menu_x + (menu_width - text_width) / 2;
             float text_y = menu_y + (menu_height - text_height) / 2;
 
-            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, 0.5f, 0.5f, CLR_YELLOW);
+            C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
+                         TEXT_SCALE_NORMAL, CLR_YELLOW);
             break;
         }
         }

@@ -51,5 +51,6 @@
 // Text scaling
 #define TEXT_SCALE_NORMAL 0.5f
 #define TEXT_SCALE_SMALL 0.4f
+#define TEXT_SCALE_TINY 0.3f
 
 #endif // UI_CONSTANTS_H

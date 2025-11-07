@@ -89,9 +89,9 @@ static void timer_thread_entry(void *arg) {
     }
 }
 
-void clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLock *tracks_lock_ptr,
-                           EventQueue *event_queue_ptr, Track *tracks_ptr,
-                           volatile bool *should_exit_ptr, s32 main_thread_prio) {
+s32 clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLock *tracks_lock_ptr,
+                          EventQueue *event_queue_ptr, Track *tracks_ptr,
+                          volatile bool *should_exit_ptr, s32 main_thread_prio) {
     s_clock_ptr        = clock_ptr;
     s_clock_lock_ptr   = clock_lock_ptr;
     s_tracks_lock_ptr  = tracks_lock_ptr;
@@ -100,33 +100,52 @@ void clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLoc
     s_should_exit_ptr  = should_exit_ptr;
     s_main_thread_prio = main_thread_prio;
     LightEvent_Init(&s_clock_event, RESET_ONESHOT);
+    return 0;
 }
 
-void clockTimerThreadsStart() {
+s32 clockTimerThreadsStart() {
     s_clock_thread =
         threadCreate(clock_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 1, -2, true);
     if (s_clock_thread == NULL) {
-        // Handle error appropriately, maybe set a flag or exit
+        return -1;
     }
 
     s_timer_thread =
         threadCreate(timer_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 1, -2, true);
     if (s_timer_thread == NULL) {
-        // Handle error appropriately
-    }
-}
-
-void clockTimerThreadsStopAndJoin() {
-    if (s_clock_thread) {
+        // The created clock_thread will wait on an event and never exit, causing a hang on join.
+        // We must signal it to exit properly.
+        *s_should_exit_ptr = true;
         LightEvent_Signal(&s_clock_event);
         threadJoin(s_clock_thread, U64_MAX);
+        threadFree(s_clock_thread);
+        s_clock_thread = NULL;
+        return -1;
+    }
+    return 0;
+}
+
+s32 clockTimerThreadsStopAndJoin() {
+    Result res = 0;
+    Result join_res;
+
+    if (s_clock_thread) {
+        LightEvent_Signal(&s_clock_event);
+        join_res = threadJoin(s_clock_thread, U64_MAX);
+        if (R_FAILED(join_res)) {
+            res = join_res;
+        }
         threadFree(s_clock_thread);
         s_clock_thread = NULL;
     }
 
     if (s_timer_thread) {
-        threadJoin(s_timer_thread, U64_MAX);
+        join_res = threadJoin(s_timer_thread, U64_MAX);
+        if (R_FAILED(join_res) && R_SUCCEEDED(res)) {
+            res = join_res;
+        }
         threadFree(s_timer_thread);
         s_timer_thread = NULL;
     }
+    return res;
 }

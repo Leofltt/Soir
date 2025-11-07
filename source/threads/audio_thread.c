@@ -7,6 +7,7 @@
 #include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
 #include <stdio.h>
 #include <string.h>
+#include <opusfile.h>
 
 // Static global variables for this module
 static Thread     s_audio_thread;
@@ -104,6 +105,8 @@ static void audio_thread_entry(void *arg) {
         }
 
         for (int i = 0; i < N_TRACKS; i++) {
+            LightLock_Lock(s_tracks_lock_ptr);
+
             if (s_tracks_ptr[i].filter.update_params) {
                 updateNdspbiquad(s_tracks_ptr[i].filter);
                 s_tracks_ptr[i].filter.update_params = false;
@@ -118,8 +121,13 @@ static void audio_thread_entry(void *arg) {
                 } else if (s_tracks_ptr[i].instrument_type == OPUS_SAMPLER) {
                     Sampler *sampler = (Sampler *) s_tracks_ptr[i].instrument_data;
                     if (sampler->seek_requested) {
-                        op_pcm_seek(sampler->sample->opusFile, sampler->start_position);
-                        sampler->seek_requested = false;
+                        OggOpusFile *opusFile       = sampler->sample->opusFile;
+                        int          start_position = sampler->start_position;
+                        sampler->seek_requested     = false;
+
+                        LightLock_Unlock(s_tracks_lock_ptr);
+                        op_pcm_seek(opusFile, start_position);
+                        LightLock_Lock(s_tracks_lock_ptr);
                     }
                     fillSamplerAudioBuffer(waveBuf, waveBuf->nsamples, sampler);
                 } else if (s_tracks_ptr[i].instrument_type == FM_SYNTH) {
@@ -131,6 +139,8 @@ static void audio_thread_entry(void *arg) {
 
                 s_tracks_ptr[i].fillBlock = !s_tracks_ptr[i].fillBlock;
             }
+
+            LightLock_Unlock(s_tracks_lock_ptr);
         }
         LightEvent_Wait(&s_audio_event);
         if (*s_should_exit_ptr) {
@@ -139,9 +149,9 @@ static void audio_thread_entry(void *arg) {
     }
 }
 
-void audioThreadInit(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
-                     SampleBank *sample_bank_ptr, volatile bool *should_exit_ptr,
-                     s32 main_thread_prio) {
+s32 audioThreadInit(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
+                    SampleBank *sample_bank_ptr, volatile bool *should_exit_ptr,
+                    s32 main_thread_prio) {
     s_tracks_ptr       = tracks_ptr;
     s_tracks_lock_ptr  = tracks_lock_ptr;
     s_event_queue_ptr  = event_queue_ptr;
@@ -150,21 +160,26 @@ void audioThreadInit(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *
     s_main_thread_prio = main_thread_prio;
     LightEvent_Init(&s_audio_event, RESET_ONESHOT);
     ndspSetCallback(audio_callback, NULL);
+    return 0;
 }
 
-void audioThreadStart() {
+s32 audioThreadStart() {
     s_audio_thread =
         threadCreate(audio_thread_entry, NULL, STACK_SIZE, s_main_thread_prio - 2, -2, true);
     if (s_audio_thread == NULL) {
         *s_should_exit_ptr = true;
+        return -1;
     }
+    return 0;
 }
 
-void audioThreadStopAndJoin() {
+s32 audioThreadStopAndJoin() {
+    Result res = 0;
     if (s_audio_thread) {
         LightEvent_Signal(&s_audio_event);
-        threadJoin(s_audio_thread, U64_MAX);
+        res = threadJoin(s_audio_thread, U64_MAX);
         threadFree(s_audio_thread);
         s_audio_thread = NULL;
     }
+    return res;
 }
