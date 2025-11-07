@@ -617,42 +617,20 @@ cleanup:
         Track_deinit(&tracks[i]);
     }
 
-    linearFree(audioBuffer1);
-    linearFree(sequence1);
     linearFree(trackParamsArray1);
     linearFree(subsynthParamsArray);
-    linearFree(seq1);
 
-    linearFree(audioBufferFM);
-    linearFree(sequenceFM);
     linearFree(trackParamsArrayFM);
     linearFree(fmSynthParamsArray);
-    linearFree(seqFM);
 
-    linearFree(audioBuffer2);
-    linearFree(sequence2);
     linearFree(trackParamsArray2);
     linearFree(opusSamplerParamsArray);
-    linearFree(seq2);
 
-    linearFree(audioBuffer3);
-    linearFree(sequence3);
     linearFree(trackParamsArray3);
     linearFree(opusSamplerParamsArray2);
-    linearFree(seq3);
 
-    linearFree(audioBuffer4);
-    linearFree(sequence4);
     linearFree(trackParamsArray4);
     linearFree(noiseSynthParamsArray);
-    linearFree(seq4);
-    if (sampler && sampler->sample) {
-        sample_dec_ref(sampler->sample);
-    }
-    if (sampler2 && sampler2->sample) {
-        sample_dec_ref(sampler2->sample);
-    }
-
     sample_cleanup_process();
     SampleBankDeinit(&g_sample_bank);
     deinitViews();
