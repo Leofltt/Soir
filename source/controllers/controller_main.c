@@ -52,35 +52,24 @@ void handleInputMainView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
         } else if (*ctx->selected_row > 0 && *ctx->selected_col == 0) {
             int track_index = *ctx->selected_row - 1;
             if (track_index < N_TRACKS) {
-                LightLock_Lock(ctx->tracks_lock);
-                ctx->tracks[track_index].is_muted = !ctx->tracks[track_index].is_muted;
-                for (int i = 0; i < ctx->tracks[track_index].sequencer->n_beats *
-                                        ctx->tracks[track_index].sequencer->steps_per_beat;
-                     i++) {
-                    ctx->tracks[track_index].sequencer->steps[i].data->is_muted =
-                        ctx->tracks[track_index].is_muted;
-                }
-                LightLock_Unlock(ctx->tracks_lock);
+                Event event                = { .type = SET_MUTE, .track_id = track_index };
+                event.data.mute_data.muted = !ctx->tracks[track_index].is_muted;
+                eventQueuePush(ctx->event_queue, event);
             }
         } else if (*ctx->selected_col > 0) {
             int step_index = *ctx->selected_col - 1;
-            LightLock_Lock(ctx->tracks_lock);
             if (*ctx->selected_row == 0) { // Header row
                 for (int i = 0; i < N_TRACKS; i++) {
-                    if (ctx->tracks[i].sequencer && ctx->tracks[i].sequencer->steps) {
-                        ctx->tracks[i].sequencer->steps[step_index].active =
-                            !ctx->tracks[i].sequencer->steps[step_index].active;
-                    }
+                    Event event                         = { .type = TOGGLE_STEP, .track_id = i };
+                    event.data.toggle_step_data.step_id = step_index;
+                    eventQueuePush(ctx->event_queue, event);
                 }
             } else { // Track row
-                int track_index = *ctx->selected_row - 1;
-                if (track_index < N_TRACKS && ctx->tracks[track_index].sequencer &&
-                    ctx->tracks[track_index].sequencer->steps) {
-                    ctx->tracks[track_index].sequencer->steps[step_index].active =
-                        !ctx->tracks[track_index].sequencer->steps[step_index].active;
-                }
+                int   track_index = *ctx->selected_row - 1;
+                Event event       = { .type = TOGGLE_STEP, .track_id = track_index };
+                event.data.toggle_step_data.step_id = step_index;
+                eventQueuePush(ctx->event_queue, event);
             }
-            LightLock_Unlock(ctx->tracks_lock);
         }
     }
 
@@ -89,13 +78,8 @@ void handleInputMainView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now) {
             LightLock_Lock(ctx->clock_lock);
             if (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED) {
                 stopClock(ctx->clock);
-                LightLock_Lock(ctx->tracks_lock);
-                for (int i = 0; i < N_TRACKS; i++) {
-                    if (ctx->tracks[i].sequencer) {
-                        ctx->tracks[i].sequencer->cur_step = 0;
-                    }
-                }
-                LightLock_Unlock(ctx->tracks_lock);
+                Event event = { .type = RESET_SEQUENCERS };
+                eventQueuePush(ctx->event_queue, event);
             } else {
                 startClock(ctx->clock);
             }

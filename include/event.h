@@ -5,20 +5,48 @@
 #include "synth.h"    // For SubSynthParameters
 #include "samplers.h" // For OpusSamplerParameters
 #include "track.h"    // For InstrumentType
+#include <stdbool.h>
 
-typedef enum { TRIGGER_STEP, UPDATE_STEP } EventType;
+typedef enum {
+    TRIGGER_STEP,
+    UPDATE_STEP,
+    CLOCK_TICK,
+    TOGGLE_STEP,
+    SET_MUTE,
+    RESET_SEQUENCERS
+} EventType;
 
 typedef struct {
-    EventType       type;
-    int             track_id;
-    TrackParameters base_params;     // Base parameters (volume, pan, filter, etc.)
-    InstrumentType  instrument_type; // To know which union member to use
+    EventType type;
+    int       track_id; // Used by most events
+
     union {
-        SubSynthParameters    subsynth_params;
-        OpusSamplerParameters sampler_params;
-        FMSynthParameters     fm_synth_params;
-        // Add other instrument types here as needed
-    } instrument_specific_params;
+        // For TRIGGER_STEP, UPDATE_STEP
+        struct {
+            TrackParameters base_params;
+            InstrumentType  instrument_type;
+            union {
+                SubSynthParameters    subsynth_params;
+                OpusSamplerParameters sampler_params;
+                FMSynthParameters     fm_synth_params;
+            } instrument_specific_params;
+        } step_data;
+
+        // For CLOCK_TICK
+        struct {
+            int ticks_to_process;
+        } clock_data;
+
+        // For TOGGLE_STEP
+        struct {
+            int step_id;
+        } toggle_step_data;
+
+        // For SET_MUTE
+        struct {
+            bool muted;
+        } mute_data;
+    } data;
 } Event;
 
 #endif // EVENT_H

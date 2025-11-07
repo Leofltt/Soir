@@ -34,13 +34,8 @@ void handleInputTouchSettings(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now
         LightLock_Lock(ctx->clock_lock);
         if (ctx->clock->status == PLAYING || ctx->clock->status == PAUSED) {
             stopClock(ctx->clock);
-            LightLock_Lock(ctx->tracks_lock);
-            for (int i = 0; i < N_TRACKS; i++) {
-                if (ctx->tracks[i].sequencer) {
-                    ctx->tracks[i].sequencer->cur_step = 0;
-                }
-            }
-            LightLock_Unlock(ctx->tracks_lock);
+            Event event = { .type = RESET_SEQUENCERS };
+            eventQueuePush(ctx->event_queue, event);
         } else {
             startClock(ctx->clock);
         }

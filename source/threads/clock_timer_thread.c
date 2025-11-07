@@ -17,9 +17,7 @@ static LightEvent s_clock_event;
 
 static Clock         *s_clock_ptr        = NULL;
 static LightLock     *s_clock_lock_ptr   = NULL;
-static LightLock     *s_tracks_lock_ptr  = NULL;
 static EventQueue    *s_event_queue_ptr  = NULL;
-static Track         *s_tracks_ptr       = NULL;
 static volatile bool *s_should_exit_ptr  = NULL;
 static s32            s_main_thread_prio = 0;
 
@@ -33,50 +31,9 @@ static void clock_thread_entry(void *arg) {
         int ticks_to_process = updateClock(s_clock_ptr);
 
         if (ticks_to_process > 0) {
-            LightLock_Lock(s_tracks_lock_ptr);
-            for (int i = 0; i < ticks_to_process; i++) {
-                int totBeats                = s_clock_ptr->barBeats->steps / STEPS_PER_BEAT;
-                s_clock_ptr->barBeats->bar  = totBeats / s_clock_ptr->barBeats->beats_per_bar;
-                s_clock_ptr->barBeats->beat = (totBeats % s_clock_ptr->barBeats->beats_per_bar);
-                s_clock_ptr->barBeats->deltaStep = s_clock_ptr->barBeats->steps % STEPS_PER_BEAT;
-                s_clock_ptr->barBeats->steps++;
-
-                for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
-                    Track *track = &s_tracks_ptr[track_idx];
-                    if (!track || !track->sequencer || !s_clock_ptr ||
-                        track->sequencer->steps_per_beat == 0) {
-                        continue;
-                    }
-
-                    int clock_steps_per_seq_step =
-                        STEPS_PER_BEAT / track->sequencer->steps_per_beat;
-                    if (clock_steps_per_seq_step == 0)
-                        continue;
-
-                    if ((s_clock_ptr->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
-                        SeqStep step = updateSequencer(track->sequencer);
-                        if (step.active && !track->is_muted && step.data) {
-                            Event event = { .type            = TRIGGER_STEP,
-                                            .track_id        = track_idx,
-                                            .base_params     = *step.data,
-                                            .instrument_type = track->instrument_type };
-
-                            if (track->instrument_type == SUB_SYNTH) {
-                                memcpy(&event.instrument_specific_params.subsynth_params,
-                                       step.data->instrument_data, sizeof(SubSynthParameters));
-                            } else if (track->instrument_type == OPUS_SAMPLER) {
-                                memcpy(&event.instrument_specific_params.sampler_params,
-                                       step.data->instrument_data, sizeof(OpusSamplerParameters));
-                            } else if (track->instrument_type == FM_SYNTH) { // <-- ADD THIS
-                                memcpy(&event.instrument_specific_params.fm_synth_params,
-                                       step.data->instrument_data, sizeof(FMSynthParameters));
-                            }
-                            eventQueuePush(s_event_queue_ptr, event);
-                        }
-                    }
-                }
-            }
-            LightLock_Unlock(s_tracks_lock_ptr);
+            Event event                            = { .type = CLOCK_TICK };
+            event.data.clock_data.ticks_to_process = ticks_to_process;
+            eventQueuePush(s_event_queue_ptr, event);
         }
         LightLock_Unlock(s_clock_lock_ptr);
     }
@@ -89,14 +46,11 @@ static void timer_thread_entry(void *arg) {
     }
 }
 
-s32 clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLock *tracks_lock_ptr,
-                          EventQueue *event_queue_ptr, Track *tracks_ptr,
+s32 clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, EventQueue *event_queue_ptr,
                           volatile bool *should_exit_ptr, s32 main_thread_prio) {
     s_clock_ptr        = clock_ptr;
     s_clock_lock_ptr   = clock_lock_ptr;
-    s_tracks_lock_ptr  = tracks_lock_ptr;
     s_event_queue_ptr  = event_queue_ptr;
-    s_tracks_ptr       = tracks_ptr;
     s_should_exit_ptr  = should_exit_ptr;
     s_main_thread_prio = main_thread_prio;
     LightEvent_Init(&s_clock_event, RESET_ONESHOT);

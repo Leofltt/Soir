@@ -26,8 +26,7 @@
  * priority of this thread.
  * @return 0 on success, or a libctru error code on failure.
  */
-s32 clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, LightLock *tracks_lock_ptr,
-                          EventQueue *event_queue_ptr, Track *tracks_ptr,
+s32 clockTimerThreadsInit(Clock *clock_ptr, LightLock *clock_lock_ptr, EventQueue *event_queue_ptr,
                           volatile bool *should_exit_ptr, s32 main_thread_prio);
 
 /**

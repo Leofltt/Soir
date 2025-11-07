@@ -35,7 +35,6 @@
 
 static Track                 tracks[N_TRACKS];
 static LightLock             clock_lock;
-static LightLock             tracks_lock;
 static volatile bool         should_exit = false;
 static EventQueue            g_event_queue;
 static SampleBank            g_sample_bank;
@@ -170,7 +169,6 @@ int main(int argc, char **argv) {
                            .editing_sampler_params  = &g_editing_sampler_params,
                            .editing_fm_synth_params = &g_editing_fm_synth_params,
                            .clock_lock              = &clock_lock,
-                           .tracks_lock             = &tracks_lock,
 
                            .HOLD_DELAY_INITIAL = HOLD_DELAY_INITIAL,
                            .HOLD_DELAY_REPEAT  = HOLD_DELAY_REPEAT };
@@ -462,16 +460,15 @@ int main(int argc, char **argv) {
     tracks[3].sequencer = seq3;
 
     LightLock_Init(&clock_lock);
-    LightLock_Init(&tracks_lock);
     eventQueueInit(&g_event_queue);
 
-    if (R_FAILED(audioThreadInit(tracks, &tracks_lock, &g_event_queue, &g_sample_bank, &should_exit,
-                                 main_prio))) {
+    if (R_FAILED(audioThreadInit(tracks, &g_event_queue, &g_sample_bank, app_clock, &clock_lock,
+                                 &should_exit, main_prio))) {
         ret = 1;
         goto cleanup;
     }
-    if (R_FAILED(clockTimerThreadsInit(app_clock, &clock_lock, &tracks_lock, &g_event_queue, tracks,
-                                       &should_exit, main_prio))) {
+    if (R_FAILED(clockTimerThreadsInit(app_clock, &clock_lock, &g_event_queue, &should_exit,
+                                       main_prio))) {
         ret = 1;
         goto cleanup;
     }

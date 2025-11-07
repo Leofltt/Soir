@@ -153,20 +153,18 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 applyParameterUpdate(seq_step->data, track->instrument_type, ctx);
 
                 // Update event queue
-                Event event = { .type     = UPDATE_STEP,
-                                .track_id = track_idx,
-                                .base_params =
-                                    *seq_step->data, // This will be updated by the switch
-                                .instrument_type = track->instrument_type };
+                Event event                      = { .type = UPDATE_STEP, .track_id = track_idx };
+                event.data.step_data.base_params = *seq_step->data;
+                event.data.step_data.instrument_type = track->instrument_type;
 
                 if (track->instrument_type == SUB_SYNTH) {
-                    memcpy(&event.instrument_specific_params.subsynth_params,
+                    memcpy(&event.data.step_data.instrument_specific_params.subsynth_params,
                            seq_step->data->instrument_data, sizeof(SubSynthParameters));
                 } else if (track->instrument_type == OPUS_SAMPLER) {
-                    memcpy(&event.instrument_specific_params.sampler_params,
+                    memcpy(&event.data.step_data.instrument_specific_params.sampler_params,
                            seq_step->data->instrument_data, sizeof(OpusSamplerParameters));
                 } else if (track->instrument_type == FM_SYNTH) {
-                    memcpy(&event.instrument_specific_params.fm_synth_params,
+                    memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
                            seq_step->data->instrument_data, sizeof(FMSynthParameters));
                 }
                 eventQueuePush(ctx->event_queue, event);
@@ -194,6 +192,22 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                     memcpy(seq_step->data->instrument_data, ctx->editing_fm_synth_params,
                            sizeof(FMSynthParameters));
                 }
+
+                // Push event for the single step update
+                Event event                      = { .type = UPDATE_STEP, .track_id = track_idx };
+                event.data.step_data.base_params = *seq_step->data;
+                event.data.step_data.instrument_type = track->instrument_type;
+                if (track->instrument_type == SUB_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.subsynth_params,
+                           seq_step->data->instrument_data, sizeof(SubSynthParameters));
+                } else if (track->instrument_type == OPUS_SAMPLER) {
+                    memcpy(&event.data.step_data.instrument_specific_params.sampler_params,
+                           seq_step->data->instrument_data, sizeof(OpusSamplerParameters));
+                } else if (track->instrument_type == FM_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
+                           seq_step->data->instrument_data, sizeof(FMSynthParameters));
+                }
+                eventQueuePush(ctx->event_queue, event);
             }
         }
         track->filter.update_params    = true;

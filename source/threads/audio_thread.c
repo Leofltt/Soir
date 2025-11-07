@@ -15,9 +15,10 @@ static LightEvent s_audio_event;
 
 // Pointers to shared state from main
 static Track         *s_tracks_ptr       = NULL;
-static LightLock     *s_tracks_lock_ptr  = NULL;
 static EventQueue    *s_event_queue_ptr  = NULL;
 static SampleBank    *s_sample_bank_ptr  = NULL;
+static Clock         *s_clock_ptr        = NULL;
+static LightLock     *s_clock_lock_ptr   = NULL;
 static volatile bool *s_should_exit_ptr  = NULL;
 static s32            s_main_thread_prio = 0;
 
@@ -26,92 +27,154 @@ static void audio_callback(void *data) {
 }
 
 // Helper function to process events on the audio thread
-static void processTrackEvent(Event *event) {
-    if (!event || event->track_id >= N_TRACKS) {
-        return;
-    }
+static void processSequencerTick() {
+    s_clock_ptr->barBeats->steps++;
+    int totBeats                     = (s_clock_ptr->barBeats->steps - 1) / STEPS_PER_BEAT;
+    s_clock_ptr->barBeats->bar       = totBeats / s_clock_ptr->barBeats->beats_per_bar;
+    s_clock_ptr->barBeats->beat      = (totBeats % s_clock_ptr->barBeats->beats_per_bar);
+    s_clock_ptr->barBeats->deltaStep = (s_clock_ptr->barBeats->steps - 1) % STEPS_PER_BEAT;
 
-    LightLock_Lock(s_tracks_lock_ptr);
-
-    Track *track = &s_tracks_ptr[event->track_id];
-    updateTrackParameters(track, &event->base_params);
-
-    if (event->instrument_type == SUB_SYNTH) {
-        SubSynthParameters *subsynthParams = &event->instrument_specific_params.subsynth_params;
-        SubSynth           *ss             = (SubSynth *) track->instrument_data;
-        if (subsynthParams && ss) {
-            setWaveform(ss->osc, subsynthParams->osc_waveform);
-            setPulseWidth(ss->osc, subsynthParams->pulse_width);
-            setOscFrequency(ss->osc, subsynthParams->osc_freq);
-            updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
-                           subsynthParams->env_sus_level, subsynthParams->env_rel,
-                           subsynthParams->env_dur);
-            if (event->type == TRIGGER_STEP) {
-                triggerEnvelope(ss->env);
-            }
+    for (int track_idx = 0; track_idx < N_TRACKS; track_idx++) {
+        Track *track = &s_tracks_ptr[track_idx];
+        if (!track || !track->sequencer || track->sequencer->steps_per_beat == 0) {
+            continue;
         }
-    } else if (event->instrument_type == OPUS_SAMPLER) {
-        OpusSamplerParameters *opusSamplerParams =
-            &event->instrument_specific_params.sampler_params;
-        Sampler *s = (Sampler *) track->instrument_data;
-        if (opusSamplerParams && s) {
-            Sample *new_sample =
-                SampleBankGetSample(s_sample_bank_ptr, opusSamplerParams->sample_index);
-            if (new_sample != s->sample) {
-                sample_inc_ref(new_sample);
-                sample_dec_ref(s->sample);
-                s->sample = new_sample;
-            }
 
-            s->start_position = opusSamplerParams->start_position;
+        int clock_steps_per_seq_step = STEPS_PER_BEAT / track->sequencer->steps_per_beat;
+        if (clock_steps_per_seq_step == 0)
+            continue;
 
-            s->playback_mode = opusSamplerParams->playback_mode;
+        if ((s_clock_ptr->barBeats->steps - 1) % clock_steps_per_seq_step == 0) {
+            SeqStep step = updateSequencer(track->sequencer);
+            if (step.active && !track->is_muted && step.data) {
+                Event event                      = { .type = TRIGGER_STEP, .track_id = track_idx };
+                event.data.step_data.base_params = *step.data;
+                event.data.step_data.instrument_type = track->instrument_type;
 
-            s->current_frame =
-                s->start_position / NCHANNELS; // Convert sample position to frame position
-
-            s->finished = false;
-            updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
-                           opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
-                           opusSamplerParams->env_dur);
-            if (event->type == TRIGGER_STEP) {
-                triggerEnvelope(s->env);
-            }
-        }
-    } else if (event->instrument_type == FM_SYNTH) {
-        FMSynthParameters *fmSynthParams = &event->instrument_specific_params.fm_synth_params;
-        FMSynth           *fs            = (FMSynth *) track->instrument_data;
-        if (fmSynthParams && fs) {
-            FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
-            FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
-            FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
-            FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
-            updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
-                           fmSynthParams->carrier_env_dec, fmSynthParams->carrier_env_sus_level,
-                           fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
-            updateEnvelope(fs->fm_op->mod_envelope, fmSynthParams->mod_env_atk,
-                           fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
-                           fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
-            if (event->type == TRIGGER_STEP) {
-                triggerEnvelope(fs->carrierEnv);
-                triggerEnvelope(fs->fm_op->mod_envelope);
+                if (track->instrument_type == SUB_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.subsynth_params,
+                           step.data->instrument_data, sizeof(SubSynthParameters));
+                } else if (track->instrument_type == OPUS_SAMPLER) {
+                    memcpy(&event.data.step_data.instrument_specific_params.sampler_params,
+                           step.data->instrument_data, sizeof(OpusSamplerParameters));
+                } else if (track->instrument_type == FM_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
+                           step.data->instrument_data, sizeof(FMSynthParameters));
+                }
+                eventQueuePush(s_event_queue_ptr, event);
             }
         }
     }
-
-    LightLock_Unlock(s_tracks_lock_ptr);
 }
 
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
-            processTrackEvent(&event);
+            Track *track = &s_tracks_ptr[event.track_id];
+
+            switch (event.type) {
+            case CLOCK_TICK: {
+                LightLock_Lock(s_clock_lock_ptr);
+                for (int i = 0; i < event.data.clock_data.ticks_to_process; i++) {
+                    processSequencerTick();
+                }
+                LightLock_Unlock(s_clock_lock_ptr);
+                break;
+            }
+            case TRIGGER_STEP:
+            case UPDATE_STEP: {
+                if (!track)
+                    break;
+                updateTrackParameters(track, &event.data.step_data.base_params);
+
+                if (event.data.step_data.instrument_type == SUB_SYNTH) {
+                    SubSynthParameters *subsynthParams =
+                        &event.data.step_data.instrument_specific_params.subsynth_params;
+                    SubSynth *ss = (SubSynth *) track->instrument_data;
+                    if (subsynthParams && ss) {
+                        setWaveform(ss->osc, subsynthParams->osc_waveform);
+                        setPulseWidth(ss->osc, subsynthParams->pulse_width);
+                        setOscFrequency(ss->osc, subsynthParams->osc_freq);
+                        updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
+                                       subsynthParams->env_sus_level, subsynthParams->env_rel,
+                                       subsynthParams->env_dur);
+                        if (event.type == TRIGGER_STEP) {
+                            triggerEnvelope(ss->env);
+                        }
+                    }
+                } else if (event.data.step_data.instrument_type == OPUS_SAMPLER) {
+                    OpusSamplerParameters *opusSamplerParams =
+                        &event.data.step_data.instrument_specific_params.sampler_params;
+                    Sampler *s = (Sampler *) track->instrument_data;
+                    if (opusSamplerParams && s) {
+                        Sample *new_sample =
+                            SampleBankGetSample(s_sample_bank_ptr, opusSamplerParams->sample_index);
+                        if (new_sample != s->sample) {
+                            sample_inc_ref(new_sample);
+                            sample_dec_ref(s->sample);
+                            s->sample = new_sample;
+                        }
+                        s->start_position = opusSamplerParams->start_position;
+                        s->playback_mode  = opusSamplerParams->playback_mode;
+                        s->current_frame  = s->start_position / NCHANNELS;
+                        s->finished       = false;
+                        updateEnvelope(s->env, opusSamplerParams->env_atk,
+                                       opusSamplerParams->env_dec, opusSamplerParams->env_sus_level,
+                                       opusSamplerParams->env_rel, opusSamplerParams->env_dur);
+                        if (event.type == TRIGGER_STEP) {
+                            triggerEnvelope(s->env);
+                        }
+                    }
+                } else if (event.data.step_data.instrument_type == FM_SYNTH) {
+                    FMSynthParameters *fmSynthParams =
+                        &event.data.step_data.instrument_specific_params.fm_synth_params;
+                    FMSynth *fs = (FMSynth *) track->instrument_data;
+                    if (fmSynthParams && fs) {
+                        FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
+                        FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
+                        FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
+                        FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
+                        updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
+                                       fmSynthParams->carrier_env_dec,
+                                       fmSynthParams->carrier_env_sus_level,
+                                       fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
+                        updateEnvelope(fs->fm_op->mod_envelope, fmSynthParams->mod_env_atk,
+                                       fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
+                                       fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
+                        if (event.type == TRIGGER_STEP) {
+                            triggerEnvelope(fs->carrierEnv);
+                            triggerEnvelope(fs->fm_op->mod_envelope);
+                        }
+                    }
+                }
+                break;
+            }
+            case TOGGLE_STEP: {
+                if (track && track->sequencer && event.data.toggle_step_data.step_id < 16) {
+                    track->sequencer->steps[event.data.toggle_step_data.step_id].active =
+                        !track->sequencer->steps[event.data.toggle_step_data.step_id].active;
+                }
+                break;
+            }
+            case SET_MUTE: {
+                if (track) {
+                    track->is_muted = event.data.mute_data.muted;
+                }
+                break;
+            }
+            case RESET_SEQUENCERS: {
+                for (int i = 0; i < N_TRACKS; i++) {
+                    if (s_tracks_ptr[i].sequencer) {
+                        s_tracks_ptr[i].sequencer->cur_step = 0;
+                    }
+                }
+                break;
+            }
+            }
         }
 
         for (int i = 0; i < N_TRACKS; i++) {
-            LightLock_Lock(s_tracks_lock_ptr);
-
             if (s_tracks_ptr[i].filter.update_params) {
                 updateNdspbiquad(s_tracks_ptr[i].filter);
                 s_tracks_ptr[i].filter.update_params = false;
@@ -135,8 +198,6 @@ static void audio_thread_entry(void *arg) {
 
                 s_tracks_ptr[i].fillBlock = !s_tracks_ptr[i].fillBlock;
             }
-
-            LightLock_Unlock(s_tracks_lock_ptr);
         }
         LightEvent_Wait(&s_audio_event);
         if (*s_should_exit_ptr) {
@@ -145,13 +206,14 @@ static void audio_thread_entry(void *arg) {
     }
 }
 
-s32 audioThreadInit(Track *tracks_ptr, LightLock *tracks_lock_ptr, EventQueue *event_queue_ptr,
-                    SampleBank *sample_bank_ptr, volatile bool *should_exit_ptr,
+s32 audioThreadInit(Track *tracks_ptr, EventQueue *event_queue_ptr, SampleBank *sample_bank_ptr,
+                    Clock *clock_ptr, LightLock *clock_lock_ptr, volatile bool *should_exit_ptr,
                     s32 main_thread_prio) {
     s_tracks_ptr       = tracks_ptr;
-    s_tracks_lock_ptr  = tracks_lock_ptr;
     s_event_queue_ptr  = event_queue_ptr;
     s_sample_bank_ptr  = sample_bank_ptr;
+    s_clock_ptr        = clock_ptr;
+    s_clock_lock_ptr   = clock_lock_ptr;
     s_should_exit_ptr  = should_exit_ptr;
     s_main_thread_prio = main_thread_prio;
     LightEvent_Init(&s_audio_event, RESET_ONESHOT);
