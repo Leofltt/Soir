@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
+    sample_cleanup_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
@@ -504,6 +505,8 @@ int main(int argc, char **argv) {
             break;
         }
 
+        sample_cleanup_process();
+
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
@@ -614,6 +617,7 @@ cleanup:
         sample_dec_ref(sampler2->sample);
     }
 
+    sample_cleanup_process();
     SampleBankDeinit(&g_sample_bank);
     deinitViews();
     C2D_Fini();

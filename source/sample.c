@@ -1,7 +1,22 @@
 #include "sample.h"
+#include "cleanup_queue.h"
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+
+static void _sample_destroy(Sample *sample);
+static CleanupQueue g_cleanup_queue;
+
+void sample_cleanup_init(void) {
+    cleanupQueueInit(&g_cleanup_queue);
+}
+
+void sample_cleanup_process(void) {
+    Sample* s = NULL;
+    while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
+        _sample_destroy(s);
+    }
+}
 
 static void _sample_destroy(Sample *sample) {
     if (!sample) {
@@ -92,7 +107,7 @@ void sample_dec_ref(Sample *sample) {
     sample->ref_count--;
     if (sample->ref_count == 0) {
         LightLock_Unlock(&sample->lock); // Release lock before destroying
-        _sample_destroy(sample);
+        cleanupQueuePush(&g_cleanup_queue, sample);
     } else {
         LightLock_Unlock(&sample->lock);
     }
