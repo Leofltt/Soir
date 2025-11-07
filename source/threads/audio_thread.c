@@ -64,9 +64,13 @@ static void processTrackEvent(Event *event) {
             }
 
             s->start_position = opusSamplerParams->start_position;
-            s->playback_mode  = opusSamplerParams->playback_mode;
-            s->seek_requested = true;
-            s->finished       = false;
+
+            s->playback_mode = opusSamplerParams->playback_mode;
+
+            s->current_frame =
+                s->start_position / NCHANNELS; // Convert sample position to frame position
+
+            s->finished = false;
             updateEnvelope(s->env, opusSamplerParams->env_atk, opusSamplerParams->env_dec,
                            opusSamplerParams->env_sus_level, opusSamplerParams->env_rel,
                            opusSamplerParams->env_dur);
@@ -121,15 +125,6 @@ static void audio_thread_entry(void *arg) {
                     fillSubSynthAudiobuffer(waveBuf, waveBuf->nsamples, subsynth);
                 } else if (s_tracks_ptr[i].instrument_type == OPUS_SAMPLER) {
                     Sampler *sampler = (Sampler *) s_tracks_ptr[i].instrument_data;
-                    if (sampler->seek_requested) {
-                        OggOpusFile *opusFile       = sampler->sample->opusFile;
-                        int          start_position = sampler->start_position;
-                        sampler->seek_requested     = false;
-
-                        LightLock_Unlock(s_tracks_lock_ptr);
-                        op_pcm_seek(opusFile, start_position);
-                        LightLock_Lock(s_tracks_lock_ptr);
-                    }
                     fillSamplerAudioBuffer(waveBuf, waveBuf->nsamples, sampler);
                 } else if (s_tracks_ptr[i].instrument_type == FM_SYNTH) {
                     FMSynth *fm_synth = (FMSynth *) s_tracks_ptr[i].instrument_data;

@@ -46,5 +46,6 @@ void fillSubSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, SubSynth *subsyn
         dest[i]    = (sample << 16) | (sample & 0xffff);
     }
 
-    DSP_FlushDataCache(waveBuf->data_pcm16, size);
+    waveBuf->nsamples = size;
+    DSP_FlushDataCache(waveBuf->data_pcm16, size * NCHANNELS * sizeof(int16_t));
 };

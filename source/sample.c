@@ -7,11 +7,8 @@ static void _sample_destroy(Sample *sample) {
     if (!sample) {
         return;
     }
-    if (sample->opusFile) {
-        if (strncmp(sample->path, "sdmc:/", 6) == 0) {
-            svcSleepThread(50000000); // 50ms delay to allow pending I/O to complete
-        }
-        op_free(sample->opusFile);
+    if (sample->pcm_data) {
+        free(sample->pcm_data);
     }
     if (sample->path) {
         free(sample->path);
@@ -31,16 +28,38 @@ Sample *sample_create(const char *path) {
         return NULL;
     }
 
-    int err          = 0;
-    sample->opusFile = op_open_file(path, &err);
+    int          err      = 0;
+    OggOpusFile *opusFile = op_open_file(path, &err);
     if (err != 0) {
         free(sample->path);
         free(sample);
         return NULL;
     }
 
-    sample->pcm_length = op_pcm_total(sample->opusFile, -1);
-    sample->ref_count  = 1;
+    sample->pcm_length              = op_pcm_total(opusFile, -1);
+    sample->pcm_data_size_in_frames = sample->pcm_length;
+    sample->pcm_data = (int16_t *) malloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
+
+    if (!sample->pcm_data) {
+        op_free(opusFile);
+        free(sample->path);
+        free(sample);
+        return NULL;
+    }
+
+    int total_samples_read = 0;
+    while (total_samples_read < sample->pcm_data_size_in_frames) {
+        int samples_read = op_read_stereo(opusFile, sample->pcm_data + total_samples_read * 2,
+                                          sample->pcm_data_size_in_frames - total_samples_read);
+        if (samples_read <= 0) {
+            break;
+        }
+        total_samples_read += samples_read;
+    }
+
+    op_free(opusFile);
+
+    sample->ref_count = 1;
     LightLock_Init(&sample->lock);
 
     return sample;

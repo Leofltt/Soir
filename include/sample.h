@@ -7,11 +7,12 @@
 #endif
 
 typedef struct {
-    char        *path;
-    OggOpusFile *opusFile;
-    opus_int64   pcm_length;
-    int          ref_count;
-    LightLock    lock;
+    char      *path;
+    int16_t   *pcm_data;
+    size_t     pcm_data_size_in_frames;
+    opus_int64 pcm_length;
+    int        ref_count;
+    LightLock  lock;
 } Sample;
 
 Sample     *sample_create(const char *path);

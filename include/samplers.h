@@ -21,7 +21,7 @@ typedef struct {
     size_t       samples_per_buf;
     float        samplerate;
     Envelope    *env;
-    bool         seek_requested;
+    size_t       current_frame;
     bool         finished;
 } Sampler;
 

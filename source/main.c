@@ -361,7 +361,7 @@ int main(int argc, char **argv) {
                            .samples_per_buf = OPUSSAMPLESPERFBUF,
                            .samplerate      = OPUSSAMPLERATE,
                            .env             = env1,
-                           .seek_requested  = false,
+                           .current_frame   = 0,
                            .finished        = true };
     sample_inc_ref(sampler->sample);
     tracks[2].instrument_data = sampler;
@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
                             .samples_per_buf = OPUSSAMPLESPERFBUF,
                             .samplerate      = OPUSSAMPLERATE,
                             .env             = env2,
-                            .seek_requested  = false,
+                            .current_frame   = 0,
                             .finished        = true };
     sample_inc_ref(sampler2->sample);
     tracks[3].instrument_data = sampler2;

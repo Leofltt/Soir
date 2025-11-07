@@ -27,7 +27,7 @@ void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler
     osTickCounterStart(&timer);
 #endif // DEBUG
 
-    if (!sampler->sample || !sampler->sample->opusFile) {
+    if (!sampler->sample || !sampler->sample->pcm_data) {
         memset(waveBuf_->data_pcm16, 0, sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
         waveBuf_->nsamples = sampler->samples_per_buf;
         DSP_FlushDataCache(waveBuf_->data_pcm16,
@@ -43,61 +43,57 @@ void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler
         return;
     }
 
-    // Decode samples until our waveBuf is full
     int totalSamples = 0;
     while (totalSamples < sampler->samples_per_buf) {
-        int16_t     *buffer     = waveBuf_->data_pcm16 + (totalSamples * NCHANNELS);
-        const size_t bufferSize = (sampler->samples_per_buf - totalSamples);
+        size_t remaining_samples_in_buffer = sampler->samples_per_buf - totalSamples;
+        size_t remaining_samples_in_sample =
+            sampler->sample->pcm_data_size_in_frames - sampler->current_frame;
+        size_t samples_to_copy = remaining_samples_in_buffer < remaining_samples_in_sample
+                                     ? remaining_samples_in_buffer
+                                     : remaining_samples_in_sample;
 
-        // Decode bufferSize samples from opusFile_ into buffer,
-        // storing the number of samples that were decoded (or error)
-        const int samples = op_read_stereo(sampler->sample->opusFile, buffer, bufferSize);
-        if (samples <= 0) {
+        if (samples_to_copy > 0) {
+            memcpy(waveBuf_->data_pcm16 + totalSamples * NCHANNELS,
+                   sampler->sample->pcm_data + sampler->current_frame * NCHANNELS,
+                   samples_to_copy * NCHANNELS * sizeof(int16_t));
+            sampler->current_frame += samples_to_copy;
+            totalSamples += samples_to_copy;
+        }
+
+        if (sampler->current_frame >= sampler->sample->pcm_data_size_in_frames) {
             if (samplerIsLooping(sampler)) {
-                op_raw_seek(sampler->sample->opusFile, 0);
-                continue;
+                sampler->current_frame = 0;
             } else {
-                sampler->finished       = true;
-                sampler->seek_requested = true; // Set seek_requested to reset for next trigger
-                if (totalSamples < sampler->samples_per_buf) {
-                    memset(waveBuf_->data_pcm16 + (totalSamples * NCHANNELS), 0,
-                           (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
-                }
-                totalSamples = sampler->samples_per_buf;
+                sampler->finished = true;
                 break;
             }
         }
-
-        for (int i = 0; i < samples; i++) {
-            float env_value = nextEnvelopeSample(sampler->env);
-            env_value       = fmaxf(0.0f, fminf(1.0f, env_value));
-
-            int sample_idx = (totalSamples + i) * NCHANNELS;
-
-            float left_sam  = int16ToFloat(waveBuf_->data_pcm16[sample_idx]);
-            float right_sam = int16ToFloat(waveBuf_->data_pcm16[sample_idx + 1]);
-
-            left_sam *= env_value;
-            right_sam *= env_value;
-
-            waveBuf_->data_pcm16[sample_idx]     = floatToInt16(left_sam);
-            waveBuf_->data_pcm16[sample_idx + 1] = floatToInt16(right_sam);
-        }
-
-        totalSamples += samples;
     }
 
-    // If no samples were read in the last decode cycle and looping is on,
-    // seek back to the start of the sample
-    if (totalSamples == 0 && samplerIsLooping(sampler)) {
-        if (sampler->sample && sampler->sample->opusFile) { // Defensive check
-            op_raw_seek(sampler->sample->opusFile, 0);
-        }
+    if (totalSamples < sampler->samples_per_buf) {
+        memset(waveBuf_->data_pcm16 + totalSamples * NCHANNELS, 0,
+               (sampler->samples_per_buf - totalSamples) * NCHANNELS * sizeof(int16_t));
     }
 
-    // Pass samples to NDSP
-    waveBuf_->nsamples = totalSamples;
-    DSP_FlushDataCache(waveBuf_->data_pcm16, totalSamples * NCHANNELS * sizeof(int16_t));
+    for (int i = 0; i < totalSamples; i++) {
+        float env_value = nextEnvelopeSample(sampler->env);
+        env_value       = fmaxf(0.0f, fminf(1.0f, env_value));
+
+        int sample_idx = i * NCHANNELS;
+
+        float left_sam  = int16ToFloat(waveBuf_->data_pcm16[sample_idx]);
+        float right_sam = int16ToFloat(waveBuf_->data_pcm16[sample_idx + 1]);
+
+        left_sam *= env_value;
+        right_sam *= env_value;
+
+        waveBuf_->data_pcm16[sample_idx]     = floatToInt16(left_sam);
+        waveBuf_->data_pcm16[sample_idx + 1] = floatToInt16(right_sam);
+    }
+
+    waveBuf_->nsamples = sampler->samples_per_buf;
+    DSP_FlushDataCache(waveBuf_->data_pcm16,
+                       sampler->samples_per_buf * NCHANNELS * sizeof(int16_t));
 
 #ifdef DEBUG
     // Print timing info

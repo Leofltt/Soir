@@ -15,6 +15,9 @@
 
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
                              const u64 delay_initial, const u64 delay_repeat) {
+    if (!timer) {
+        return false;
+    }
     if (kDown & key) {
         *timer = now + delay_initial;
         return true;

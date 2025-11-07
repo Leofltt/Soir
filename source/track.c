@@ -99,15 +99,23 @@ static void updateSubSynthFromSequence(SubSynth *synth, SubSynthParameters *para
 }
 
 static void updateSamplerFromSequence(Sampler *sampler, OpusSamplerParameters *params) {
-    if (!sampler || !params)
+    if (!sampler || !params) {
         return;
+    }
 
     sampler->start_position = params->start_position;
-    sampler->playback_mode  = params->playback_mode;
-    sampler->seek_requested = true;
-    sampler->finished       = false;
+
+    sampler->playback_mode = params->playback_mode;
+
+    sampler->current_frame =
+        sampler->start_position / NCHANNELS; // Convert sample position to frame position
+
+    sampler->finished = false;
+
     updateEnvelope(sampler->env, params->env_atk, params->env_dec, params->env_sus_level,
+
                    params->env_rel, params->env_dur);
+
     triggerEnvelope(sampler->env);
 }
 
