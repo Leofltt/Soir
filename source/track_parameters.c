@@ -9,7 +9,8 @@ SubSynthParameters defaultSubSynthParameters() {
                                   .env_rel       = 100,
                                   .env_dur       = 1000,
                                   .osc_freq      = 220.0f, // A3
-                                  .osc_waveform  = SINE };
+                                  .osc_waveform  = SINE,
+                                  .pulse_width   = 0.5f };
     return params;
 };
 OpusSamplerParameters defaultOpusSamplerParameters() {

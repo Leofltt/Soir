@@ -17,10 +17,11 @@ typedef struct {
     Waveform waveform;
     float    phase_inc;
     float    phase;
+    float    pulse_width;
 } PolyBLEPOscillator;
 
 extern void setWaveform(PolyBLEPOscillator *osc, int wf_idx);
-;
+extern void setPulseWidth(PolyBLEPOscillator *osc, float pulse_width);
 
 extern void setOscFrequency(PolyBLEPOscillator *osc, float frequency);
 

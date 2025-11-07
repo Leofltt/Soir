@@ -34,6 +34,11 @@ static void applyParameterUpdate(TrackParameters *target_params, InstrumentType 
     case PARAM_TYPE_FLOAT_0_1:
         if (strcmp(ctx->last_edited_param_label, "Volume") == 0) {
             target_params->volume = ctx->editing_step_params->volume;
+        } else if (strcmp(ctx->last_edited_param_label, "Pulse Width") == 0) {
+            if (instrument_type == SUB_SYNTH) {
+                ((SubSynthParameters *) target_params->instrument_data)->pulse_width =
+                    ((SubSynthParameters *) ctx->editing_subsynth_params)->pulse_width;
+            }
         } else if (strcmp(ctx->last_edited_param_label, "Mod Index") == 0) {
             if (instrument_type == FM_SYNTH) {
                 ((FMSynthParameters *) target_params->instrument_data)->mod_index =
@@ -227,6 +232,15 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
 
                     fm_params->mod_depth = clamp(fm_params->mod_depth, 0.0f, 1000.0f);
 
+                } else if (strcmp(param_to_edit->label, "Pulse Width") == 0) {
+                    SubSynthParameters *synth_params = ctx->editing_subsynth_params;
+                    if (handle_continuous_press(kDown, kHeld, now, KEY_UP, ctx->up_timer,
+                                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT))
+                        synth_params->pulse_width += 0.01f;
+                    if (handle_continuous_press(kDown, kHeld, now, KEY_DOWN, ctx->down_timer,
+                                                ctx->HOLD_DELAY_INITIAL, ctx->HOLD_DELAY_REPEAT))
+                        synth_params->pulse_width -= 0.01f;
+                    synth_params->pulse_width = clamp(synth_params->pulse_width, 0.0f, 1.0f);
                 } else {
                     float *value_ptr = NULL;
 

@@ -28,6 +28,7 @@ typedef struct {
     int      env_dur;
     float    osc_freq;
     Waveform osc_waveform;
+    float    pulse_width;
 } SubSynthParameters;
 
 typedef struct {

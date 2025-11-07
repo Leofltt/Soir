@@ -41,6 +41,7 @@ static void processTrackEvent(Event *event) {
         SubSynth           *ss             = (SubSynth *) track->instrument_data;
         if (subsynthParams && ss) {
             setWaveform(ss->osc, subsynthParams->osc_waveform);
+            setPulseWidth(ss->osc, subsynthParams->pulse_width);
             setOscFrequency(ss->osc, subsynthParams->osc_freq);
             updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
                            subsynthParams->env_sus_level, subsynthParams->env_rel,

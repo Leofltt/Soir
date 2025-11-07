@@ -188,11 +188,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *osc = (PolyBLEPOscillator) { .frequency  = 220.0f,
-                                  .samplerate = SAMPLERATE,
-                                  .waveform   = SINE,
-                                  .phase      = 0.,
-                                  .phase_inc  = 220.0f * M_TWOPI / SAMPLERATE };
+    *osc = (PolyBLEPOscillator) { .frequency   = 220.0f,
+                                  .samplerate  = SAMPLERATE,
+                                  .waveform    = SINE,
+                                  .phase       = 0.,
+                                  .pulse_width = 0.5f,
+                                  .phase_inc   = 220.0f * M_TWOPI / SAMPLERATE };
 
     env = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env) {
@@ -271,14 +272,18 @@ int main(int argc, char **argv) {
     fm_op->mod_depth      = 100.0f;
     fm_op->base_frequency = 220.0f;
 
-    *fm_op->carrier = (PolyBLEPOscillator) {
-        .frequency = 220.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
-    };
+    *fm_op->carrier = (PolyBLEPOscillator) { .frequency   = 220.0f,
+                                             .samplerate  = SAMPLERATE,
+                                             .waveform    = SINE,
+                                             .phase       = 0.0f,
+                                             .pulse_width = 0.5f };
     setOscFrequency(fm_op->carrier, fm_op->carrier->frequency);
 
-    *fm_op->modulator = (PolyBLEPOscillator) {
-        .frequency = 0.0f, .samplerate = SAMPLERATE, .waveform = SINE, .phase = 0.0f
-    };
+    *fm_op->modulator = (PolyBLEPOscillator) { .frequency   = 0.0f,
+                                               .samplerate  = SAMPLERATE,
+                                               .waveform    = SINE,
+                                               .phase       = 0.0f,
+                                               .pulse_width = 0.5f };
     setOscFrequency(fm_op->modulator, fm_op->modulator->frequency);
 
     *fm_op->mod_envelope = defaultEnvelopeStruct(SAMPLERATE);

@@ -86,10 +86,19 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                  waveform_names[synth_params->osc_waveform]);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
+        list_buffer[id] = (ParameterInfo) { .label         = "Pulse Width",
                                             .unique_id     = id,
                                             .column        = 1,
                                             .row_in_column = 2,
+                                            .type          = PARAM_TYPE_FLOAT_0_1 };
+        snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
+                 synth_params->pulse_width);
+        id++;
+
+        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
+                                            .unique_id     = id,
+                                            .column        = 1,
+                                            .row_in_column = 3,
                                             .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
@@ -97,7 +106,7 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
                                             .unique_id     = id,
                                             .column        = 1,
-                                            .row_in_column = 3,
+                                            .row_in_column = 4,
                                             .type          = PARAM_TYPE_INT };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  synth_params->env_dur);

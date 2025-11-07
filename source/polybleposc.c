@@ -6,6 +6,10 @@ void setWaveform(PolyBLEPOscillator *osc, int wf_idx) {
     osc->waveform = (Waveform) wf_idx;
 };
 
+void setPulseWidth(PolyBLEPOscillator *osc, float pulse_width) {
+    osc->pulse_width = pulse_width;
+};
+
 void setOscFrequency(PolyBLEPOscillator *osc, float frequency) {
     osc->frequency = frequency;
     osc->phase_inc = frequency * M_TWOPI / osc->samplerate;
@@ -20,9 +24,9 @@ float nextOscillatorSample(PolyBLEPOscillator *osc) {
         sample = sin(osc->phase);
         break;
     case SQUARE:
-        float square     = t < 0.5f ? 1.0f : -1.0f;
-        float squarePoly = polyBLEP(osc, t);
-        sample           = square + squarePoly - polyBLEP(osc, fmod(t + 0.5f, 1.0f));
+        float square = t < osc->pulse_width ? 1.0f : -1.0f;
+        sample =
+            square + polyBLEP(osc, t) - polyBLEP(osc, fmod(t + (1.0f - osc->pulse_width), 1.0f));
         break;
     case SAW:
         sample = ((2.0f * t) - 1.0f) - polyBLEP(osc, t);
