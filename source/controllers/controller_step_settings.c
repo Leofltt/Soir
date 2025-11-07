@@ -109,6 +109,11 @@ void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
         *ctx->selected_row = (*ctx->selected_row % N_TRACKS) + 1;
     }
 
+    if (kDown & KEY_X) {
+        int n_steps        = track->sequencer->n_beats * track->sequencer->steps_per_beat;
+        *ctx->selected_col = (*ctx->selected_col + 1) % (n_steps + 1);
+    }
+
     *ctx->selected_step_option = (current_col == 0) ? current_row : current_row + num_left;
 
     if (kDown & KEY_A) {

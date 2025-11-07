@@ -59,9 +59,8 @@ typedef struct {
     u64 *left_timer;
     u64 *right_timer;
 
-    ScreenFocus     *screen_focus;
-    ScreenFocus     *previous_screen_focus;
-    BottomScreenView previous_touch_screen_view;
+    ScreenFocus *screen_focus;
+    ScreenFocus *previous_screen_focus;
 
     // Pointers to global state
     Track                 *tracks;

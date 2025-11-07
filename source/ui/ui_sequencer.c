@@ -96,12 +96,13 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buf);
             C2D_TextOptimize(&text_obj);
 
-            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                                  &text_height);
             text_x = (HOME_TRACKS_WIDTH / 2.0f) + (HOME_TRACKS_WIDTH / 2.0f) / 2.0f;
             text_y = (track_height - text_height) / 2.0f;
 
-            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f, 0.4f,
-                         0.4f, CLR_LIGHT_GRAY);
+            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f,
+                         TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_LIGHT_GRAY);
 
         } else {
             int track_idx = i - 1;
@@ -132,13 +133,14 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             C2D_TextOptimize(&text_obj);
 
             float text_width, text_height;
-            C2D_TextGetDimensions(&text_obj, 0.4f, 0.4f, &text_width, &text_height);
+            C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                                  &text_height);
 
             float text_x = HOME_TRACKS_WIDTH / 2.0f;
             float text_y = (i * track_height) + (track_height - text_height) / 2.0f;
 
-            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f, 0.4f,
-                         0.4f, text_color);
+            C2D_DrawText(&text_obj, C2D_WithColor | C2D_AlignCenter, text_x, text_y, 0.0f,
+                         TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, text_color);
         }
     }
 }
