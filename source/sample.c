@@ -4,7 +4,7 @@
 #include <string.h>
 #include <limits.h>
 
-static void _sample_destroy(Sample *sample);
+static void         _sample_destroy(Sample *sample);
 static CleanupQueue g_cleanup_queue;
 
 void sample_cleanup_init(void) {
@@ -12,7 +12,7 @@ void sample_cleanup_init(void) {
 }
 
 void sample_cleanup_process(void) {
-    Sample* s = NULL;
+    Sample *s = NULL;
     while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
         _sample_destroy(s);
     }

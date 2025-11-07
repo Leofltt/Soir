@@ -15,12 +15,12 @@ typedef struct {
     LightLock  lock;
 } Sample;
 
-Sample     *sample_create(const char *path);
-void sample_inc_ref(Sample *sample);
-void sample_dec_ref(Sample *sample);
+Sample *sample_create(const char *path);
+void    sample_inc_ref(Sample *sample);
+void    sample_dec_ref(Sample *sample);
 
-void sample_cleanup_init(void);
-void sample_cleanup_process(void);
+void        sample_cleanup_init(void);
+void        sample_cleanup_process(void);
 const char *sample_get_name(const Sample *sample);
 
 #endif // SAMPLE_H
