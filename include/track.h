@@ -10,7 +10,7 @@
 #include <3ds.h>
 #endif
 
-typedef enum { SUB_SYNTH = 0, FM_SYNTH = 1, OPUS_SAMPLER = 2 } InstrumentType;
+typedef enum { SUB_SYNTH, OPUS_SAMPLER, FM_SYNTH, NOISE_SYNTH } InstrumentType;
 
 typedef struct Track {
     int              chan_id;

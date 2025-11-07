@@ -2,9 +2,10 @@
 #define EVENT_H
 
 #include "track_parameters.h"
-#include "synth.h"    // For SubSynthParameters
-#include "samplers.h" // For OpusSamplerParameters
-#include "track.h"    // For InstrumentType
+#include "synth.h"       // For SubSynthParameters
+#include "samplers.h"    // For OpusSamplerParameters
+#include "noise_synth.h" // For NoiseSynthParameters
+#include "track.h"       // For InstrumentType
 #include <stdbool.h>
 
 typedef enum {
@@ -29,6 +30,7 @@ typedef struct {
                 SubSynthParameters    subsynth_params;
                 OpusSamplerParameters sampler_params;
                 FMSynthParameters     fm_synth_params;
+                NoiseSynthParameters  noise_synth_params;
             } instrument_specific_params;
         } step_data;
 

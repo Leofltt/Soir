@@ -2,6 +2,7 @@
 #include "audio_utils.h"
 #include "synth.h"
 #include "samplers.h"
+#include "noise_synth.h"
 #include "envelope.h"
 #include "engine_constants.h"
 #include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
@@ -60,6 +61,9 @@ static void processSequencerTick() {
                 } else if (track->instrument_type == FM_SYNTH) {
                     memcpy(&event.data.step_data.instrument_specific_params.fm_synth_params,
                            step.data->instrument_data, sizeof(FMSynthParameters));
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    memcpy(&event.data.step_data.instrument_specific_params.noise_synth_params,
+                           step.data->instrument_data, sizeof(NoiseSynthParameters));
                 }
                 eventQueuePush(s_event_queue_ptr, event);
             }
@@ -71,8 +75,6 @@ static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
-            Track *track = &s_tracks_ptr[event.track_id];
-
             switch (event.type) {
             case CLOCK_TICK: {
                 LightLock_Lock(s_clock_lock_ptr);
@@ -84,6 +86,7 @@ static void audio_thread_entry(void *arg) {
             }
             case TRIGGER_STEP:
             case UPDATE_STEP: {
+                Track *track = &s_tracks_ptr[event.track_id];
                 if (!track)
                     break;
                 updateTrackParameters(track, &event.data.step_data.base_params);
@@ -147,10 +150,23 @@ static void audio_thread_entry(void *arg) {
                             triggerEnvelope(fs->fm_op->mod_envelope);
                         }
                     }
+                } else if (event.data.step_data.instrument_type == NOISE_SYNTH) {
+                    NoiseSynthParameters *noiseSynthParams =
+                        &event.data.step_data.instrument_specific_params.noise_synth_params;
+                    NoiseSynth *ns = (NoiseSynth *) track->instrument_data;
+                    if (noiseSynthParams && ns) {
+                        updateEnvelope(ns->env, noiseSynthParams->env_atk,
+                                       noiseSynthParams->env_dec, noiseSynthParams->env_sus_level,
+                                       noiseSynthParams->env_rel, noiseSynthParams->env_dur);
+                        if (event.type == TRIGGER_STEP) {
+                            triggerEnvelope(ns->env);
+                        }
+                    }
                 }
                 break;
             }
             case TOGGLE_STEP: {
+                Track *track = &s_tracks_ptr[event.track_id];
                 if (track && track->sequencer && event.data.toggle_step_data.step_id < 16) {
                     track->sequencer->steps[event.data.toggle_step_data.step_id].active =
                         !track->sequencer->steps[event.data.toggle_step_data.step_id].active;
@@ -158,6 +174,7 @@ static void audio_thread_entry(void *arg) {
                 break;
             }
             case SET_MUTE: {
+                Track *track = &s_tracks_ptr[event.track_id];
                 if (track) {
                     track->is_muted = event.data.mute_data.muted;
                 }
@@ -192,6 +209,9 @@ static void audio_thread_entry(void *arg) {
                 } else if (s_tracks_ptr[i].instrument_type == FM_SYNTH) {
                     FMSynth *fm_synth = (FMSynth *) s_tracks_ptr[i].instrument_data;
                     fillFMSynthAudiobuffer(waveBuf, waveBuf->nsamples, fm_synth);
+                } else if (s_tracks_ptr[i].instrument_type == NOISE_SYNTH) {
+                    NoiseSynth *noise_synth = (NoiseSynth *) s_tracks_ptr[i].instrument_data;
+                    fillNoiseSynthAudiobuffer(waveBuf, waveBuf->nsamples, noise_synth);
                 }
 
                 ndspChnWaveBufAdd(s_tracks_ptr[i].chan_id, waveBuf);

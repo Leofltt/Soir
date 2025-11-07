@@ -23,6 +23,9 @@ void initEditingParams(SessionContext *ctx, Track *track, int selected_col) {
         } else if (track->instrument_type == FM_SYNTH) {
             memcpy(ctx->editing_fm_synth_params, track->default_parameters->instrument_data,
                    sizeof(FMSynthParameters));
+        } else if (track->instrument_type == NOISE_SYNTH) {
+            memcpy(ctx->editing_noise_synth_params, track->default_parameters->instrument_data,
+                   sizeof(NoiseSynthParameters));
         }
     } else { // Specific step
         int step_idx = selected_col - 1;
@@ -38,6 +41,9 @@ void initEditingParams(SessionContext *ctx, Track *track, int selected_col) {
             } else if (track->instrument_type == FM_SYNTH) {
                 memcpy(ctx->editing_fm_synth_params, seq_step->data->instrument_data,
                        sizeof(FMSynthParameters));
+            } else if (track->instrument_type == NOISE_SYNTH) {
+                memcpy(ctx->editing_noise_synth_params, seq_step->data->instrument_data,
+                       sizeof(NoiseSynthParameters));
             }
         }
     }

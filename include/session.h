@@ -72,8 +72,8 @@ typedef struct {
     SubSynthParameters    *editing_subsynth_params;
     OpusSamplerParameters *editing_sampler_params;
     FMSynthParameters     *editing_fm_synth_params;
+    NoiseSynthParameters  *editing_noise_synth_params;
     LightLock             *clock_lock;
-    LightLock             *tracks_lock;
 
     int           last_edited_param_unique_id;
     ParameterType last_edited_param_type;
