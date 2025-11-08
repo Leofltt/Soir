@@ -298,10 +298,15 @@ s32 audioThreadStart() {
     return 0;
 }
 
-s32 audioThreadStopAndJoin() {
-    Result res = 0;
+void audioThreadSignal() {
     if (s_audio_thread) {
         LightEvent_Signal(&s_audio_event);
+    }
+}
+
+s32 audioThreadJoin() {
+    Result res = 0;
+    if (s_audio_thread) {
         res = threadJoin(s_audio_thread, U64_MAX);
         threadFree(s_audio_thread);
         s_audio_thread = NULL;

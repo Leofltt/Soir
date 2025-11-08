@@ -634,35 +634,40 @@ cleanup:
     // 1. Signal the audio thread to stop
     should_exit = true;
 
-    // 2. Wait for the audio thread to finish
-    audioThreadStopAndJoin();
+    // 2. Wake up the audio thread if it's sleeping
+    audioThreadSignal();
 
-    // 3. De-reference samples held by active Sampler structs
-    //    (This will queue them for freeing)
-    cleanupTracks(tracks, N_TRACKS);
-
-    // 4. De-reference all samples currently in the bank
-    //    (This will queue them for freeing)
-    SampleBankDeinit(&g_sample_bank);
-
-    // 5. Process any remaining samples queued for cleanup by all threads.
-    //    This MUST be run LAST, after all dec_ref calls.
+    // 3. Process the cleanup queue ONE LAST TIME.
+    //    This is critical. If the audio thread is blocked trying to PUSH,
+    //    this POP will free up the lock and allow it to exit.
     sample_cleanup_process();
 
-    // 6. Shut down NDSP (audio hardware)
+    // 4. Now, wait for the audio thread to finish.
+    //    It is guaranteed to not be deadlocked on the cleanup queue.
+    audioThreadJoin();
+
+    // 5. De-reference all remaining samples.
+    //    The audio thread is dead, so this is 100% safe.
+    cleanupTracks(tracks, N_TRACKS);
+    SampleBankDeinit(&g_sample_bank);
+
+    // 6. Process all samples that were just queued by the cleanup above.
+    sample_cleanup_process();
+
+    // 7. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
+    // 8. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
-
     deinitViews();
-
     C2D_Fini();
     C3D_Fini();
 
+    // 9. Shut down services
     romfsExit();
     gfxExit();
 
