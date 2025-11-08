@@ -7,6 +7,8 @@
 #include <3ds/types.h>
 #endif
 
+#define MAX_ENVELOPE_DURATION_MS 5000
+
 typedef enum { ENV_ON = 1, ENV_OFF = 0 } EnvGate;
 
 typedef struct {

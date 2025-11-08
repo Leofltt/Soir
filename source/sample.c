@@ -1,14 +1,23 @@
 #include "sample.h"
+#include "cleanup_queue.h" // <-- ADD
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <3ds/allocator/linear.h> // <-- ADD THIS
+#include <3ds/allocator/linear.h>
 
-static void _sample_destroy(Sample *sample);
+static void         _sample_destroy(Sample *sample);
+static CleanupQueue g_cleanup_queue; // <-- ADD
 
-void sample_cleanup_init(void) {}
+void sample_cleanup_init(void) {
+    cleanupQueueInit(&g_cleanup_queue); // <-- RE-IMPLEMENT
+}
 
-void sample_cleanup_process(void) {}
+void sample_cleanup_process(void) {
+    Sample *s = NULL;
+    while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
+        _sample_destroy(s); // <-- RE-IMPLEMENT
+    }
+}
 
 static void _sample_destroy(Sample *sample) {
     if (!sample) {
@@ -87,13 +96,36 @@ void sample_inc_ref(Sample *sample) {
     LightLock_Unlock(&sample->lock);
 }
 
-void sample_dec_ref(Sample *sample) {
+// This function is called by the audio thread.
+// It must NOT call linearFree. It must queue the free.
+void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
     LightLock_Lock(&sample->lock); // Acquire lock first
 
-    // Now, check ref_count safely within the lock
+    if (sample->ref_count <= 0) {
+        LightLock_Unlock(&sample->lock); // Release lock before returning
+        return;                          // Already freed or invalid, do not proceed
+    }
+
+    sample->ref_count--;
+    if (sample->ref_count == 0) {
+        LightLock_Unlock(&sample->lock);            // Release lock before destroying
+        cleanupQueuePush(&g_cleanup_queue, sample); // <-- PUSH TO QUEUE
+    } else {
+        LightLock_Unlock(&sample->lock);
+    }
+}
+
+// This function is called by the main thread.
+// It can (and should) free the memory immediately.
+void sample_dec_ref_main_thread(Sample *sample) {
+    if (!sample)
+        return;
+
+    LightLock_Lock(&sample->lock); // Acquire lock first
+
     if (sample->ref_count <= 0) {
         LightLock_Unlock(&sample->lock); // Release lock before returning
         return;                          // Already freed or invalid, do not proceed
@@ -102,7 +134,7 @@ void sample_dec_ref(Sample *sample) {
     sample->ref_count--;
     if (sample->ref_count == 0) {
         LightLock_Unlock(&sample->lock); // Release lock before destroying
-        _sample_destroy(sample);         // Destroy sample directly
+        _sample_destroy(sample);         // <-- DESTROY DIRECTLY
     } else {
         LightLock_Unlock(&sample->lock);
     }

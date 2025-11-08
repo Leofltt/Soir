@@ -122,7 +122,7 @@ static void audio_thread_entry(void *arg) {
                             SampleBankGetSample(s_sample_bank_ptr, opusSamplerParams->sample_index);
                         if (new_sample != s->sample) {
                             sample_inc_ref(new_sample);
-                            sample_dec_ref(s->sample);
+                            sample_dec_ref_audio_thread(s->sample);
                             s->sample = new_sample;
                         }
                         s->start_position = opusSamplerParams->start_position;

@@ -26,7 +26,7 @@ void Track_deinit(Track *track) {
         if (track->instrument_type == OPUS_SAMPLER) {
             Sampler *sampler = (Sampler *) track->instrument_data;
             if (sampler->sample) {
-                sample_dec_ref(sampler->sample);
+                sample_dec_ref_main_thread(sampler->sample);
             }
             if (sampler->env) {
                 linearFree(sampler->env);

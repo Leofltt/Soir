@@ -19,6 +19,7 @@
 #include "audio_utils.h"
 #include "threads/audio_thread.h"
 #include "noise_synth.h"
+#include "cleanup_queue.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -53,6 +54,7 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
+    sample_cleanup_init(); // <-- RE-ADD
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
@@ -575,6 +577,8 @@ int main(int argc, char **argv) {
         if (should_break_loop) {
             break;
         }
+
+        sample_cleanup_process();
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);

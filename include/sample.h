@@ -17,7 +17,8 @@ typedef struct {
 
 Sample *sample_create(const char *path);
 void    sample_inc_ref(Sample *sample);
-void    sample_dec_ref(Sample *sample);
+void    sample_dec_ref_audio_thread(Sample *sample);
+void    sample_dec_ref_main_thread(Sample *sample);
 
 void        sample_cleanup_init(void);
 void        sample_cleanup_process(void);
