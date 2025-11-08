@@ -10,19 +10,20 @@ const char *DEFAULT_SAMPLE_PATHS[DEFAULT_SAMPLE_PATHS_COUNT] = {
 const char *SAMPLES_FOLDER_PATH = "sdmc:/samples/";
 
 void SampleBankInit(SampleBank *bank) {
+    LightLock_Init(&bank->lock);
     for (int i = 0; i < MAX_SAMPLES; i++) {
         bank->samples[i] = NULL;
     }
 
     for (int i = 0; i < 5; i++) {
-        bank->samples[i] = sample_create(DEFAULT_SAMPLE_PATHS[i]);
+        SampleBankLoadSample(bank, i, DEFAULT_SAMPLE_PATHS[i]);
     }
 }
 
 void SampleBankDeinit(SampleBank *bank) {
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
-            sample_dec_ref(bank->samples[i]);
+            sample_dec_ref_main_thread(bank->samples[i]);
             bank->samples[i] = NULL;
         }
     }
@@ -48,10 +49,6 @@ const char *SampleBankGetSampleName(SampleBank *bank, int index) {
 void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return;
-    }
-
-    if (bank->samples[index] != NULL) {
-        sample_dec_ref(bank->samples[index]);
     }
 
     bank->samples[index] = sample_create(path);

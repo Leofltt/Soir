@@ -1,6 +1,7 @@
 #ifndef EVENT_H
 #define EVENT_H
 
+#include "sample_browser.h"
 #include "track_parameters.h"
 #include "synth.h"       // For SubSynthParameters
 #include "samplers.h"    // For OpusSamplerParameters
@@ -20,9 +21,15 @@ typedef enum {
     PAUSE_CLOCK,
     RESUME_CLOCK,
     SET_BPM,
-    SET_BEATS_PER_BAR
+    SET_BEATS_PER_BAR,
+    LOAD_SAMPLE
 
 } EventType;
+
+typedef struct {
+    int  slot_id;
+    char path[MAX_SAMPLE_PATH_LENGTH];
+} LoadSampleData;
 
 typedef struct {
     EventType type;
@@ -65,6 +72,8 @@ typedef struct {
         struct {
             int beats;
         } beats_data;
+
+        LoadSampleData load_sample_data;
 
     } data;
 } Event;

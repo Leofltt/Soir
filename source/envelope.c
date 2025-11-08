@@ -6,6 +6,9 @@
 #include <3ds/allocator/linear.h> // Updated path
 #include <3ds/types.h>
 #endif
+#include <string.h>
+
+#include <string.h> // For memset
 
 Envelope defaultEnvelopeStruct(float sample_rate) {
     Envelope env = { .atk         = 50,
@@ -20,10 +23,13 @@ Envelope defaultEnvelopeStruct(float sample_rate) {
                      .env_buffer  = NULL,
                      .buffer_size = 0 };
 
-    size_t initial_size = (size_t) (env.dur * env.sr * 0.001);
-    env.env_buffer      = (float *) linearAlloc(initial_size * sizeof(float));
+    // Pre-allocate buffer to the maximum possible size
+    size_t max_size = (size_t) (MAX_ENVELOPE_DURATION_MS * env.sr * 0.001) + 1; // +1 for safety
+    env.env_buffer  = (float *) linearAlloc(max_size * sizeof(float));
     if (env.env_buffer) {
-        env.buffer_size = initial_size;
+        env.buffer_size = max_size;
+        // Ensure it's clean
+        memset(env.env_buffer, 0, max_size * sizeof(float));
     }
     return env;
 };
@@ -154,20 +160,14 @@ bool updateRelease(Envelope *env, int release) {
 };
 
 bool updateDuration(Envelope *env, int dur_ms) {
-    size_t new_size = (size_t) (dur_ms * env->sr * 0.001);
-    bool   updated  = false;
+    bool updated = false;
+
+    // Clamp the duration to our pre-allocated buffer size
+    if (dur_ms > MAX_ENVELOPE_DURATION_MS) {
+        dur_ms = MAX_ENVELOPE_DURATION_MS;
+    }
 
     if (env->dur != dur_ms) {
-        if (new_size > env->buffer_size) {
-            float *new_buffer = (float *) linearAlloc(new_size * sizeof(float));
-            if (new_buffer) {
-                if (env->env_buffer) {
-                    linearFree(env->env_buffer);
-                }
-                env->env_buffer  = new_buffer;
-                env->buffer_size = new_size;
-            }
-        }
         env->dur = dur_ms;
         updated  = true;
     }

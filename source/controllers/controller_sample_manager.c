@@ -20,10 +20,17 @@ void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
         }
         if (kDown & KEY_A) {
             int         sample_slot = *ctx->selected_sample_row * 4 + *ctx->selected_sample_col;
-            const char *path        = SampleBrowserGetSamplePath(ctx->sample_browser,
+            const char *path_ptr    = SampleBrowserGetSamplePath(ctx->sample_browser,
                                                                  *ctx->selected_sample_browser_index);
-            if (path != NULL) {
-                SampleBankLoadSample(ctx->sample_bank, sample_slot, path);
+            if (path_ptr != NULL) {
+                Event event                         = { .type = LOAD_SAMPLE };
+                event.data.load_sample_data.slot_id = sample_slot;
+                // Copy the path string into the event data
+                strncpy(event.data.load_sample_data.path, path_ptr, MAX_SAMPLE_PATH_LENGTH - 1);
+                event.data.load_sample_data.path[MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
+
+                eventQueuePush(ctx->event_queue, event);
+
                 *ctx->is_selecting_sample = false;
             }
         }

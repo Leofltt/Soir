@@ -19,10 +19,12 @@ typedef struct {
 } SeqStep;
 
 typedef struct {
-    int      n_beats;
-    int      steps_per_beat;
-    size_t   cur_step;
-    SeqStep *steps;
+    int              n_beats;
+    int              steps_per_beat;
+    size_t           cur_step;
+    SeqStep         *steps;
+    void            *instrument_params_array;
+    TrackParameters *track_params_array;
 } Sequencer;
 
 extern void    updateSeqLength(Sequencer *seq, size_t newLength);

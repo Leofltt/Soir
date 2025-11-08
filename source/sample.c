@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <3ds/allocator/linear.h>
 
 static void         _sample_destroy(Sample *sample);
 static CleanupQueue g_cleanup_queue;
@@ -37,11 +38,13 @@ Sample *sample_create(const char *path) {
         return NULL;
     }
 
-    sample->path = strdup(path);
+    // Replace strdup with malloc + strcpy
+    sample->path = malloc(strlen(path) + 1);
     if (!sample->path) {
         free(sample);
         return NULL;
     }
+    strcpy(sample->path, path);
 
     int          err      = 0;
     OggOpusFile *opusFile = op_open_file(path, &err);
@@ -92,25 +95,40 @@ void sample_inc_ref(Sample *sample) {
     LightLock_Unlock(&sample->lock);
 }
 
-void sample_dec_ref(Sample *sample) {
+// This function is called by the audio thread.
+// It must NOT call linearFree. It must queue the free.
+void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
     LightLock_Lock(&sample->lock); // Acquire lock first
 
-    // Now, check ref_count safely within the lock
-    if (sample->ref_count <= 0) {
-        LightLock_Unlock(&sample->lock); // Release lock before returning
-        return;                          // Already freed or invalid, do not proceed
+    if (sample->ref_count > 0) {
+        sample->ref_count--;
+        if (sample->ref_count == 0) {
+            cleanupQueuePush(&g_cleanup_queue, sample); // <-- PUSH TO QUEUE
+        }
     }
 
-    sample->ref_count--;
-    if (sample->ref_count == 0) {
-        LightLock_Unlock(&sample->lock); // Release lock before destroying
-        cleanupQueuePush(&g_cleanup_queue, sample);
-    } else {
-        LightLock_Unlock(&sample->lock);
+    LightLock_Unlock(&sample->lock);
+}
+
+// This function is called by the main thread.
+// It can (and should) free the memory immediately.
+void sample_dec_ref_main_thread(Sample *sample) {
+    if (!sample)
+        return;
+
+    LightLock_Lock(&sample->lock); // Acquire lock first
+
+    if (sample->ref_count > 0) {
+        sample->ref_count--;
+        if (sample->ref_count == 0) {
+            cleanupQueuePush(&g_cleanup_queue, sample);
+        }
     }
+
+    LightLock_Unlock(&sample->lock);
 }
 
 static char sample_name_buffer[64];

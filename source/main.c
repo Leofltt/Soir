@@ -19,6 +19,7 @@
 #include "audio_utils.h"
 #include "threads/audio_thread.h"
 #include "noise_synth.h"
+#include "cleanup_queue.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -37,7 +38,7 @@ static Track                 tracks[N_TRACKS];
 static LightLock             clock_lock;
 static volatile bool         should_exit = false;
 static EventQueue            g_event_queue;
-static SampleBank            g_sample_bank;
+SampleBank                   g_sample_bank;
 static SampleBrowser         g_sample_browser;
 static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
@@ -246,7 +247,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq1 = (Sequencer) { .cur_step = 0, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
+    *seq1               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence1,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = subsynthParamsArray,
+                                        .track_params_array      = trackParamsArray1 };
     tracks[0].sequencer = seq1;
 
     // TRACK 1 (FM_SYNTH) ///////////////////////////////////////////
@@ -340,7 +346,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seqFM = (Sequencer) { .cur_step = 0, .steps = sequenceFM, .n_beats = 4, .steps_per_beat = 4 };
+    *seqFM              = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequenceFM,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = fmSynthParamsArray,
+                                        .track_params_array      = trackParamsArrayFM };
     tracks[1].sequencer = seqFM;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -403,7 +414,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
+    *seq2               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence2,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = opusSamplerParamsArray,
+                                        .track_params_array      = trackParamsArray2 };
     tracks[2].sequencer = seq2;
 
     // TRACK 3 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -466,7 +482,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
+    *seq3               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence3,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = opusSamplerParamsArray2,
+                                        .track_params_array      = trackParamsArray3 };
     tracks[3].sequencer = seq3;
 
     // TRACK 4 (NOISE_SYNTH) ///////////////////////////////////////////
@@ -519,7 +540,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq4 = (Sequencer) { .cur_step = 0, .steps = sequence4, .n_beats = 4, .steps_per_beat = 4 };
+    *seq4               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence4,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = noiseSynthParamsArray,
+                                        .track_params_array      = trackParamsArray4 };
     tracks[4].sequencer = seq4;
 
     LightLock_Init(&clock_lock);
@@ -604,38 +630,28 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
+
     should_exit = true;
 
     audioThreadStopAndJoin();
+
+    // Process any remaining samples queued for cleanup by the audio thread
+    //    (This must be done AFTER the audio thread is joined)
+    sample_cleanup_process();
 
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
-    for (int i = 0; i < N_TRACKS; i++) {
-        Track_deinit(&tracks[i]);
-    }
+    C3D_RenderTargetDelete(topScreen);
+    C3D_RenderTargetDelete(bottomScreen);
 
-    linearFree(trackParamsArray1);
-    linearFree(subsynthParamsArray);
-
-    linearFree(trackParamsArrayFM);
-    linearFree(fmSynthParamsArray);
-
-    linearFree(trackParamsArray2);
-    linearFree(opusSamplerParamsArray);
-
-    linearFree(trackParamsArray3);
-    linearFree(opusSamplerParamsArray2);
-
-    linearFree(trackParamsArray4);
-    linearFree(noiseSynthParamsArray);
-    sample_cleanup_process();
-    SampleBankDeinit(&g_sample_bank);
     deinitViews();
+
     C2D_Fini();
     C3D_Fini();
+
     romfsExit();
     gfxExit();
 
