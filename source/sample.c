@@ -24,24 +24,24 @@ static void _sample_destroy(Sample *sample) {
         return;
     }
     if (sample->pcm_data) {
-        linearFree(sample->pcm_data);
+        free(sample->pcm_data);
     }
     if (sample->path) {
-        linearFree(sample->path);
+        free(sample->path);
     }
-    linearFree(sample);
+    free(sample);
 }
 
 Sample *sample_create(const char *path) {
-    Sample *sample = (Sample *) linearAlloc(sizeof(Sample));
+    Sample *sample = (Sample *) malloc(sizeof(Sample));
     if (!sample) {
         return NULL;
     }
 
-    // Replace strdup with linearAlloc + strcpy
-    sample->path = linearAlloc(strlen(path) + 1);
+    // Replace strdup with malloc + strcpy
+    sample->path = malloc(strlen(path) + 1);
     if (!sample->path) {
-        linearFree(sample);
+        free(sample);
         return NULL;
     }
     strcpy(sample->path, path);
@@ -49,20 +49,19 @@ Sample *sample_create(const char *path) {
     int          err      = 0;
     OggOpusFile *opusFile = op_open_file(path, &err);
     if (err != 0) {
-        linearFree(sample->path);
-        linearFree(sample);
+        free(sample->path);
+        free(sample);
         return NULL;
     }
 
     sample->pcm_length              = op_pcm_total(opusFile, -1);
     sample->pcm_data_size_in_frames = sample->pcm_length;
-    sample->pcm_data =
-        (int16_t *) linearAlloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
+    sample->pcm_data = (int16_t *) malloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
 
     if (!sample->pcm_data) {
         op_free(opusFile);
-        linearFree(sample->path);
-        linearFree(sample);
+        free(sample->path);
+        free(sample);
         return NULL;
     }
 

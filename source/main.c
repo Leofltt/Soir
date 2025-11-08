@@ -644,8 +644,6 @@ cleanup:
     // 4. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
-        // Manually de-allocate all memory for each track
-        Track_deinit(&tracks[i]);
     }
     ndspExit();
 
