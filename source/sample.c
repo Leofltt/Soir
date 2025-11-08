@@ -103,18 +103,14 @@ void sample_dec_ref_audio_thread(Sample *sample) {
 
     LightLock_Lock(&sample->lock); // Acquire lock first
 
-    if (sample->ref_count <= 0) {
-        LightLock_Unlock(&sample->lock); // Release lock before returning
-        return;                          // Already freed or invalid, do not proceed
+    if (sample->ref_count > 0) {
+        sample->ref_count--;
+        if (sample->ref_count == 0) {
+            cleanupQueuePush(&g_cleanup_queue, sample); // <-- PUSH TO QUEUE
+        }
     }
 
-    sample->ref_count--;
-    if (sample->ref_count == 0) {
-        LightLock_Unlock(&sample->lock);            // Release lock before destroying
-        cleanupQueuePush(&g_cleanup_queue, sample); // <-- PUSH TO QUEUE
-    } else {
-        LightLock_Unlock(&sample->lock);
-    }
+    LightLock_Unlock(&sample->lock);
 }
 
 // This function is called by the main thread.
@@ -125,18 +121,14 @@ void sample_dec_ref_main_thread(Sample *sample) {
 
     LightLock_Lock(&sample->lock); // Acquire lock first
 
-    if (sample->ref_count <= 0) {
-        LightLock_Unlock(&sample->lock); // Release lock before returning
-        return;                          // Already freed or invalid, do not proceed
+    if (sample->ref_count > 0) {
+        sample->ref_count--;
+        if (sample->ref_count == 0) {
+            cleanupQueuePush(&g_cleanup_queue, sample);
+        }
     }
 
-    sample->ref_count--;
-    if (sample->ref_count == 0) {
-        LightLock_Unlock(&sample->lock); // Release lock before destroying
-        _sample_destroy(sample);         // <-- DESTROY DIRECTLY
-    } else {
-        LightLock_Unlock(&sample->lock);
-    }
+    LightLock_Unlock(&sample->lock);
 }
 
 static char sample_name_buffer[64];
