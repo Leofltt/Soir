@@ -632,42 +632,40 @@ int main(int argc, char **argv) {
 cleanup:
 
     // 1. Signal the audio thread to stop
-
     should_exit = true;
 
     // 2. Wait for the audio thread to finish
-
-    // This is CRITICAL to prevent it from accessing memory while we shut down
-
     audioThreadStopAndJoin();
 
-    // 3. Shut down NDSP (audio hardware)
+    // 3. Process any remaining samples queued for cleanup by the audio thread
+    //    (This must be done AFTER the audio thread is joined)
+    sample_cleanup_process();
 
+    // 4. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
+        // Manually de-allocate all memory for each track
+        Track_deinit(&tracks[i]);
     }
-
     ndspExit();
 
-    // 4. Shut down graphics systems
+    // 5. Shut down graphics systems
+    // Manually delete the C2D render targets
+    C3D_RenderTargetDelete(topScreen);
+    C3D_RenderTargetDelete(bottomScreen);
 
+    // Now de-init the views (which frees fonts, etc.)
     deinitViews();
 
+    // Now shut down the libraries
     C2D_Fini();
-
     C3D_Fini();
 
-    // 5. Shut down services and free the *entire* linear heap
-
+    // 6. Shut down services
     romfsExit();
-
     gfxExit();
 
-    // All memory allocated with linearAlloc (including all tracks, sequencers,
-
-    // parameters, buffers, and samples) is now automatically freed.
-
-    // No manual Track_deinit or linearFree calls are needed here.
+    // All linearAlloc'd memory should now be properly freed.
 
     return ret;
 }
