@@ -9,6 +9,13 @@ static void         _sample_destroy(Sample *sample);
 static CleanupQueue g_cleanup_queue;
 
 void sample_cleanup_init(void) {
+    // "Prime" the malloc heap.
+    // Workaround for 3DS newlib exit-time crash if free() was never called.
+    void *primer = malloc(32);
+    if (primer) {
+        free(primer);
+    }
+
     cleanupQueueInit(&g_cleanup_queue);
 }
 
