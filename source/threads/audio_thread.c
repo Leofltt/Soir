@@ -214,6 +214,27 @@ static void audio_thread_entry(void *arg) {
             case SET_BEATS_PER_BAR:
                 setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
                 break;
+            case LOAD_SAMPLE: { // <-- ADD THIS ENTIRE CASE
+                int slot_id = event.data.load_sample_data.slot_id;
+                if (slot_id < 0 || slot_id >= MAX_SAMPLES) {
+                    break;
+                }
+
+                // Get the old sample *before* loading the new one
+                Sample *old_sample = s_sample_bank_ptr->samples[slot_id];
+
+                // Create and assign the new sample
+                s_sample_bank_ptr->samples[slot_id] =
+                    sample_create(event.data.load_sample_data.path);
+
+                // Now, safely decrement the old sample.
+                if (old_sample != NULL) {
+                    // Use the audio thread dec_ref, which queues it for freeing
+                    // on the main thread.
+                    sample_dec_ref_audio_thread(old_sample);
+                }
+                break;
+            }
             }
         }
 
