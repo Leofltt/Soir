@@ -51,10 +51,6 @@ void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
         return;
     }
 
-    if (bank->samples[index] != NULL) {
-        // sample_dec_ref_main_thread(bank->samples[index]); // <--- DELETE THIS LINE
-    }
-
     bank->samples[index] = sample_create(path);
 }
 

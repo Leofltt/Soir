@@ -168,7 +168,6 @@ bool updateDuration(Envelope *env, int dur_ms) {
     }
 
     if (env->dur != dur_ms) {
-        // REMOVED RE-ALLOCATION BLOCK
         env->dur = dur_ms;
         updated  = true;
     }

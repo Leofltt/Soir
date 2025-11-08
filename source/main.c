@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
-    sample_cleanup_init(); // <-- RE-ADD
+    sample_cleanup_init(); 
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
@@ -631,39 +631,29 @@ int main(int argc, char **argv) {
 
 cleanup:
 
-    // 1. Signal the audio thread to stop
     should_exit = true;
 
-    // 2. Wait for the audio thread to finish
     audioThreadStopAndJoin();
 
-    // 3. Process any remaining samples queued for cleanup by the audio thread
+    // Process any remaining samples queued for cleanup by the audio thread
     //    (This must be done AFTER the audio thread is joined)
     sample_cleanup_process();
 
-    // 4. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
-    // 5. Shut down graphics systems
-    // Manually delete the C2D render targets
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
 
-    // Now de-init the views (which frees fonts, etc.)
     deinitViews();
 
-    // Now shut down the libraries
     C2D_Fini();
     C3D_Fini();
 
-    // 6. Shut down services
     romfsExit();
     gfxExit();
-
-    // All linearAlloc'd memory should now be properly freed.
 
     return ret;
 }

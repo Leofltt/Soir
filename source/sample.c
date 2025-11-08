@@ -1,21 +1,21 @@
 #include "sample.h"
-#include "cleanup_queue.h" // <-- ADD
+#include "cleanup_queue.h" 
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 #include <3ds/allocator/linear.h>
 
 static void         _sample_destroy(Sample *sample);
-static CleanupQueue g_cleanup_queue; // <-- ADD
+static CleanupQueue g_cleanup_queue; 
 
 void sample_cleanup_init(void) {
-    cleanupQueueInit(&g_cleanup_queue); // <-- RE-IMPLEMENT
+    cleanupQueueInit(&g_cleanup_queue); 
 }
 
 void sample_cleanup_process(void) {
     Sample *s = NULL;
     while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        _sample_destroy(s); // <-- RE-IMPLEMENT
+        _sample_destroy(s); 
     }
 }
 

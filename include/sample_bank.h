@@ -3,6 +3,8 @@
 
 #include "sample.h"
 
+#include <3ds/synchronization.h>
+
 #define MAX_SAMPLES 12
 #define DEFAULT_SAMPLE_PATHS_COUNT 5
 
@@ -10,7 +12,8 @@ extern const char *DEFAULT_SAMPLE_PATHS[DEFAULT_SAMPLE_PATHS_COUNT];
 extern const char *SAMPLES_FOLDER_PATH;
 
 typedef struct {
-    Sample *samples[MAX_SAMPLES];
+    Sample   *samples[MAX_SAMPLES];
+    LightLock lock;
 } SampleBank;
 
 extern SampleBank g_sample_bank;
