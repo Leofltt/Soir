@@ -37,7 +37,7 @@ static Track                 tracks[N_TRACKS];
 static LightLock             clock_lock;
 static volatile bool         should_exit = false;
 static EventQueue            g_event_queue;
-static SampleBank            g_sample_bank;
+SampleBank                   g_sample_bank;
 static SampleBrowser         g_sample_browser;
 static TrackParameters       g_editing_step_params;
 static SubSynthParameters    g_editing_subsynth_params;
@@ -53,7 +53,6 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
-    sample_cleanup_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
@@ -246,7 +245,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq1 = (Sequencer) { .cur_step = 0, .steps = sequence1, .n_beats = 4, .steps_per_beat = 4 };
+    *seq1               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence1,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = subsynthParamsArray,
+                                        .track_params_array      = trackParamsArray1 };
     tracks[0].sequencer = seq1;
 
     // TRACK 1 (FM_SYNTH) ///////////////////////////////////////////
@@ -340,7 +344,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seqFM = (Sequencer) { .cur_step = 0, .steps = sequenceFM, .n_beats = 4, .steps_per_beat = 4 };
+    *seqFM              = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequenceFM,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = fmSynthParamsArray,
+                                        .track_params_array      = trackParamsArrayFM };
     tracks[1].sequencer = seqFM;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -403,7 +412,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq2 = (Sequencer) { .cur_step = 0, .steps = sequence2, .n_beats = 4, .steps_per_beat = 4 };
+    *seq2               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence2,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = opusSamplerParamsArray,
+                                        .track_params_array      = trackParamsArray2 };
     tracks[2].sequencer = seq2;
 
     // TRACK 3 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -466,7 +480,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq3 = (Sequencer) { .cur_step = 0, .steps = sequence3, .n_beats = 4, .steps_per_beat = 4 };
+    *seq3               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence3,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = opusSamplerParamsArray2,
+                                        .track_params_array      = trackParamsArray3 };
     tracks[3].sequencer = seq3;
 
     // TRACK 4 (NOISE_SYNTH) ///////////////////////////////////////////
@@ -519,7 +538,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq4 = (Sequencer) { .cur_step = 0, .steps = sequence4, .n_beats = 4, .steps_per_beat = 4 };
+    *seq4               = (Sequencer) { .cur_step                = 0,
+                                        .steps                   = sequence4,
+                                        .n_beats                 = 4,
+                                        .steps_per_beat          = 4,
+                                        .instrument_params_array = noiseSynthParamsArray,
+                                        .track_params_array      = trackParamsArray4 };
     tracks[4].sequencer = seq4;
 
     LightLock_Init(&clock_lock);
@@ -551,8 +575,6 @@ int main(int argc, char **argv) {
         if (should_break_loop) {
             break;
         }
-
-        sample_cleanup_process();
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);
@@ -604,40 +626,44 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
+
+    // 1. Signal the audio thread to stop
+
     should_exit = true;
 
+    // 2. Wait for the audio thread to finish
+
+    // This is CRITICAL to prevent it from accessing memory while we shut down
+
     audioThreadStopAndJoin();
+
+    // 3. Shut down NDSP (audio hardware)
 
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
+
     ndspExit();
 
-    for (int i = 0; i < N_TRACKS; i++) {
-        Track_deinit(&tracks[i]);
-    }
+    // 4. Shut down graphics systems
 
-    linearFree(trackParamsArray1);
-    linearFree(subsynthParamsArray);
-
-    linearFree(trackParamsArrayFM);
-    linearFree(fmSynthParamsArray);
-
-    linearFree(trackParamsArray2);
-    linearFree(opusSamplerParamsArray);
-
-    linearFree(trackParamsArray3);
-    linearFree(opusSamplerParamsArray2);
-
-    linearFree(trackParamsArray4);
-    linearFree(noiseSynthParamsArray);
-    sample_cleanup_process();
-    SampleBankDeinit(&g_sample_bank);
     deinitViews();
+
     C2D_Fini();
+
     C3D_Fini();
+
+    // 5. Shut down services and free the *entire* linear heap
+
     romfsExit();
+
     gfxExit();
+
+    // All memory allocated with linearAlloc (including all tracks, sequencers,
+
+    // parameters, buffers, and samples) is now automatically freed.
+
+    // No manual Track_deinit or linearFree calls are needed here.
 
     return ret;
 }

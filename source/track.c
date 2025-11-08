@@ -68,13 +68,16 @@ void Track_deinit(Track *track) {
         }
     }
 
-    // Deallocate sequencer
+    // Deallocate sequencer and its owned arrays
     if (track->sequencer) {
         if (track->sequencer->steps) {
-            // The step->data and step->data->instrument_data are pointers to arrays
-            // managed and freed in main.c. We ONLY free the steps array itself,
-            // which was allocated in main.c (e.g., sequence1 = linearAlloc(...)).
             linearFree(track->sequencer->steps);
+        }
+        if (track->sequencer->instrument_params_array) {
+            linearFree(track->sequencer->instrument_params_array);
+        }
+        if (track->sequencer->track_params_array) {
+            linearFree(track->sequencer->track_params_array);
         }
         linearFree(track->sequencer);
     }

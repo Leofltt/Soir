@@ -1,64 +1,59 @@
 #include "sample.h"
-#include "cleanup_queue.h"
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <3ds/allocator/linear.h> // <-- ADD THIS
 
-static void         _sample_destroy(Sample *sample);
-static CleanupQueue g_cleanup_queue;
+static void _sample_destroy(Sample *sample);
 
-void sample_cleanup_init(void) {
-    cleanupQueueInit(&g_cleanup_queue);
-}
+void sample_cleanup_init(void) {}
 
-void sample_cleanup_process(void) {
-    Sample *s = NULL;
-    while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        _sample_destroy(s);
-    }
-}
+void sample_cleanup_process(void) {}
 
 static void _sample_destroy(Sample *sample) {
     if (!sample) {
         return;
     }
     if (sample->pcm_data) {
-        free(sample->pcm_data);
+        linearFree(sample->pcm_data);
     }
     if (sample->path) {
-        free(sample->path);
+        linearFree(sample->path);
     }
-    free(sample);
+    linearFree(sample);
 }
 
 Sample *sample_create(const char *path) {
-    Sample *sample = (Sample *) malloc(sizeof(Sample));
+    Sample *sample = (Sample *) linearAlloc(sizeof(Sample));
     if (!sample) {
         return NULL;
     }
 
-    sample->path = strdup(path);
+    // Replace strdup with linearAlloc + strcpy
+    sample->path = linearAlloc(strlen(path) + 1);
     if (!sample->path) {
-        free(sample);
+        linearFree(sample);
         return NULL;
     }
+    strcpy(sample->path, path);
 
     int          err      = 0;
     OggOpusFile *opusFile = op_open_file(path, &err);
     if (err != 0) {
-        free(sample->path);
-        free(sample);
+        linearFree(sample->path);
+        linearFree(sample);
         return NULL;
     }
 
     sample->pcm_length              = op_pcm_total(opusFile, -1);
     sample->pcm_data_size_in_frames = sample->pcm_length;
-    sample->pcm_data = (int16_t *) malloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
+    sample->pcm_data =
+        (int16_t *) linearAlloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
 
     if (!sample->pcm_data) {
         op_free(opusFile);
-        free(sample->path);
-        free(sample);
+        linearFree(sample->path);
+        linearFree(sample);
         return NULL;
     }
 
@@ -107,7 +102,7 @@ void sample_dec_ref(Sample *sample) {
     sample->ref_count--;
     if (sample->ref_count == 0) {
         LightLock_Unlock(&sample->lock); // Release lock before destroying
-        cleanupQueuePush(&g_cleanup_queue, sample);
+        _sample_destroy(sample);         // Destroy sample directly
     } else {
         LightLock_Unlock(&sample->lock);
     }

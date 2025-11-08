@@ -13,6 +13,8 @@ typedef struct {
     Sample *samples[MAX_SAMPLES];
 } SampleBank;
 
+extern SampleBank g_sample_bank;
+
 void        SampleBankInit(SampleBank *bank);
 void        SampleBankDeinit(SampleBank *bank);
 Sample     *SampleBankGetSample(SampleBank *bank, int index);

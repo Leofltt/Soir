@@ -17,7 +17,8 @@
 #include <string.h>
 
 bool samplerIsLooping(Sampler *sampler) {
-    return sampler->playback_mode == LOOP;
+    return sampler->playback_mode == LOOP && sampler->sample &&
+           sampler->sample->pcm_data_size_in_frames > 0;
 }
 
 void fillSamplerAudioBuffer(ndspWaveBuf *waveBuf_, size_t size, Sampler *sampler) {
