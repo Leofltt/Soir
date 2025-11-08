@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
     initViews();
-    sample_cleanup_init(); 
+    sample_cleanup_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
