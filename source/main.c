@@ -631,14 +631,25 @@ int main(int argc, char **argv) {
 
 cleanup:
 
+    // 1. Signal the audio thread to stop
     should_exit = true;
 
+    // 2. Wait for the audio thread to finish
     audioThreadStopAndJoin();
 
-    // Process any remaining samples queued for cleanup by the audio thread
-    //    (This must be done AFTER the audio thread is joined)
+    // 3. De-reference samples held by active Sampler structs
+    //    (This will queue them for freeing)
+    cleanupTracks(tracks, N_TRACKS);
+
+    // 4. De-reference all samples currently in the bank
+    //    (This will queue them for freeing)
+    SampleBankDeinit(&g_sample_bank);
+
+    // 5. Process any remaining samples queued for cleanup by all threads.
+    //    This MUST be run LAST, after all dec_ref calls.
     sample_cleanup_process();
 
+    // 6. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
