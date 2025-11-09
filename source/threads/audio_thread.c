@@ -75,7 +75,6 @@ static void processSequencerTick() {
 
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
-        // --- ADD LOCKS AROUND ALL CLOCK OPERATIONS ---
         LightLock_Lock(s_clock_lock_ptr);
         int ticks_to_process = updateClock(s_clock_ptr);
 
@@ -87,14 +86,11 @@ static void audio_thread_entry(void *arg) {
             }
         }
         LightLock_Unlock(s_clock_lock_ptr);
-        // --- END OF LOCK ---
 
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
             switch (event.type) {
             case CLOCK_TICK: {
-                // This event is no longer used, but we'll
-                // harmlessly consume it just in case.
                 break;
             }
             case TRIGGER_STEP:
