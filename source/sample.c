@@ -1,4 +1,5 @@
 #include "sample.h"
+#include "sample_bank.h"
 #include "cleanup_queue.h"
 #include <stdlib.h>
 #include <string.h>
@@ -10,10 +11,16 @@ static CleanupQueue g_cleanup_queue;
 
 void sample_cleanup_init(void) {
     // "Prime" the malloc heap.
-    // Workaround for 3DS newlib exit-time crash if free() was never called.
-    void *primer = malloc(32);
+    // This is a workaround for a 3DS-specific newlib issue where the
+    // exit-time heap cleanup can crash if free() has never been called
+    // during the main loop. We create and immediately destroy a sample
+    // to ensure the heap has seen at least one full free() cycle.
+    Sample *primer = sample_create(DEFAULT_SAMPLE_PATHS[0]);
     if (primer) {
-        free(primer);
+        // We call _sample_destroy directly because this is on the
+        // main thread at init, is not reference counted, and
+        // must happen *before* the cleanup queue is initialized.
+        _sample_destroy(primer);
     }
 
     cleanupQueueInit(&g_cleanup_queue);
