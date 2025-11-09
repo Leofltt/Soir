@@ -132,10 +132,13 @@ void sample_dec_ref_main_thread(Sample *sample) {
 
     sample->ref_count--;
     if (sample->ref_count == 0) {
-        cleanupQueuePush(&g_cleanup_queue, sample);
+        // We are on the main thread, so we can destroy it directly.
+        // No need to queue. We must unlock first before destroying.
+        LightLock_Unlock(&sample->lock);
+        _sample_destroy(sample);
+    } else {
+        LightLock_Unlock(&sample->lock);
     }
-
-    LightLock_Unlock(&sample->lock);
 }
 
 static char sample_name_buffer[64];

@@ -10,7 +10,6 @@ typedef struct {
     Sample    *samples[CLEANUP_QUEUE_SIZE];
     atomic_int write_ptr;
     atomic_int read_ptr;
-    LightLock  lock;
 } CleanupQueue;
 
 void    cleanupQueueInit(CleanupQueue *q);
