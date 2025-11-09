@@ -46,6 +46,8 @@ static OpusSamplerParameters g_editing_sampler_params;
 static FMSynthParameters     g_editing_fm_synth_params;
 static NoiseSynthParameters  g_editing_noise_synth_params;
 
+static bool g_heap_primed = false; // <-- ADD THIS
+
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -566,6 +568,23 @@ int main(int argc, char **argv) {
     bool        should_break_loop  = false;
 
     while (aptMainLoop()) {
+        // --- ADD THIS BLOCK ---
+        // Workaround for 3DS newlib heap quirk:
+        // Force a single sample reload on the first frame. This ensures
+        // free() is called at least once from within the main loop,
+        // which prevents an exit-time crash.
+        if (!g_heap_primed) {
+            Event event                         = { .type = LOAD_SAMPLE };
+            event.data.load_sample_data.slot_id = 0;
+            strncpy(event.data.load_sample_data.path, DEFAULT_SAMPLE_PATHS[0],
+                    MAX_SAMPLE_PATH_LENGTH - 1);
+            event.data.load_sample_data.path[MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
+            eventQueuePush(&g_event_queue, event);
+
+            g_heap_primed = true;
+        }
+        // --- END OF BLOCK ---
+
         hidScanInput();
 
         u64 now   = svcGetSystemTick();
