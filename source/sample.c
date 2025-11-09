@@ -102,13 +102,16 @@ void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
-    LightLock_Lock(&sample->lock); // Acquire lock first
+    LightLock_Lock(&sample->lock);
 
-    if (sample->ref_count > 0) {
-        sample->ref_count--;
-        if (sample->ref_count == 0) {
-            cleanupQueuePush(&g_cleanup_queue, sample); // <-- PUSH TO QUEUE
-        }
+    if (sample->ref_count <= 0) {
+        LightLock_Unlock(&sample->lock);
+        return;
+    }
+
+    sample->ref_count--;
+    if (sample->ref_count == 0) {
+        cleanupQueuePush(&g_cleanup_queue, sample);
     }
 
     LightLock_Unlock(&sample->lock);
@@ -120,13 +123,16 @@ void sample_dec_ref_main_thread(Sample *sample) {
     if (!sample)
         return;
 
-    LightLock_Lock(&sample->lock); // Acquire lock first
+    LightLock_Lock(&sample->lock);
 
-    if (sample->ref_count > 0) {
-        sample->ref_count--;
-        if (sample->ref_count == 0) {
-            cleanupQueuePush(&g_cleanup_queue, sample);
-        }
+    if (sample->ref_count <= 0) {
+        LightLock_Unlock(&sample->lock);
+        return;
+    }
+
+    sample->ref_count--;
+    if (sample->ref_count == 0) {
+        cleanupQueuePush(&g_cleanup_queue, sample);
     }
 
     LightLock_Unlock(&sample->lock);
