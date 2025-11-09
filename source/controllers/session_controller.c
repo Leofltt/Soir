@@ -12,6 +12,10 @@
 #include "controllers/controller_touch_clock.h"
 #include "controllers/controller_sample_manager.h"
 #include "controllers/controller_step_settings.h"
+#include "event_queue.h"
+#include "sample_bank.h"
+
+extern bool g_sample_edited;
 
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
                              const u64 delay_initial, const u64 delay_repeat) {
@@ -32,6 +36,17 @@ bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
 void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
                                   bool *should_break_loop) {
     if (kDown & KEY_START) {
+        if (g_sample_edited == false) {
+            Event event                         = { .type = LOAD_SAMPLE };
+            event.data.load_sample_data.slot_id = 0;
+            strncpy(event.data.load_sample_data.path, DEFAULT_SAMPLE_PATHS[0],
+                    MAX_SAMPLE_PATH_LENGTH - 1);
+            event.data.load_sample_data.path[MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
+            eventQueuePush(ctx->event_queue, event);
+
+            g_sample_edited = true;
+        }
+
         *ctx->previous_screen_focus    = *ctx->screen_focus;
         *ctx->screen_focus             = FOCUS_TOP;
         ctx->session->main_screen_view = VIEW_QUIT;

@@ -10,6 +10,8 @@
 #include <string.h>
 #include <opusfile.h>
 
+extern bool g_sample_edited;
+
 // Static global variables for this module
 static Thread     s_audio_thread;
 static LightEvent s_audio_event;
@@ -214,11 +216,13 @@ static void audio_thread_entry(void *arg) {
             case SET_BEATS_PER_BAR:
                 setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
                 break;
-            case LOAD_SAMPLE: { // <-- ADD THIS ENTIRE CASE
+            case LOAD_SAMPLE: {
                 int slot_id = event.data.load_sample_data.slot_id;
                 if (slot_id < 0 || slot_id >= MAX_SAMPLES) {
                     break;
                 }
+
+                g_sample_edited = true; // <-- ADD THIS LINE
 
                 // Get the old sample *before* loading the new one
                 Sample *old_sample = s_sample_bank_ptr->samples[slot_id];
