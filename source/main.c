@@ -46,6 +46,8 @@ static OpusSamplerParameters g_editing_sampler_params;
 static FMSynthParameters     g_editing_fm_synth_params;
 static NoiseSynthParameters  g_editing_noise_synth_params;
 
+bool g_sample_edited = false;
+
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -631,27 +633,43 @@ int main(int argc, char **argv) {
 
 cleanup:
 
+    // 1. Signal the audio thread to stop
     should_exit = true;
 
-    audioThreadStopAndJoin();
+    // 2. Wake up the audio thread if it's sleeping
+    audioThreadSignal();
 
-    // Process any remaining samples queued for cleanup by the audio thread
-    //    (This must be done AFTER the audio thread is joined)
+    // 3. Process the cleanup queue ONE LAST TIME.
+    //    This is critical. If the audio thread is blocked trying to PUSH,
+    //    this POP will free up the lock and allow it to exit.
     sample_cleanup_process();
 
+    // 4. Now, wait for the audio thread to finish.
+    //    It is guaranteed to not be deadlocked on the cleanup queue.
+    audioThreadJoin();
+
+    // 5. De-reference all remaining samples.
+    //    The audio thread is dead, so this is 100% safe.
+    cleanupTracks(tracks, N_TRACKS);
+    SampleBankDeinit(&g_sample_bank);
+
+    // 6. Process all samples that were just queued by the cleanup above.
+    sample_cleanup_process();
+
+    // 7. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
+    // 8. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
-
     deinitViews();
-
     C2D_Fini();
     C3D_Fini();
 
+    // 9. Shut down services
     romfsExit();
     gfxExit();
 

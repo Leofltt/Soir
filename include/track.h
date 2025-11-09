@@ -35,5 +35,6 @@ extern void resetTrack(Track *track);
 extern void updateTrack(Track *track, Clock *clock);
 extern void updateTrackParameters(Track *track, TrackParameters *params);
 extern void Track_deinit(Track *track);
+extern void cleanupTracks(Track *tracks, int n_tracks);
 
 #endif // TRACK_H

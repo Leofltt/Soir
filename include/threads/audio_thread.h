@@ -44,6 +44,14 @@ s32 audioThreadInit(Track *tracks_ptr, EventQueue *event_queue_ptr, SampleBank *
 s32 audioThreadStart();
 
 /**
+ * @brief Signals the audio thread to wake up from its event wait.
+ *
+ * This is used to ensure the thread is not sleeping when we need it to process
+ * the should_exit flag.
+ */
+void audioThreadSignal();
+
+/**
  * @brief Stops the audio thread and waits for it to exit.
  *
  * This function signals the thread to exit and then joins it, blocking until the thread has
@@ -51,6 +59,6 @@ s32 audioThreadStart();
  *
  * @return 0 on success, or a libctru error code on failure (e.g., if joining fails).
  */
-s32 audioThreadStopAndJoin();
+s32 audioThreadJoin();
 
 #endif // AUDIO_THREAD_H

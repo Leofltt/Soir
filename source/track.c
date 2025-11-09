@@ -303,3 +303,21 @@ void updateTrack(Track *track, Clock *clock) {
         }
     }
 }
+
+void cleanupTracks(Track *tracks, int n_tracks) {
+    for (int i = 0; i < n_tracks; i++) {
+        Track *track = &tracks[i];
+        if (track && track->instrument_data) {
+            // This is the only part of Track_deinit that manages
+            // malloc'd memory, so it's the only part we need to run.
+            if (track->instrument_type == OPUS_SAMPLER) {
+                Sampler *sampler = (Sampler *) track->instrument_data;
+                if (sampler->sample) {
+                    // This will queue the sample for freeing
+                    sample_dec_ref_main_thread(sampler->sample);
+                    sampler->sample = NULL;
+                }
+            }
+        }
+    }
+}
