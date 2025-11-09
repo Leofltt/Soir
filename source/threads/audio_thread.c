@@ -75,6 +75,8 @@ static void processSequencerTick() {
 
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
+        // --- ADD LOCKS AROUND ALL CLOCK OPERATIONS ---
+        LightLock_Lock(s_clock_lock_ptr);
         int ticks_to_process = updateClock(s_clock_ptr);
 
         if (ticks_to_process > 0) {
@@ -84,6 +86,8 @@ static void audio_thread_entry(void *arg) {
                 processSequencerTick();
             }
         }
+        LightLock_Unlock(s_clock_lock_ptr);
+        // --- END OF LOCK ---
 
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
@@ -190,31 +194,45 @@ static void audio_thread_entry(void *arg) {
                 break;
             }
             case RESET_SEQUENCERS: {
+                LightLock_Lock(s_clock_lock_ptr);
                 for (int i = 0; i < N_TRACKS; i++) {
                     if (s_tracks_ptr[i].sequencer) {
                         s_tracks_ptr[i].sequencer->cur_step = 0;
                     }
                 }
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             }
 
             case START_CLOCK:
+                LightLock_Lock(s_clock_lock_ptr);
                 startClock(s_clock_ptr);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case STOP_CLOCK:
+                LightLock_Lock(s_clock_lock_ptr);
                 stopClock(s_clock_ptr);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case PAUSE_CLOCK:
+                LightLock_Lock(s_clock_lock_ptr);
                 pauseClock(s_clock_ptr);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case RESUME_CLOCK:
+                LightLock_Lock(s_clock_lock_ptr);
                 resumeClock(s_clock_ptr);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case SET_BPM:
+                LightLock_Lock(s_clock_lock_ptr);
                 setBpm(s_clock_ptr, event.data.bpm_data.bpm);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case SET_BEATS_PER_BAR:
+                LightLock_Lock(s_clock_lock_ptr);
                 setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
+                LightLock_Unlock(s_clock_lock_ptr);
                 break;
             case LOAD_SAMPLE: {
                 int slot_id = event.data.load_sample_data.slot_id;
