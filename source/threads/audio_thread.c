@@ -230,25 +230,23 @@ static void audio_thread_entry(void *arg) {
                 setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
                 LightLock_Unlock(s_clock_lock_ptr);
                 break;
-            case LOAD_SAMPLE: {
-                int slot_id = event.data.load_sample_data.slot_id;
+            case SWAP_SAMPLE: {
+                int slot_id = event.data.swap_sample_data.slot_id;
                 if (slot_id < 0 || slot_id >= MAX_SAMPLES) {
+                    // Invalid slot, maybe log an error.
+                    // Also, we would leak the sample pointed to by new_sample_ptr.
+                    // For now, just break.
                     break;
                 }
 
-                g_sample_edited = true; // <-- ADD THIS LINE
+                g_sample_edited = true;
 
-                // Get the old sample *before* loading the new one
+                Sample *new_sample = event.data.swap_sample_data.new_sample_ptr;
                 Sample *old_sample = s_sample_bank_ptr->samples[slot_id];
 
-                // Create and assign the new sample
-                s_sample_bank_ptr->samples[slot_id] =
-                    sample_create(event.data.load_sample_data.path);
+                s_sample_bank_ptr->samples[slot_id] = new_sample;
 
-                // Now, safely decrement the old sample.
                 if (old_sample != NULL) {
-                    // Use the audio thread dec_ref, which queues it for freeing
-                    // on the main thread.
                     sample_dec_ref_audio_thread(old_sample);
                 }
                 break;

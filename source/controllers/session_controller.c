@@ -37,14 +37,14 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
                                   bool *should_break_loop) {
     if (kDown & KEY_START) {
         if (g_sample_edited == false) {
-            Event event                         = { .type = LOAD_SAMPLE };
-            event.data.load_sample_data.slot_id = 0;
-            strncpy(event.data.load_sample_data.path, DEFAULT_SAMPLE_PATHS[0],
-                    MAX_SAMPLE_PATH_LENGTH - 1);
-            event.data.load_sample_data.path[MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
-            eventQueuePush(ctx->event_queue, event);
-
-            g_sample_edited = true;
+            Sample *new_sample = sample_create(DEFAULT_SAMPLE_PATHS[0]);
+            if (new_sample) {
+                Event event                                = { .type = SWAP_SAMPLE };
+                event.data.swap_sample_data.slot_id        = 0;
+                event.data.swap_sample_data.new_sample_ptr = new_sample;
+                eventQueuePush(ctx->event_queue, event);
+                g_sample_edited = true;
+            }
         }
 
         *ctx->previous_screen_focus    = *ctx->screen_focus;
