@@ -3,8 +3,8 @@
 
 void cleanupQueueInit(CleanupQueue *q) {
     memset(q->samples, 0, sizeof(q->samples));
-    atomic_init(&q->read_ptr, 0);  // <-- CHANGE
-    atomic_init(&q->write_ptr, 0); // <-- CHANGE
+    atomic_init(&q->read_ptr, 0);  
+    atomic_init(&q->write_ptr, 0); 
     LightLock_Init(&q->lock);
 }
 
@@ -27,21 +27,18 @@ bool cleanupQueuePush(CleanupQueue *q, Sample *s) {
     return true;
 }
 
-// Consumer side (Main Thread) - now lock-free
-Sample *cleanupQueuePop(CleanupQueue *q) {
-    // LightLock_Lock(&q->lock); // <-- REMOVE LOCK
+// Consumer side (Main Thread) 
+Sample *cleanupQueuePop(CleanupQueue *q) { 
 
     int read_ptr = atomic_load_explicit(&q->read_ptr, memory_order_relaxed);
 
     if (atomic_load_explicit(&q->write_ptr, memory_order_acquire) == read_ptr) {
         // Queue is empty
-        // LightLock_Unlock(&q->lock); // <-- REMOVE LOCK
         return NULL;
     }
 
     Sample *s = q->samples[read_ptr];
     atomic_store_explicit(&q->read_ptr, (read_ptr + 1) % CLEANUP_QUEUE_SIZE, memory_order_release);
 
-    // LightLock_Unlock(&q->lock); // <-- REMOVE LOCK
     return s;
 }

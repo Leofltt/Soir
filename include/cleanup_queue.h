@@ -2,14 +2,14 @@
 
 #include "sample.h"
 #include <3ds.h>
-#include <stdatomic.h> // <-- ADD THIS
+#include <stdatomic.h> 
 
 #define CLEANUP_QUEUE_SIZE 128
 
 typedef struct {
     Sample    *samples[CLEANUP_QUEUE_SIZE];
-    atomic_int write_ptr; // <-- CHANGE THIS
-    atomic_int read_ptr;  // <-- CHANGE THIS
+    atomic_int write_ptr; 
+    atomic_int read_ptr; 
     LightLock  lock;
 } CleanupQueue;
 
