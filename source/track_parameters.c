@@ -7,7 +7,7 @@ SubSynthParameters defaultSubSynthParameters() {
                                   .env_dec       = 300,
                                   .env_sus_level = 0.8f,
                                   .env_rel       = 100,
-                                  .env_dur       = 1000,
+                                  .env_dur       = 700,
                                   .osc_freq      = 220.0f, // A3
                                   .osc_waveform  = SINE,
                                   .pulse_width   = 0.5f };
@@ -30,13 +30,13 @@ FMSynthParameters defaultFMSynthParameters() {
                                  .carrier_env_dec       = 300,
                                  .carrier_env_sus_level = 0.8f,
                                  .carrier_env_rel       = 100,
-                                 .env_dur               = 1000,
+                                 .env_dur               = 600,
                                  .mod_env_atk           = 50,
                                  .mod_env_dec           = 300,
                                  .mod_env_sus_level     = 0.8f,
                                  .mod_env_rel           = 100,
                                  .mod_index             = 1.0f,
-                                 .mod_depth             = 100.0f,
+                                 .mod_depth             = 44.0f,
                                  .carrier_freq          = 220.0f,
                                  .mod_freq_ratio        = 1.0f };
     params.mod_env_atk       = params.carrier_env_atk;
