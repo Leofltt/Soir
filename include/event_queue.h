@@ -16,7 +16,7 @@ typedef struct {
     Event      events[EVENT_QUEUE_SIZE];
     atomic_int head;
     atomic_int tail;
-    LightLock  lock; // <-- ADD THIS
+    LightLock  lock; 
 } EventQueue;
 
 /**

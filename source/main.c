@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
     }
     *osc = (PolyBLEPOscillator) { .frequency   = 220.0f,
                                   .samplerate  = SAMPLERATE,
-                                  .waveform    = SINE,
+                                  .waveform    = SQUARE,
                                   .phase       = 0.,
                                   .pulse_width = 0.5f,
                                   .phase_inc   = 220.0f * M_TWOPI / SAMPLERATE };
