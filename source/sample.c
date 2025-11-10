@@ -131,7 +131,7 @@ void sample_dec_ref_main_thread(Sample *sample) {
     if (sample->ref_count == 0) {
         // We are on the main thread, and NDSP is off, so we can destroy.
         LightLock_Unlock(&sample->lock);
-        _sample_destroy(sample); 
+        _sample_destroy(sample);
     } else {
         LightLock_Unlock(&sample->lock);
     }

@@ -23,7 +23,7 @@
 
 #include <3ds.h>
 #include <3ds/os.h>
-#include <3ds/ndsp/ndsp.h> 
+#include <3ds/ndsp/ndsp.h>
 #include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
@@ -650,10 +650,6 @@ cleanup:
     ndspExit();
 
     // --- NDSP IS DEAD ---
-
-    // 5. Now it is safe to free all sample memory.
-    // Process the queue of samples the audio thread was done with.
-    sample_cleanup_process();
 
     // Decrement references from active tracks and bank slots.
     // These calls will now safely free the samples.

@@ -21,8 +21,8 @@ typedef enum {
     PARAM_TYPE_FILTER_TYPE, // NDSP Filter Type
     PARAM_TYPE_SAMPLE_INDEX,
     PARAM_TYPE_PLAYBACK_MODE,
-    PARAM_TYPE_MOD_RATIO,       // For FM_SYNTH
-    PARAM_TYPE_ENVELOPE_BUTTON, 
+    PARAM_TYPE_MOD_RATIO, // For FM_SYNTH
+    PARAM_TYPE_ENVELOPE_BUTTON,
     PARAM_TYPE_INT,
     // ... add more types as needed
 } ParameterType;

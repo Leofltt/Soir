@@ -11,7 +11,6 @@ void cleanupQueueInit(CleanupQueue *q) {
 
 // Producer side (Audio Thread) - SPSC
 bool cleanupQueuePush(CleanupQueue *q, Sample *s) {
-
     int write_ptr      = atomic_load_explicit(&q->write_ptr, memory_order_relaxed);
     int next_write_ptr = (write_ptr + 1) % CLEANUP_QUEUE_SIZE;
 
