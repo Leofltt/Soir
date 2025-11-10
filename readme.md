@@ -33,3 +33,7 @@ To clean the 3DS build:
 To clean the tests build:
 
 ```make test-clean```
+
+### Adding your own samples
+
+Create a ```samples``` folder in the root of your SD card and add samples in ````.opus``` format

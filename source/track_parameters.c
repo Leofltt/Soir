@@ -9,7 +9,7 @@ SubSynthParameters defaultSubSynthParameters() {
                                   .env_rel       = 100,
                                   .env_dur       = 700,
                                   .osc_freq      = 220.0f, // A3
-                                  .osc_waveform  = SINE,
+                                  .osc_waveform  = SQUARE,
                                   .pulse_width   = 0.5f };
     return params;
 };
