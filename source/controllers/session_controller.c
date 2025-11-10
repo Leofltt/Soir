@@ -52,9 +52,12 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
         *ctx->screen_focus             = FOCUS_TOP;
         ctx->session->main_screen_view = VIEW_QUIT;
         *ctx->selected_quit_option     = 0;
-        LightLock_Lock(ctx->clock_lock);
-        pauseClock(ctx->clock);
-        LightLock_Unlock(ctx->clock_lock);
+
+        Event event = { .type = (ctx->clock->status == PLAYING) ? PAUSE_CLOCK : RESUME_CLOCK };
+        eventQueuePush(ctx->event_queue, event);
+        // LightLock_Lock(ctx->clock_lock);
+        // pauseClock(ctx->clock);
+        // LightLock_Unlock(ctx->clock_lock);
     }
 
     if (ctx->session->main_screen_view != VIEW_QUIT) {
