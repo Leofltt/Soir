@@ -1,5 +1,4 @@
 #include "event_queue.h"
-#include <3ds/synchronization.h>
 
 void eventQueueInit(EventQueue *q) {
     atomic_init(&q->head, 0);

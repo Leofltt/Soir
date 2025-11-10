@@ -1,7 +1,9 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
-#ifndef TESTING
+#ifdef TESTING
+#include "mock_3ds.h"
+#else
 #include <opusfile.h>
 #include <3ds/synchronization.h>
 #endif
