@@ -9,22 +9,22 @@ void cleanupQueueInit(CleanupQueue *q) {
     LightLock_Init(&q->lock);
 }
 
-// Producer side (Audio Thread AND Main Thread) - now MPSC safe
+// Producer side (Audio Thread) - SPSC
 bool cleanupQueuePush(CleanupQueue *q, Sample *s) {
-    LightLock_Lock(&q->lock);
+    // LightLock_Lock(&q->lock); // <-- REMOVE THIS
 
     int write_ptr      = atomic_load_explicit(&q->write_ptr, memory_order_relaxed);
     int next_write_ptr = (write_ptr + 1) % CLEANUP_QUEUE_SIZE;
 
     if (next_write_ptr == atomic_load_explicit(&q->read_ptr, memory_order_acquire)) {
         // Queue is full
-        LightLock_Unlock(&q->lock);
+        // LightLock_Unlock(&q->lock); // <-- REMOVE THIS
         return false;
     }
     q->samples[write_ptr] = s;
     atomic_store_explicit(&q->write_ptr, next_write_ptr, memory_order_release);
 
-    LightLock_Unlock(&q->lock);
+    // LightLock_Unlock(&q->lock); // <-- REMOVE THIS
     return true;
 }
 

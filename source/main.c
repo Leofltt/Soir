@@ -580,8 +580,6 @@ int main(int argc, char **argv) {
             break;
         }
 
-        sample_cleanup_process();
-
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
@@ -639,29 +637,32 @@ cleanup:
     audioThreadSignal();
 
     // 3. Wait for the audio thread to fully exit and terminate.
-    //    This blocks the main thread, which is correct and safe
-    //    during the application-quit sequence.
+    //    This blocks the main thread, which is correct.
     audioThreadJoin();
 
-    // --- At this point, the audio thread (Producer 1) is DEAD. ---
-    // --- It can no longer push to the CleanupQueue.            ---
+    // --- AUDIO THREAD IS DEAD ---
 
-    // 4. Now, with only the main thread (Producer 2) running, safely
-    //    de-initialize all tracks and the sample bank. This will
-    //    call sample_dec_ref_main_thread() and push all remaining
-    //    samples to the (now MPSC-safe) CleanupQueue.
-    cleanupTracks(tracks, N_TRACKS);
-    SampleBankDeinit(&g_sample_bank);
-
-    // 5. Finally, with all producers dead and all resources queued,
-    //    drain the CleanupQueue one last time. This is 100% safe.
-    sample_cleanup_process();
-
-    // 6. Shut down NDSP (audio hardware)
+    // 4. Shut down NDSP (audio hardware) FIRST
+    // This stops all DMA and makes it 100% safe to free audio memory.
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
+
+    // --- NDSP IS DEAD ---
+
+    // 5. Now it is safe to free all sample memory.
+    // Process the queue of samples the audio thread was done with.
+    sample_cleanup_process();
+
+    // Decrement references from active tracks and bank slots.
+    // These calls will now safely free the samples.
+    cleanupTracks(tracks, N_TRACKS);  // Calls sample_dec_ref_main_thread
+    SampleBankDeinit(&g_sample_bank); // ALSO calls sample_dec_ref_main_thread
+
+    // 6. Just in case Deinit queued anything (it shouldn't with this new
+    //    logic, but for absolute safety), run the cleanup process one last time.
+    sample_cleanup_process();
 
     // 7. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);

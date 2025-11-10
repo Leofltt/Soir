@@ -16,7 +16,10 @@ void sample_cleanup_init(void) {
 void sample_cleanup_process(void) {
     Sample *s = NULL;
     while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        _sample_destroy(s);
+        // --- FIX ---
+        // The audio thread queued this. Now the main thread
+        // (at quit time) is responsible for decrementing its reference.
+        sample_dec_ref_main_thread(s);
     }
 }
 
@@ -97,40 +100,25 @@ void sample_inc_ref(Sample *sample) {
 }
 
 // This function is called by the audio thread.
-// It must NOT call linearFree. It must queue the free.
+// It must NOT lock. It must just queue the sample.
 void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
-    LightLock_Lock(&sample->lock);
-
-    if (sample->ref_count <= 0) {
-        LightLock_Unlock(&sample->lock);
-        return;
+    // --- REFACTOR ---
+    // DO NOT lock. DO NOT decrement. Just queue it.
+    // The main thread will handle the decrement AND free *at quit time*.
+    bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
+    if (!pushed) {
+        // CRITICAL ERROR: The cleanup queue is full.
+        // This sample will be leaked. This is the only safe option
+        // on the audio thread.
     }
-
-    sample->ref_count--;
-    if (sample->ref_count == 0) {
-        // This is called from the audio thread, so we queue for cleanup
-        // on the main thread.
-
-        // --- ADD THIS CHECK ---
-        bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
-        if (!pushed) {
-            // CRITICAL ERROR: The cleanup queue is full.
-            // We are on the audio thread, so we CANNOT block or sleep.
-            // The only safe option is to accept that this Sample
-            // object will be leaked for this session.
-            // A printf() could be added here for debug builds.
-        }
-        // --- END ADDITION ---
-    }
-
-    LightLock_Unlock(&sample->lock);
+    // --- END REFACTOR ---
 }
 
 // This function is called by the main thread.
-// It can (and should) free the memory immediately.
+// It is NOW ONLY CALLED AT QUIT TIME.
 void sample_dec_ref_main_thread(Sample *sample) {
     if (!sample)
         return;
@@ -144,10 +132,9 @@ void sample_dec_ref_main_thread(Sample *sample) {
 
     sample->ref_count--;
     if (sample->ref_count == 0) {
-        // We are on the main thread, so we can destroy it directly.
-        // No need to queue. We must unlock first before destroying.
+        // We are on the main thread, and NDSP is off, so we can destroy.
         LightLock_Unlock(&sample->lock);
-        _sample_destroy(sample);
+        _sample_destroy(sample); // This free() is now safe
     } else {
         LightLock_Unlock(&sample->lock);
     }

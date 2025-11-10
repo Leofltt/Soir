@@ -33,17 +33,27 @@ Sample *SampleBankGetSample(SampleBank *bank, int index) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return NULL;
     }
-    return bank->samples[index];
+
+    LightLock_Lock(&bank->lock); // <-- ADD
+    Sample *sample = bank->samples[index];
+    LightLock_Unlock(&bank->lock); // <-- ADD
+
+    return sample;
 }
 
 const char *SampleBankGetSampleName(SampleBank *bank, int index) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return "Invalid";
     }
-    if (bank->samples[index] == NULL) {
+
+    LightLock_Lock(&bank->lock); // <-- ADD
+    Sample *sample = bank->samples[index];
+    LightLock_Unlock(&bank->lock); // <-- ADD
+
+    if (sample == NULL) {
         return "Empty";
     }
-    return sample_get_name(bank->samples[index]);
+    return sample_get_name(sample); // This function is safe
 }
 
 void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
@@ -56,10 +66,14 @@ void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
 
 int SampleBankGetLoadedSampleCount(SampleBank *bank) {
     int count = 0;
+
+    LightLock_Lock(&bank->lock); // <-- ADD
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
             count++;
         }
     }
+    LightLock_Unlock(&bank->lock); // <-- ADD
+
     return count;
 }

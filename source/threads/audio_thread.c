@@ -233,20 +233,23 @@ static void audio_thread_entry(void *arg) {
             case SWAP_SAMPLE: {
                 int slot_id = event.data.swap_sample_data.slot_id;
                 if (slot_id < 0 || slot_id >= MAX_SAMPLES) {
-                    // Invalid slot, maybe log an error.
-                    // Also, we would leak the sample pointed to by new_sample_ptr.
-                    // For now, just break.
+                    // new_sample_ptr was malloc'd, we must queue it for freeing
+                    sample_dec_ref_audio_thread(event.data.swap_sample_data.new_sample_ptr);
                     break;
                 }
 
-                g_sample_edited = true;
-
+                g_sample_edited    = true;
                 Sample *new_sample = event.data.swap_sample_data.new_sample_ptr;
-                Sample *old_sample = s_sample_bank_ptr->samples[slot_id];
 
+                // --- ADD LOCKS ---
+                LightLock_Lock(&s_sample_bank_ptr->lock);
+                Sample *old_sample                  = s_sample_bank_ptr->samples[slot_id];
                 s_sample_bank_ptr->samples[slot_id] = new_sample;
+                LightLock_Unlock(&s_sample_bank_ptr->lock);
+                // --- END LOCKS ---
 
                 if (old_sample != NULL) {
+                    // This is now safe, it just queues the old sample
                     sample_dec_ref_audio_thread(old_sample);
                 }
                 break;
