@@ -28,7 +28,6 @@ Envelope defaultEnvelopeStruct(float sample_rate) {
     env.env_buffer  = (float *) linearAlloc(max_size * sizeof(float));
     if (env.env_buffer) {
         env.buffer_size = max_size;
-        // Ensure it's clean
         memset(env.env_buffer, 0, max_size * sizeof(float));
     }
     return env;

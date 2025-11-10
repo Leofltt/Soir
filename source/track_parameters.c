@@ -31,10 +31,10 @@ FMSynthParameters defaultFMSynthParameters() {
                                  .carrier_env_sus_level = 0.8f,
                                  .carrier_env_rel       = 100,
                                  .env_dur               = 1000,
-                                 .mod_env_atk           = 50,   // Will be overwritten
-                                 .mod_env_dec           = 300,  // Will be overwritten
-                                 .mod_env_sus_level     = 0.8f, // Will be overwritten
-                                 .mod_env_rel           = 100,  // Will be overwritten
+                                 .mod_env_atk           = 50,
+                                 .mod_env_dec           = 300,
+                                 .mod_env_sus_level     = 0.8f,
+                                 .mod_env_rel           = 100,
                                  .mod_index             = 1.0f,
                                  .mod_depth             = 100.0f,
                                  .carrier_freq          = 220.0f,
@@ -46,16 +46,24 @@ FMSynthParameters defaultFMSynthParameters() {
     return params;
 }
 
+NoiseSynthParameters defaultNoiseSynthParameters() {
+    return (NoiseSynthParameters) {
+        .env_atk       = 20,
+        .env_dec       = 200,
+        .env_sus_level = 0.6f,
+        .env_rel       = 50,
+        .env_dur       = 300,
+    };
+}
+
 TrackParameters defaultTrackParameters(int track_id, void *instrument_data) {
     TrackParameters params = { .track_id           = track_id,
                                .volume             = 1.0f,    // 0 to 1
                                .pan                = 0.0f,    // -1 to 1, 0 is center
                                .ndsp_filter_cutoff = 8000.0f, // Default to 8000Hz cutoff
                                .ndsp_filter_type   = NDSP_BIQUAD_NONE,
-                               // .reverb_level        = 0.0f,
-                               // .delay_level         = 0.0f,
-                               .is_muted        = false,
-                               .is_soloed       = false,
-                               .instrument_data = instrument_data };
+                               .is_muted           = false,
+                               .is_soloed          = false,
+                               .instrument_data    = instrument_data };
     return params;
 };

@@ -34,9 +34,9 @@ Sample *SampleBankGetSample(SampleBank *bank, int index) {
         return NULL;
     }
 
-    LightLock_Lock(&bank->lock); // <-- ADD
+    LightLock_Lock(&bank->lock); 
     Sample *sample = bank->samples[index];
-    LightLock_Unlock(&bank->lock); // <-- ADD
+    LightLock_Unlock(&bank->lock); 
 
     return sample;
 }
@@ -46,9 +46,9 @@ const char *SampleBankGetSampleName(SampleBank *bank, int index) {
         return "Invalid";
     }
 
-    LightLock_Lock(&bank->lock); // <-- ADD
+    LightLock_Lock(&bank->lock); 
     Sample *sample = bank->samples[index];
-    LightLock_Unlock(&bank->lock); // <-- ADD
+    LightLock_Unlock(&bank->lock); 
 
     if (sample == NULL) {
         return "Empty";
@@ -67,13 +67,13 @@ void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
 int SampleBankGetLoadedSampleCount(SampleBank *bank) {
     int count = 0;
 
-    LightLock_Lock(&bank->lock); // <-- ADD
+    LightLock_Lock(&bank->lock); 
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
             count++;
         }
     }
-    LightLock_Unlock(&bank->lock); // <-- ADD
+    LightLock_Unlock(&bank->lock); 
 
     return count;
 }

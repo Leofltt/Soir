@@ -4,16 +4,6 @@
 #include <3ds/services/dsp.h>
 #include <string.h>
 
-NoiseSynthParameters defaultNoiseSynthParameters() {
-    return (NoiseSynthParameters) {
-        .env_atk       = 20,
-        .env_dec       = 200,
-        .env_sus_level = 0.6f,
-        .env_rel       = 50,
-        .env_dur       = 300,
-    };
-}
-
 void fillNoiseSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, NoiseSynth *noiseSynth) {
     if (!noiseSynth || !noiseSynth->env) {
         memset(waveBuf->data_pcm16, 0, size * NCHANNELS * sizeof(int16_t));
@@ -31,7 +21,6 @@ void fillNoiseSynthAudiobuffer(ndspWaveBuf *waveBuf, size_t size, NoiseSynth *no
         // Use the lowest bit as the audio output
         float sample = (noiseSynth->lfsr_register & 1) ? 1.0f : -1.0f;
 
-        // Apply envelope
         sample *= nextEnvelopeSample(noiseSynth->env);
 
         int16_t sample_i16 = floatToInt16(sample);

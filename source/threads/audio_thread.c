@@ -238,7 +238,6 @@ static void audio_thread_entry(void *arg) {
                     break;
                 }
 
-                g_sample_edited    = true;
                 Sample *new_sample = event.data.swap_sample_data.new_sample_ptr;
 
                 // --- ADD LOCKS ---

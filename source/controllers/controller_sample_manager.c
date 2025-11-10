@@ -4,6 +4,8 @@
 #include "session.h"
 #include "sample.h"
 
+extern bool g_sample_edited;
+
 void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
     if (*ctx->is_selecting_sample) {
         if (kDown & KEY_UP) {
@@ -32,6 +34,7 @@ void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
                     event.data.swap_sample_data.new_sample_ptr = new_sample;
 
                     eventQueuePush(ctx->event_queue, event);
+                    g_sample_edited           = true; // <-- ADD THIS LINE
                     *ctx->is_selecting_sample = false;
                 } else {
                     *ctx->is_selecting_sample = false;

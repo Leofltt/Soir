@@ -16,7 +16,6 @@ void sample_cleanup_init(void) {
 void sample_cleanup_process(void) {
     Sample *s = NULL;
     while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        // --- FIX ---
         // The audio thread queued this. Now the main thread
         // (at quit time) is responsible for decrementing its reference.
         sample_dec_ref_main_thread(s);
@@ -105,7 +104,6 @@ void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
-    // --- REFACTOR ---
     // DO NOT lock. DO NOT decrement. Just queue it.
     // The main thread will handle the decrement AND free *at quit time*.
     bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
@@ -114,7 +112,6 @@ void sample_dec_ref_audio_thread(Sample *sample) {
         // This sample will be leaked. This is the only safe option
         // on the audio thread.
     }
-    // --- END REFACTOR ---
 }
 
 // This function is called by the main thread.
@@ -134,7 +131,7 @@ void sample_dec_ref_main_thread(Sample *sample) {
     if (sample->ref_count == 0) {
         // We are on the main thread, and NDSP is off, so we can destroy.
         LightLock_Unlock(&sample->lock);
-        _sample_destroy(sample); // This free() is now safe
+        _sample_destroy(sample); 
     } else {
         LightLock_Unlock(&sample->lock);
     }

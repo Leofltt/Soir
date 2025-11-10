@@ -14,11 +14,9 @@ typedef struct {
     float          pan;
     float          ndsp_filter_cutoff;
     NdspFilterType ndsp_filter_type;
-    // float          reverb_level;
-    // float          delay_level;
-    bool  is_muted;
-    bool  is_soloed;
-    void *instrument_data;
+    bool           is_muted;
+    bool           is_soloed;
+    void          *instrument_data;
 } TrackParameters;
 
 typedef struct {
@@ -72,11 +70,21 @@ typedef struct {
 
 } FMSynthParameters;
 
+typedef struct {
+    int   env_atk;
+    int   env_dec;
+    float env_sus_level;
+    int   env_rel;
+    int   env_dur; // Duration for triggered envelopes
+} NoiseSynthParameters;
+
 extern SubSynthParameters defaultSubSynthParameters();
 
 extern OpusSamplerParameters defaultOpusSamplerParameters();
 
 extern FMSynthParameters defaultFMSynthParameters();
+
+extern NoiseSynthParameters defaultNoiseSynthParameters();
 
 extern NoiseSynthParameters defaultNoiseSynthParameters();
 

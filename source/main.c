@@ -23,7 +23,7 @@
 
 #include <3ds.h>
 #include <3ds/os.h>
-#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
+#include <3ds/ndsp/ndsp.h> 
 #include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
@@ -663,6 +663,11 @@ cleanup:
     // 6. Just in case Deinit queued anything (it shouldn't with this new
     //    logic, but for absolute safety), run the cleanup process one last time.
     sample_cleanup_process();
+
+    // Clean up the dummy sample created for the quit fix
+    if (g_dummy_sample_for_quit_fix) {
+        sample_dec_ref_main_thread(g_dummy_sample_for_quit_fix);
+    }
 
     // 7. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);

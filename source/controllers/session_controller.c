@@ -14,8 +14,11 @@
 #include "controllers/controller_step_settings.h"
 #include "event_queue.h"
 #include "sample_bank.h"
+#include <stdio.h>
 
 extern bool g_sample_edited;
+
+Sample *g_dummy_sample_for_quit_fix = NULL;
 
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
                              const u64 delay_initial, const u64 delay_repeat) {
@@ -36,16 +39,14 @@ bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
 void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
                                   bool *should_break_loop) {
     if (kDown & KEY_START) {
-        if (g_sample_edited == false) {
-            Sample *new_sample = sample_create(DEFAULT_SAMPLE_PATHS[0]);
-            if (new_sample) {
-                Event event                                = { .type = SWAP_SAMPLE };
-                event.data.swap_sample_data.slot_id        = 0;
-                event.data.swap_sample_data.new_sample_ptr = new_sample;
-                eventQueuePush(ctx->event_queue, event);
-                g_sample_edited = true;
-            }
-        }
+        // --- FIX FOR HANG AND CRASH ---
+        // Create a dummy sample from romfs. This does two things:
+        // 1. Resets the stdio service to a state that is safe for ndspExit(),
+        //    preventing a hang if the last I/O was on the SD card.
+        // 2. Performs an allocation pattern that prevents a data abort crash on quit.
+        // The sample is held in a global and freed safely during main() cleanup.
+        g_dummy_sample_for_quit_fix = sample_create(DEFAULT_SAMPLE_PATHS[0]);
+        // --- END FIX ---
 
         *ctx->previous_screen_focus    = *ctx->screen_focus;
         *ctx->screen_focus             = FOCUS_TOP;
