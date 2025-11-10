@@ -5,7 +5,7 @@
 #include "noise_synth.h"
 #include "envelope.h"
 #include "engine_constants.h"
-#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
+#include <3ds/ndsp/ndsp.h>
 #include <stdio.h>
 #include <string.h>
 #include <opusfile.h>
@@ -240,12 +240,10 @@ static void audio_thread_entry(void *arg) {
 
                 Sample *new_sample = event.data.swap_sample_data.new_sample_ptr;
 
-                // --- ADD LOCKS ---
                 LightLock_Lock(&s_sample_bank_ptr->lock);
                 Sample *old_sample                  = s_sample_bank_ptr->samples[slot_id];
                 s_sample_bank_ptr->samples[slot_id] = new_sample;
                 LightLock_Unlock(&s_sample_bank_ptr->lock);
-                // --- END LOCKS ---
 
                 if (old_sample != NULL) {
                     // This is now safe, it just queues the old sample
