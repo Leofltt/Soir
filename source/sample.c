@@ -111,7 +111,19 @@ void sample_dec_ref_audio_thread(Sample *sample) {
 
     sample->ref_count--;
     if (sample->ref_count == 0) {
-        cleanupQueuePush(&g_cleanup_queue, sample);
+        // This is called from the audio thread, so we queue for cleanup
+        // on the main thread.
+
+        // --- ADD THIS CHECK ---
+        bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
+        if (!pushed) {
+            // CRITICAL ERROR: The cleanup queue is full.
+            // We are on the audio thread, so we CANNOT block or sleep.
+            // The only safe option is to accept that this Sample
+            // object will be leaked for this session.
+            // A printf() could be added here for debug builds.
+        }
+        // --- END ADDITION ---
     }
 
     LightLock_Unlock(&sample->lock);

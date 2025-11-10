@@ -632,46 +632,47 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
-
     // 1. Signal the audio thread to stop
     should_exit = true;
 
-    // 2. Wake up the audio thread if it's sleeping
+    // 2. Wake up the audio thread in case it is sleeping on the event
     audioThreadSignal();
 
-    // 3. Process the cleanup queue ONE LAST TIME.
-    //    This is critical. If the audio thread is blocked trying to PUSH,
-    //    this POP will free up the lock and allow it to exit.
-    sample_cleanup_process();
-
-    // 4. Now, wait for the audio thread to finish.
-    //    It is guaranteed to not be deadlocked on the cleanup queue.
+    // 3. Wait for the audio thread to fully exit and terminate.
+    //    This blocks the main thread, which is correct and safe
+    //    during the application-quit sequence.
     audioThreadJoin();
 
-    // 5. De-reference all remaining samples.
-    //    The audio thread is dead, so this is 100% safe.
+    // --- At this point, the audio thread (Producer 1) is DEAD. ---
+    // --- It can no longer push to the CleanupQueue.            ---
+
+    // 4. Now, with only the main thread (Producer 2) running, safely
+    //    de-initialize all tracks and the sample bank. This will
+    //    call sample_dec_ref_main_thread() and push all remaining
+    //    samples to the (now MPSC-safe) CleanupQueue.
     cleanupTracks(tracks, N_TRACKS);
     SampleBankDeinit(&g_sample_bank);
 
-    // 6. Process all samples that were just queued by the cleanup above.
+    // 5. Finally, with all producers dead and all resources queued,
+    //    drain the CleanupQueue one last time. This is 100% safe.
     sample_cleanup_process();
 
-    // 7. Shut down NDSP (audio hardware)
+    // 6. Shut down NDSP (audio hardware)
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
-    // 8. Shut down graphics systems
+    // 7. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
 
-    // 9. Shut down services
+    // 8. Shut down services
     romfsExit();
     gfxExit();
 
     return ret;
-}
+} // end of main()
