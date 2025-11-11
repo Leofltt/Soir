@@ -4,6 +4,7 @@
 #include "synth.h"
 #include "fm_osc.h"
 #include "track_parameters.h"
+#include "envelope.h"
 #include <stdlib.h>
 #ifndef TESTING
 #include <3ds.h>
@@ -29,6 +30,7 @@ void Track_deinit(Track *track) {
                 sample_dec_ref_main_thread(sampler->sample);
             }
             if (sampler->env) {
+                Envelope_deinit(sampler->env);
                 linearFree(sampler->env);
             }
             linearFree(sampler);
@@ -38,6 +40,7 @@ void Track_deinit(Track *track) {
                 linearFree(subsynth->osc);
             }
             if (subsynth->env) {
+                Envelope_deinit(subsynth->env);
                 linearFree(subsynth->env);
             }
             linearFree(subsynth);
@@ -51,17 +54,20 @@ void Track_deinit(Track *track) {
                     linearFree(fmsynth->fm_op->modulator);
                 }
                 if (fmsynth->fm_op->mod_envelope) {
+                    Envelope_deinit(fmsynth->fm_op->mod_envelope);
                     linearFree(fmsynth->fm_op->mod_envelope);
                 }
                 linearFree(fmsynth->fm_op);
             }
             if (fmsynth->carrierEnv) {
+                Envelope_deinit(fmsynth->carrierEnv);
                 linearFree(fmsynth->carrierEnv);
             }
             linearFree(fmsynth);
         } else if (track->instrument_type == NOISE_SYNTH) {
             NoiseSynth *noise_synth = (NoiseSynth *) track->instrument_data;
             if (noise_synth->env) {
+                Envelope_deinit(noise_synth->env);
                 linearFree(noise_synth->env);
             }
             linearFree(noise_synth);
@@ -306,18 +312,6 @@ void updateTrack(Track *track, Clock *clock) {
 
 void cleanupTracks(Track *tracks, int n_tracks) {
     for (int i = 0; i < n_tracks; i++) {
-        Track *track = &tracks[i];
-        if (track && track->instrument_data) {
-            // This is the only part of Track_deinit that manages
-            // malloc'd memory, so it's the only part we need to run.
-            if (track->instrument_type == OPUS_SAMPLER) {
-                Sampler *sampler = (Sampler *) track->instrument_data;
-                if (sampler->sample) {
-                    // This will queue the sample for freeing
-                    sample_dec_ref_main_thread(sampler->sample);
-                    sampler->sample = NULL;
-                }
-            }
-        }
+        Track_deinit(&tracks[i]);
     }
 }

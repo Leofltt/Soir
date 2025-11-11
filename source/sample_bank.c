@@ -41,9 +41,15 @@ Sample *SampleBankGetSample(SampleBank *bank, int index) {
     return sample;
 }
 
-const char *SampleBankGetSampleName(SampleBank *bank, int index) {
+void SampleBankGetSampleName(SampleBank *bank, int index, char *buffer, size_t buffer_size) {
+    if (!buffer || buffer_size == 0) {
+        return;
+    }
+
     if (index < 0 || index >= MAX_SAMPLES) {
-        return "Invalid";
+        strncpy(buffer, "Invalid", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
 
     LightLock_Lock(&bank->lock);
@@ -51,9 +57,11 @@ const char *SampleBankGetSampleName(SampleBank *bank, int index) {
     LightLock_Unlock(&bank->lock);
 
     if (sample == NULL) {
-        return "Empty";
+        strncpy(buffer, "Empty", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
-    return sample_get_name(sample); // This function is safe
+    sample_get_name(sample, buffer, buffer_size);
 }
 
 void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {

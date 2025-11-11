@@ -137,23 +137,25 @@ void sample_dec_ref_main_thread(Sample *sample) {
     }
 }
 
-static char sample_name_buffer[64];
+void sample_get_name(const Sample *sample, char *buffer, size_t buffer_size) {
+    if (!buffer || buffer_size == 0) {
+        return;
+    }
 
-const char *sample_get_name(const Sample *sample) {
     if (!sample || !sample->path) {
-        return "---";
+        strncpy(buffer, "---", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
 
     const char *last_slash = strrchr(sample->path, '/');
     const char *name_start = last_slash ? last_slash + 1 : sample->path;
 
-    strncpy(sample_name_buffer, name_start, sizeof(sample_name_buffer) - 1);
-    sample_name_buffer[sizeof(sample_name_buffer) - 1] = '\0';
+    strncpy(buffer, name_start, buffer_size - 1);
+    buffer[buffer_size - 1] = '\0';
 
-    char *dot = strrchr(sample_name_buffer, '.');
+    char *dot = strrchr(buffer, '.');
     if (dot) {
         *dot = '\0';
     }
-
-    return sample_name_buffer;
 }

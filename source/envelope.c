@@ -213,3 +213,10 @@ float nextEnvelopeSample(Envelope *env) {
     }
     return env_value;
 }
+
+void Envelope_deinit(Envelope *env) {
+    if (env && env->env_buffer) {
+        linearFree(env->env_buffer);
+        env->env_buffer = NULL;
+    }
+}

@@ -48,4 +48,6 @@ extern void updateEnvelope(Envelope *env, int attack, int decay, float sustain, 
 
 extern float nextEnvelopeSample(Envelope *env);
 
+extern void Envelope_deinit(Envelope *env);
+
 #endif // ENVELOPE_H

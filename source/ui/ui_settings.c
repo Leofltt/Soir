@@ -198,8 +198,8 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                                             .column        = 1,
                                             .row_in_column = 0,
                                             .type          = PARAM_TYPE_SAMPLE_INDEX };
-        snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
-                 SampleBankGetSampleName(sample_bank, sampler_params->sample_index));
+        SampleBankGetSampleName(sample_bank, sampler_params->sample_index,
+                                list_buffer[id].value_string, sizeof(list_buffer[id].value_string));
         id++;
 
         list_buffer[id] = (ParameterInfo) { .label         = "Pb Mode",
