@@ -2,8 +2,7 @@
 #define SAMPLE_BANK_H
 
 #include "sample.h"
-
-#include <3ds/synchronization.h>
+#include <3ds.h>
 
 #define MAX_SAMPLES 12
 #define DEFAULT_SAMPLE_PATHS_COUNT 5
@@ -16,13 +15,11 @@ typedef struct {
     LightLock lock;
 } SampleBank;
 
-extern SampleBank g_sample_bank;
-
-void        SampleBankInit(SampleBank *bank);
-void        SampleBankDeinit(SampleBank *bank);
-Sample     *SampleBankGetSample(SampleBank *bank, int index);
-const char *SampleBankGetSampleName(SampleBank *bank, int index);
-void        SampleBankLoadSample(SampleBank *bank, int index, const char *path);
-int         SampleBankGetLoadedSampleCount(SampleBank *bank);
+void    SampleBankInit(SampleBank *bank);
+void    SampleBankDeinit(SampleBank *bank);
+Sample *SampleBankGetSample(SampleBank *bank, int index);
+void    SampleBankGetSampleName(SampleBank *bank, int index, char *buffer, size_t buffer_size);
+void    SampleBankLoadSample(SampleBank *bank, int index, const char *path);
+int     SampleBankGetLoadedSampleCount(SampleBank *bank);
 
 #endif // SAMPLE_BANK_H

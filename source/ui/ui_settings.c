@@ -57,8 +57,12 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                                         .column        = 0,
                                         .row_in_column = 3,
                                         .type          = PARAM_TYPE_FILTER_TYPE };
+    int filter_type = params->ndsp_filter_type;
+    if (filter_type < 0 || filter_type >= 6) {
+        filter_type = 0;
+    }
     snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
-             ndsp_biquad_filter_names[params->ndsp_filter_type]);
+             ndsp_biquad_filter_names[filter_type]);
     id++;
 
     // Column 1: Instrument-specific Parameters
@@ -82,8 +86,12 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                                             .column        = 1,
                                             .row_in_column = 1,
                                             .type          = PARAM_TYPE_WAVEFORM };
+        int waveform    = synth_params->osc_waveform;
+        if (waveform < 0 || waveform >= WAVEFORM_COUNT) {
+            waveform = 0;
+        }
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
-                 waveform_names[synth_params->osc_waveform]);
+                 waveform_names[waveform]);
         id++;
 
         list_buffer[id] = (ParameterInfo) { .label         = "Pulse Width",
@@ -190,8 +198,8 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                                             .column        = 1,
                                             .row_in_column = 0,
                                             .type          = PARAM_TYPE_SAMPLE_INDEX };
-        snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
-                 SampleBankGetSampleName(sample_bank, sampler_params->sample_index));
+        SampleBankGetSampleName(sample_bank, sampler_params->sample_index,
+                                list_buffer[id].value_string, sizeof(list_buffer[id].value_string));
         id++;
 
         list_buffer[id] = (ParameterInfo) { .label         = "Pb Mode",

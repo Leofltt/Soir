@@ -7,6 +7,7 @@
 #include "samplers.h"    // For OpusSamplerParameters
 #include "noise_synth.h" // For NoiseSynthParameters
 #include "track.h"       // For InstrumentType
+#include "sample.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -22,14 +23,14 @@ typedef enum {
     RESUME_CLOCK,
     SET_BPM,
     SET_BEATS_PER_BAR,
-    LOAD_SAMPLE
+    SWAP_SAMPLE
 
 } EventType;
 
 typedef struct {
-    int  slot_id;
-    char path[MAX_SAMPLE_PATH_LENGTH];
-} LoadSampleData;
+    int     slot_id;
+    Sample *new_sample_ptr;
+} SwapSampleData;
 
 typedef struct {
     EventType type;
@@ -73,7 +74,7 @@ typedef struct {
             int beats;
         } beats_data;
 
-        LoadSampleData load_sample_data;
+        SwapSampleData swap_sample_data;
 
     } data;
 } Event;

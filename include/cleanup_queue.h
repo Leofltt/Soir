@@ -4,7 +4,7 @@
 #include <3ds.h>
 #include <stdatomic.h>
 
-#define CLEANUP_QUEUE_SIZE 128
+#define CLEANUP_QUEUE_SIZE 512
 
 typedef struct {
     Sample    *samples[CLEANUP_QUEUE_SIZE];

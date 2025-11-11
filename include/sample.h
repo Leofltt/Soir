@@ -1,7 +1,9 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
-#ifndef TESTING
+#ifdef TESTING
+#include "mock_3ds.h"
+#else
 #include <opusfile.h>
 #include <3ds/synchronization.h>
 #endif
@@ -20,8 +22,8 @@ void    sample_inc_ref(Sample *sample);
 void    sample_dec_ref_audio_thread(Sample *sample);
 void    sample_dec_ref_main_thread(Sample *sample);
 
-void        sample_cleanup_init(void);
-void        sample_cleanup_process(void);
-const char *sample_get_name(const Sample *sample);
+void sample_cleanup_init(void);
+void sample_cleanup_process(void);
+void sample_get_name(const Sample *sample, char *buffer, size_t buffer_size);
 
 #endif // SAMPLE_H

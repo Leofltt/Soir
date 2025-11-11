@@ -171,8 +171,9 @@ void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
 
             int sample_index = i * num_cols + j;
             if (sample_index < MAX_SAMPLES) {
-                const char *sample_name = SampleBankGetSampleName(bank, sample_index);
-                u32         fill_color =
+                char sample_name[64];
+                SampleBankGetSampleName(bank, sample_index, sample_name, sizeof(sample_name));
+                u32 fill_color =
                     (strcmp(sample_name, "Empty") == 0) ? CLR_DARK_GRAY : CLR_LIGHT_GRAY;
                 u32 border_color = fill_color; // Default to fill color
 

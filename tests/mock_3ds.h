@@ -55,6 +55,12 @@ void       mock_set_system_tick(u64 ticks);
 void       mock_advance_system_tick(u64 ticks);
 u64        svcGetSystemTick(void);
 
+// Mock for synchronization
+typedef u32 LightLock;
+#define LightLock_Init(lock)
+#define LightLock_Lock(lock)
+#define LightLock_Unlock(lock)
+
 // Memory allocation macros
 #ifndef linearAlloc
 #define linearAlloc malloc
@@ -62,6 +68,7 @@ u64        svcGetSystemTick(void);
 #endif
 
 // Mock Opus types
+typedef int64_t            opus_int64;
 typedef struct OggOpusFile OggOpusFile;
 
 // Constants

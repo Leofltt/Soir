@@ -13,17 +13,16 @@ typedef struct Session   Session;
 
 #define MAX_VIEW_PARAMS 16
 typedef enum {
-    PARAM_TYPE_GENERIC,
     PARAM_TYPE_FLOAT_0_1,   // e.g., Volume
     PARAM_TYPE_FLOAT_N1_1,  // e.g., Pan
     PARAM_TYPE_HZ,          // e.g., Filter Cutoff
     PARAM_TYPE_MIDI_NOTE,   // e.g., Osc Freq
-    PARAM_TYPE_WAVEFORM,    // e.g., SubSynth waveform
-    PARAM_TYPE_FILTER_TYPE, // e.g., Filter Type
+    PARAM_TYPE_WAVEFORM,    // Polyblep osc waveform
+    PARAM_TYPE_FILTER_TYPE, // NDSP Filter Type
     PARAM_TYPE_SAMPLE_INDEX,
     PARAM_TYPE_PLAYBACK_MODE,
-    PARAM_TYPE_MOD_RATIO,       // For FM_SYNTH
-    PARAM_TYPE_ENVELOPE_BUTTON, // This replaces your bool is_envelope_button
+    PARAM_TYPE_MOD_RATIO, // For FM_SYNTH
+    PARAM_TYPE_ENVELOPE_BUTTON,
     PARAM_TYPE_INT,
     // ... add more types as needed
 } ParameterType;

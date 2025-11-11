@@ -16,7 +16,9 @@ void sample_cleanup_init(void) {
 void sample_cleanup_process(void) {
     Sample *s = NULL;
     while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        _sample_destroy(s);
+        // The audio thread queued this. Now the main thread
+        // (at quit time) is responsible for decrementing its reference.
+        sample_dec_ref_main_thread(s);
     }
 }
 
@@ -97,28 +99,23 @@ void sample_inc_ref(Sample *sample) {
 }
 
 // This function is called by the audio thread.
-// It must NOT call linearFree. It must queue the free.
+// It must NOT lock. It must just queue the sample.
 void sample_dec_ref_audio_thread(Sample *sample) {
     if (!sample)
         return;
 
-    LightLock_Lock(&sample->lock);
-
-    if (sample->ref_count <= 0) {
-        LightLock_Unlock(&sample->lock);
-        return;
+    // DO NOT lock. DO NOT decrement. Just queue it.
+    // The main thread will handle the decrement AND free *at quit time*.
+    bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
+    if (!pushed) {
+        // CRITICAL ERROR: The cleanup queue is full.
+        // This sample will be leaked. This is the only safe option
+        // on the audio thread.
     }
-
-    sample->ref_count--;
-    if (sample->ref_count == 0) {
-        cleanupQueuePush(&g_cleanup_queue, sample);
-    }
-
-    LightLock_Unlock(&sample->lock);
 }
 
 // This function is called by the main thread.
-// It can (and should) free the memory immediately.
+// It is NOW ONLY CALLED AT QUIT TIME.
 void sample_dec_ref_main_thread(Sample *sample) {
     if (!sample)
         return;
@@ -132,29 +129,33 @@ void sample_dec_ref_main_thread(Sample *sample) {
 
     sample->ref_count--;
     if (sample->ref_count == 0) {
-        cleanupQueuePush(&g_cleanup_queue, sample);
+        // We are on the main thread, and NDSP is off, so we can destroy.
+        LightLock_Unlock(&sample->lock);
+        _sample_destroy(sample);
+    } else {
+        LightLock_Unlock(&sample->lock);
     }
-
-    LightLock_Unlock(&sample->lock);
 }
 
-static char sample_name_buffer[64];
+void sample_get_name(const Sample *sample, char *buffer, size_t buffer_size) {
+    if (!buffer || buffer_size == 0) {
+        return;
+    }
 
-const char *sample_get_name(const Sample *sample) {
     if (!sample || !sample->path) {
-        return "---";
+        strncpy(buffer, "---", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
 
     const char *last_slash = strrchr(sample->path, '/');
     const char *name_start = last_slash ? last_slash + 1 : sample->path;
 
-    strncpy(sample_name_buffer, name_start, sizeof(sample_name_buffer) - 1);
-    sample_name_buffer[sizeof(sample_name_buffer) - 1] = '\0';
+    strncpy(buffer, name_start, buffer_size - 1);
+    buffer[buffer_size - 1] = '\0';
 
-    char *dot = strrchr(sample_name_buffer, '.');
+    char *dot = strrchr(buffer, '.');
     if (dot) {
         *dot = '\0';
     }
-
-    return sample_name_buffer;
 }

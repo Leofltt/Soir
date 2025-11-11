@@ -1,27 +1,26 @@
 #include "event_queue.h"
-#include <3ds/synchronization.h> // <-- ADD THIS
 
 void eventQueueInit(EventQueue *q) {
     atomic_init(&q->head, 0);
     atomic_init(&q->tail, 0);
-    LightLock_Init(&q->lock); // <-- ADD THIS
+    LightLock_Init(&q->lock);
 }
 
 bool eventQueuePush(EventQueue *q, Event e) {
     // MPSC: Must be locked to protect against multiple producers
-    LightLock_Lock(&q->lock); // <-- ADD THIS
+    LightLock_Lock(&q->lock);
 
     int head      = atomic_load_explicit(&q->head, memory_order_relaxed);
     int next_head = (head + 1) % EVENT_QUEUE_SIZE;
     if (next_head == atomic_load_explicit(&q->tail, memory_order_acquire)) {
         // Queue is full
-        LightLock_Unlock(&q->lock); // <-- ADD THIS
+        LightLock_Unlock(&q->lock);
         return false;
     }
     q->events[head] = e;
     atomic_store_explicit(&q->head, next_head, memory_order_release);
 
-    LightLock_Unlock(&q->lock); // <-- ADD THIS
+    LightLock_Unlock(&q->lock);
     return true;
 }
 

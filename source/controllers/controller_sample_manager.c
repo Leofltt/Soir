@@ -2,6 +2,9 @@
 #include "sample_bank.h"
 #include "sample_browser.h"
 #include "session.h"
+#include "sample.h"
+
+extern bool g_sample_edited;
 
 void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
     if (*ctx->is_selecting_sample) {
@@ -23,15 +26,19 @@ void handleInputSampleManager(SessionContext *ctx, u32 kDown) {
             const char *path_ptr    = SampleBrowserGetSamplePath(ctx->sample_browser,
                                                                  *ctx->selected_sample_browser_index);
             if (path_ptr != NULL) {
-                Event event                         = { .type = LOAD_SAMPLE };
-                event.data.load_sample_data.slot_id = sample_slot;
-                // Copy the path string into the event data
-                strncpy(event.data.load_sample_data.path, path_ptr, MAX_SAMPLE_PATH_LENGTH - 1);
-                event.data.load_sample_data.path[MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
+                Sample *new_sample = sample_create(path_ptr);
 
-                eventQueuePush(ctx->event_queue, event);
+                if (new_sample) {
+                    Event event                                = { .type = SWAP_SAMPLE };
+                    event.data.swap_sample_data.slot_id        = sample_slot;
+                    event.data.swap_sample_data.new_sample_ptr = new_sample;
 
-                *ctx->is_selecting_sample = false;
+                    eventQueuePush(ctx->event_queue, event);
+                    g_sample_edited           = true; // <-- ADD THIS LINE
+                    *ctx->is_selecting_sample = false;
+                } else {
+                    *ctx->is_selecting_sample = false;
+                }
             }
         }
         if (kDown & KEY_B) {

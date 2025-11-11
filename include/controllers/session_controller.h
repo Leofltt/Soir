@@ -2,8 +2,11 @@
 #define SESSION_CONTROLLER_H
 
 #include "session.h" // Include the data structures
+#include "sample.h"
 #include <3ds.h>
 #include <stdbool.h>
+
+extern Sample *g_dummy_sample_for_quit_fix;
 
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
                              const u64 delay_initial, const u64 delay_repeat);

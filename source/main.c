@@ -23,7 +23,7 @@
 
 #include <3ds.h>
 #include <3ds/os.h>
-#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
+#include <3ds/ndsp/ndsp.h>
 #include <citro2d.h>
 #include <opusfile.h>
 #include <stdio.h>
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
     }
     *osc = (PolyBLEPOscillator) { .frequency   = 220.0f,
                                   .samplerate  = SAMPLERATE,
-                                  .waveform    = SINE,
+                                  .waveform    = SQUARE,
                                   .phase       = 0.,
                                   .pulse_width = 0.5f,
                                   .phase_inc   = 220.0f * M_TWOPI / SAMPLERATE };
@@ -580,8 +580,6 @@ int main(int argc, char **argv) {
             break;
         }
 
-        sample_cleanup_process();
-
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
@@ -632,46 +630,51 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
-
     // 1. Signal the audio thread to stop
     should_exit = true;
 
-    // 2. Wake up the audio thread if it's sleeping
+    // 2. Wake up the audio thread in case it is sleeping on the event
     audioThreadSignal();
 
-    // 3. Process the cleanup queue ONE LAST TIME.
-    //    This is critical. If the audio thread is blocked trying to PUSH,
-    //    this POP will free up the lock and allow it to exit.
-    sample_cleanup_process();
-
-    // 4. Now, wait for the audio thread to finish.
-    //    It is guaranteed to not be deadlocked on the cleanup queue.
+    // 3. Wait for the audio thread to fully exit and terminate.
+    //    This blocks the main thread, which is correct.
     audioThreadJoin();
 
-    // 5. De-reference all remaining samples.
-    //    The audio thread is dead, so this is 100% safe.
-    cleanupTracks(tracks, N_TRACKS);
-    SampleBankDeinit(&g_sample_bank);
+    // --- AUDIO THREAD IS DEAD ---
 
-    // 6. Process all samples that were just queued by the cleanup above.
-    sample_cleanup_process();
-
-    // 7. Shut down NDSP (audio hardware)
+    // 4. Shut down NDSP (audio hardware) FIRST
+    // This stops all DMA and makes it 100% safe to free audio memory.
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
-    // 8. Shut down graphics systems
+    // --- NDSP IS DEAD ---
+
+    // Decrement references from active tracks and bank slots.
+    // These calls will now safely free the samples.
+    cleanupTracks(tracks, N_TRACKS);  // Calls sample_dec_ref_main_thread
+    SampleBankDeinit(&g_sample_bank); // ALSO calls sample_dec_ref_main_thread
+
+    // 6. Just in case Deinit queued anything (it shouldn't with this new
+    //    logic, but for absolute safety), run the cleanup process one last time.
+    sample_cleanup_process();
+
+    // Clean up the dummy sample created for the quit fix
+    if (g_dummy_sample_for_quit_fix) {
+        sample_dec_ref_main_thread(g_dummy_sample_for_quit_fix);
+    }
+
+    // 7. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
 
-    // 9. Shut down services
+    // 8. Shut down services
     romfsExit();
     gfxExit();
 
     return ret;
-}
+} // end of main()

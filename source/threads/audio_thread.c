@@ -5,7 +5,7 @@
 #include "noise_synth.h"
 #include "envelope.h"
 #include "engine_constants.h"
-#include <3ds/ndsp/ndsp.h> // Added for ndspChnWaveBufGet
+#include <3ds/ndsp/ndsp.h>
 #include <stdio.h>
 #include <string.h>
 #include <opusfile.h>
@@ -230,25 +230,23 @@ static void audio_thread_entry(void *arg) {
                 setBeatsPerBar(s_clock_ptr, event.data.beats_data.beats);
                 LightLock_Unlock(s_clock_lock_ptr);
                 break;
-            case LOAD_SAMPLE: {
-                int slot_id = event.data.load_sample_data.slot_id;
+            case SWAP_SAMPLE: {
+                int slot_id = event.data.swap_sample_data.slot_id;
                 if (slot_id < 0 || slot_id >= MAX_SAMPLES) {
+                    // new_sample_ptr was malloc'd, we must queue it for freeing
+                    sample_dec_ref_audio_thread(event.data.swap_sample_data.new_sample_ptr);
                     break;
                 }
 
-                g_sample_edited = true; // <-- ADD THIS LINE
+                Sample *new_sample = event.data.swap_sample_data.new_sample_ptr;
 
-                // Get the old sample *before* loading the new one
-                Sample *old_sample = s_sample_bank_ptr->samples[slot_id];
+                LightLock_Lock(&s_sample_bank_ptr->lock);
+                Sample *old_sample                  = s_sample_bank_ptr->samples[slot_id];
+                s_sample_bank_ptr->samples[slot_id] = new_sample;
+                LightLock_Unlock(&s_sample_bank_ptr->lock);
 
-                // Create and assign the new sample
-                s_sample_bank_ptr->samples[slot_id] =
-                    sample_create(event.data.load_sample_data.path);
-
-                // Now, safely decrement the old sample.
                 if (old_sample != NULL) {
-                    // Use the audio thread dec_ref, which queues it for freeing
-                    // on the main thread.
+                    // This is now safe, it just queues the old sample
                     sample_dec_ref_audio_thread(old_sample);
                 }
                 break;

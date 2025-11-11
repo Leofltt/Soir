@@ -33,17 +33,35 @@ Sample *SampleBankGetSample(SampleBank *bank, int index) {
     if (index < 0 || index >= MAX_SAMPLES) {
         return NULL;
     }
-    return bank->samples[index];
+
+    LightLock_Lock(&bank->lock);
+    Sample *sample = bank->samples[index];
+    LightLock_Unlock(&bank->lock);
+
+    return sample;
 }
 
-const char *SampleBankGetSampleName(SampleBank *bank, int index) {
+void SampleBankGetSampleName(SampleBank *bank, int index, char *buffer, size_t buffer_size) {
+    if (!buffer || buffer_size == 0) {
+        return;
+    }
+
     if (index < 0 || index >= MAX_SAMPLES) {
-        return "Invalid";
+        strncpy(buffer, "Invalid", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
-    if (bank->samples[index] == NULL) {
-        return "Empty";
+
+    LightLock_Lock(&bank->lock);
+    Sample *sample = bank->samples[index];
+    LightLock_Unlock(&bank->lock);
+
+    if (sample == NULL) {
+        strncpy(buffer, "Empty", buffer_size - 1);
+        buffer[buffer_size - 1] = '\0';
+        return;
     }
-    return sample_get_name(bank->samples[index]);
+    sample_get_name(sample, buffer, buffer_size);
 }
 
 void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
@@ -56,10 +74,14 @@ void SampleBankLoadSample(SampleBank *bank, int index, const char *path) {
 
 int SampleBankGetLoadedSampleCount(SampleBank *bank) {
     int count = 0;
+
+    LightLock_Lock(&bank->lock);
     for (int i = 0; i < MAX_SAMPLES; i++) {
         if (bank->samples[i] != NULL) {
             count++;
         }
     }
+    LightLock_Unlock(&bank->lock);
+
     return count;
 }
