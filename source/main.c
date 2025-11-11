@@ -46,8 +46,6 @@ static OpusSamplerParameters g_editing_sampler_params;
 static FMSynthParameters     g_editing_fm_synth_params;
 static NoiseSynthParameters  g_editing_noise_synth_params;
 
-bool g_sample_edited = false;
-
 int main(int argc, char **argv) {
     osSetSpeedupEnable(true);
     gfxInitDefault();
@@ -57,6 +55,7 @@ int main(int argc, char **argv) {
     C2D_Prepare();
     initViews();
     sample_cleanup_init();
+    clock_display_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
 
@@ -569,6 +568,7 @@ int main(int argc, char **argv) {
 
     while (aptMainLoop()) {
         hidScanInput();
+        sample_cleanup_process();
 
         u64 now   = svcGetSystemTick();
         u32 kDown = hidKeysDown();
@@ -584,13 +584,13 @@ int main(int argc, char **argv) {
         C2D_TargetClear(topScreen, CLR_BLACK);
         C2D_SceneBegin(topScreen);
 
-        drawMainView(tracks, app_clock, selected_row, selected_col, screen_focus);
+        drawMainView(tracks, selected_row, selected_col, screen_focus);
 
         switch (session.main_screen_view) {
         case VIEW_MAIN:
             break;
         case VIEW_SETTINGS:
-            drawClockSettingsView(app_clock, selected_settings_option);
+            drawClockSettingsView(selected_settings_option);
             break;
         case VIEW_QUIT:
             drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selected_quit_option);
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
             drawTouchScreenSettingsView(selected_touch_option, screen_focus);
             break;
         case VIEW_TOUCH_CLOCK_SETTINGS:
-            drawTouchClockSettingsView(app_clock, selected_touch_clock_option);
+            drawTouchClockSettingsView(selected_touch_clock_option);
             break;
         case VIEW_SAMPLE_MANAGER:
             drawSampleManagerView(&g_sample_bank, selected_sample_row, selected_sample_col,

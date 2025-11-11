@@ -16,8 +16,6 @@
 #include "sample_bank.h"
 #include <stdio.h>
 
-extern bool g_sample_edited;
-
 Sample *g_dummy_sample_for_quit_fix = NULL;
 
 bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,

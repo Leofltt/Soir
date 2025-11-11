@@ -8,6 +8,7 @@
 #include "noise_synth.h" // For NoiseSynthParameters
 #include "track.h"       // For InstrumentType
 #include "sample.h"
+#include "envelope.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -74,7 +75,7 @@ typedef struct {
             int beats;
         } beats_data;
 
-        SwapSampleData swap_sample_data;
+        SwapSampleData     swap_sample_data;
 
     } data;
 } Event;

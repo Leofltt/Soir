@@ -14,6 +14,7 @@
 #include "clock.h"
 #include <3ds.h>
 #include "controllers/session_controller.h"
+#include "envelope.h"
 
 // Helper for clamping values (assuming it's defined elsewhere or will be defined)
 #ifndef clamp
@@ -203,6 +204,33 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 } else if (track->instrument_type == NOISE_SYNTH) {
                     memcpy(seq_step->data->instrument_data, ctx->editing_noise_synth_params,
                            sizeof(NoiseSynthParameters));
+                }
+
+                // --- Pre-render Envelope on Main Thread ---
+                if (track->instrument_type == SUB_SYNTH) {
+                    SubSynth           *ss = (SubSynth *) track->instrument_data;
+                    SubSynthParameters *p  = (SubSynthParameters *) seq_step->data->instrument_data;
+                    updateEnvelope(ss->env, p->env_atk, p->env_dec, p->env_sus_level, p->env_rel,
+                                   p->env_dur);
+                } else if (track->instrument_type == OPUS_SAMPLER) {
+                    Sampler               *s = (Sampler *) track->instrument_data;
+                    OpusSamplerParameters *p =
+                        (OpusSamplerParameters *) seq_step->data->instrument_data;
+                    updateEnvelope(s->env, p->env_atk, p->env_dec, p->env_sus_level, p->env_rel,
+                                   p->env_dur);
+                } else if (track->instrument_type == NOISE_SYNTH) {
+                    NoiseSynth           *ns = (NoiseSynth *) track->instrument_data;
+                    NoiseSynthParameters *p =
+                        (NoiseSynthParameters *) seq_step->data->instrument_data;
+                    updateEnvelope(ns->env, p->env_atk, p->env_dec, p->env_sus_level, p->env_rel,
+                                   p->env_dur);
+                } else if (track->instrument_type == FM_SYNTH) {
+                    FMSynth           *fs = (FMSynth *) track->instrument_data;
+                    FMSynthParameters *p  = (FMSynthParameters *) seq_step->data->instrument_data;
+                    updateEnvelope(fs->carrierEnv, p->carrier_env_atk, p->carrier_env_dec,
+                                   p->carrier_env_sus_level, p->carrier_env_rel, p->env_dur);
+                    updateEnvelope(fs->fm_op->mod_envelope, p->mod_env_atk, p->mod_env_dec,
+                                   p->mod_env_sus_level, p->mod_env_rel, p->env_dur);
                 }
 
                 // Push event for the single step update

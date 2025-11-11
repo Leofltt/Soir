@@ -44,14 +44,13 @@ extern C2D_Text    text_obj;
 extern bool initViews();
 extern void deinitViews();
 extern void drawStepsBar(int cur_step, int steps_per_beat);
-extern void drawTrackbar(Clock *clock, Track *tracks);
+extern void drawTrackbar(Track *tracks);
 extern void drawTracksSequencers(Track *tracks, int cur_step);
-extern void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col,
-                         ScreenFocus focus);
-extern void drawClockSettingsView(Clock *clock, int selected_option);
+extern void drawMainView(Track *tracks, int selected_row, int selected_col, ScreenFocus focus);
+extern void drawClockSettingsView(int selected_option);
 extern void drawQuitMenu(const char *options[], int num_options, int selected_option);
 extern void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus);
-extern void drawTouchClockSettingsView(Clock *clock, int selected_option);
+extern void drawTouchClockSettingsView(int selected_option);
 extern void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
                                   bool is_selecting_sample, int selected_sample_browser_index,
                                   SampleBrowser *browser, ScreenFocus focus);

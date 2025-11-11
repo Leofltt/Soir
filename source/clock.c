@@ -11,6 +11,13 @@
 
 const char *clockStatusName[] = { "Stopped", "Playing", "Paused" };
 
+LightLock    g_clock_display_lock;
+ClockDisplay g_clock_display = { 0 };
+
+void clock_display_init(void) {
+    LightLock_Init(&g_clock_display_lock);
+}
+
 void resetBarBeats(Clock *clock) {
     if (clock->barBeats) {
         clock->barBeats->bar       = 0;

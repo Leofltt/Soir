@@ -1,7 +1,8 @@
 #include "ui/ui.h"
-#include "ui_constants.h"
+#include "clock.h"
 #include "engine_constants.h"
 #include "session.h"
+#include "ui_constants.h"
 #include <citro2d.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,7 +55,11 @@ static const char *get_status_symbol(ClockStatus status) {
     }
 }
 
-void drawTrackbar(Clock *clock, Track *tracks) {
+void drawTrackbar(Track *tracks) {
+    LightLock_Lock(&g_clock_display_lock);
+    ClockDisplay clock_display = g_clock_display;
+    LightLock_Unlock(&g_clock_display_lock);
+
     float track_height = SCREEN_HEIGHT / 13;
     for (int i = 0; i < N_TRACKS + 1; i++) {
         if (i == 0) {
@@ -71,12 +76,7 @@ void drawTrackbar(Clock *clock, Track *tracks) {
             // Draw bar.beat text
             C2D_TextBufClear(text_buf);
             char buf[64];
-            if (!clock || !clock->barBeats) {
-                snprintf(buf, sizeof(buf), "0.0");
-            } else {
-                snprintf(buf, sizeof(buf), "%d.%d", clock->barBeats->bar,
-                         clock->barBeats->beat + 1);
-            }
+            snprintf(buf, sizeof(buf), "%d.%d", clock_display.bar, clock_display.beat + 1);
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buf);
             C2D_TextOptimize(&text_obj);
 
@@ -92,7 +92,8 @@ void drawTrackbar(Clock *clock, Track *tracks) {
 
             // Draw bpm status text
             C2D_TextBufClear(text_buf);
-            snprintf(buf, sizeof(buf), "%.0f %s", clock->bpm, get_status_symbol(clock->status));
+            snprintf(buf, sizeof(buf), "%.0f %s", clock_display.bpm,
+                     get_status_symbol(clock_display.status));
             C2D_TextFontParse(&text_obj, font_angular, text_buf, buf);
             C2D_TextOptimize(&text_obj);
 
@@ -208,31 +209,20 @@ static void drawSelectionOverlay(int row, int col, bool is_focused) {
     }
 }
 
-void drawMainView(Track *tracks, Clock *clock, int selected_row, int selected_col,
-                  ScreenFocus focus) {
-    int cur_step       = -1; // Default to no active step
-    int steps_per_beat = 4;  // Default value, will be updated if tracks[0].sequencer exists
+void drawMainView(Track *tracks, int selected_row, int selected_col, ScreenFocus focus) {
+    LightLock_Lock(&g_clock_display_lock);
+    ClockDisplay clock_display = g_clock_display;
+    LightLock_Unlock(&g_clock_display_lock);
+
+    int cur_step       = clock_display.cur_step;
+    int steps_per_beat = 4; // Default value, will be updated if tracks[0].sequencer exists
 
     if (tracks && tracks[0].sequencer) {
-        steps_per_beat  = tracks[0].sequencer->steps_per_beat;
-        int total_steps = tracks[0].sequencer->n_beats * steps_per_beat;
-
-        if (clock->status == PLAYING || clock->status == PAUSED) {
-            if (steps_per_beat > 0) {
-                int clock_steps_per_seq_step = STEPS_PER_BEAT / steps_per_beat;
-                if (clock_steps_per_seq_step > 0 && total_steps > 0) {
-                    cur_step = ((clock->barBeats->steps > 0 ? clock->barBeats->steps - 1 : 0) /
-                                clock_steps_per_seq_step) %
-                               total_steps;
-                }
-            }
-        } else { // STOPPED
-            cur_step = tracks[0].sequencer->cur_step;
-        }
+        steps_per_beat = tracks[0].sequencer->steps_per_beat;
     }
 
     drawStepsBar(cur_step, steps_per_beat);
-    drawTrackbar(clock, tracks);
+    drawTrackbar(tracks);
     drawTracksSequencers(tracks, cur_step);
     drawSelectionOverlay(selected_row, selected_col, focus == FOCUS_TOP);
 }

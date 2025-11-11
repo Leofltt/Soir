@@ -1,5 +1,6 @@
 #include "threads/audio_thread.h"
 #include "audio_utils.h"
+#include "clock.h"
 #include "synth.h"
 #include "samplers.h"
 #include "noise_synth.h"
@@ -9,8 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <opusfile.h>
-
-extern bool g_sample_edited;
 
 // Static global variables for this module
 static Thread     s_audio_thread;
@@ -75,6 +74,8 @@ static void processSequencerTick() {
 
 static void audio_thread_entry(void *arg) {
     while (!*s_should_exit_ptr) {
+        ClockDisplay temp_display;
+
         LightLock_Lock(s_clock_lock_ptr);
         int ticks_to_process = updateClock(s_clock_ptr);
 
@@ -85,7 +86,22 @@ static void audio_thread_entry(void *arg) {
                 processSequencerTick();
             }
         }
+
+        temp_display.bar           = s_clock_ptr->barBeats->bar;
+        temp_display.beat          = s_clock_ptr->barBeats->beat;
+        temp_display.bpm           = s_clock_ptr->bpm;
+        temp_display.status        = s_clock_ptr->status;
+        temp_display.beats_per_bar = s_clock_ptr->barBeats->beats_per_bar;
+        if (s_tracks_ptr && s_tracks_ptr[0].sequencer) {
+            temp_display.cur_step = s_tracks_ptr[0].sequencer->cur_step;
+        } else {
+            temp_display.cur_step = 0;
+        }
         LightLock_Unlock(s_clock_lock_ptr);
+
+        LightLock_Lock(&g_clock_display_lock);
+        g_clock_display = temp_display;
+        LightLock_Unlock(&g_clock_display_lock);
 
         Event event;
         while (eventQueuePop(s_event_queue_ptr, &event)) {
@@ -105,12 +121,12 @@ static void audio_thread_entry(void *arg) {
                         &event.data.step_data.instrument_specific_params.subsynth_params;
                     SubSynth *ss = (SubSynth *) track->instrument_data;
                     if (subsynthParams && ss) {
-                        setWaveform(ss->osc, subsynthParams->osc_waveform);
-                        setPulseWidth(ss->osc, subsynthParams->pulse_width);
-                        setOscFrequency(ss->osc, subsynthParams->osc_freq);
                         updateEnvelope(ss->env, subsynthParams->env_atk, subsynthParams->env_dec,
                                        subsynthParams->env_sus_level, subsynthParams->env_rel,
                                        subsynthParams->env_dur);
+                        setWaveform(ss->osc, subsynthParams->osc_waveform);
+                        setPulseWidth(ss->osc, subsynthParams->pulse_width);
+                        setOscFrequency(ss->osc, subsynthParams->osc_freq);
                         if (event.type == TRIGGER_STEP) {
                             triggerEnvelope(ss->env);
                         }
@@ -120,6 +136,9 @@ static void audio_thread_entry(void *arg) {
                         &event.data.step_data.instrument_specific_params.sampler_params;
                     Sampler *s = (Sampler *) track->instrument_data;
                     if (opusSamplerParams && s) {
+                        updateEnvelope(s->env, opusSamplerParams->env_atk,
+                                       opusSamplerParams->env_dec, opusSamplerParams->env_sus_level,
+                                       opusSamplerParams->env_rel, opusSamplerParams->env_dur);
                         Sample *new_sample =
                             SampleBankGetSample(s_sample_bank_ptr, opusSamplerParams->sample_index);
                         if (new_sample != s->sample) {
@@ -131,9 +150,6 @@ static void audio_thread_entry(void *arg) {
                         s->playback_mode  = opusSamplerParams->playback_mode;
                         s->current_frame  = s->start_position / NCHANNELS;
                         s->finished       = false;
-                        updateEnvelope(s->env, opusSamplerParams->env_atk,
-                                       opusSamplerParams->env_dec, opusSamplerParams->env_sus_level,
-                                       opusSamplerParams->env_rel, opusSamplerParams->env_dur);
                         if (event.type == TRIGGER_STEP) {
                             triggerEnvelope(s->env);
                         }
@@ -143,17 +159,18 @@ static void audio_thread_entry(void *arg) {
                         &event.data.step_data.instrument_specific_params.fm_synth_params;
                     FMSynth *fs = (FMSynth *) track->instrument_data;
                     if (fmSynthParams && fs) {
-                        FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
-                        FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
-                        FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
-                        FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
                         updateEnvelope(fs->carrierEnv, fmSynthParams->carrier_env_atk,
                                        fmSynthParams->carrier_env_dec,
                                        fmSynthParams->carrier_env_sus_level,
                                        fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
                         updateEnvelope(fs->fm_op->mod_envelope, fmSynthParams->mod_env_atk,
-                                       fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
+                                       fmSynthParams->mod_env_dec,
+                                       fmSynthParams->mod_env_sus_level,
                                        fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
+                        FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
+                        FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);
+                        FMOpSetModIndex(fs->fm_op, fmSynthParams->mod_index);
+                        FMOpSetModDepth(fs->fm_op, fmSynthParams->mod_depth);
                         if (event.type == TRIGGER_STEP) {
                             triggerEnvelope(fs->carrierEnv);
                             triggerEnvelope(fs->fm_op->mod_envelope);

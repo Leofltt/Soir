@@ -5,7 +5,9 @@
 #include "../tests/mock_3ds.h"
 #else
 #include <3ds/types.h>
+#include <3ds/synchronization.h>
 #endif
+#include <stdatomic.h>
 
 #define MAX_ENVELOPE_DURATION_MS 5000
 
@@ -15,8 +17,12 @@ typedef struct {
     EnvGate gate;
     size_t  env_pos; // Changed from int to size_t
     float  *env_buffer;
+    float  *pending_buffer;
     float   sr;
     size_t  buffer_size; // Added to track allocated buffer size
+
+    atomic_bool buffer_is_pending;
+    LightLock   lock;
 
     // Env params
     int   atk;

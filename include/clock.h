@@ -4,6 +4,7 @@
 #ifdef TESTING
 #include "../tests/mock_3ds.h"
 #else
+#include <3ds/synchronization.h>
 #include <3ds/types.h>
 #endif
 
@@ -14,6 +15,19 @@
 typedef enum { STOPPED = 0, PLAYING = 1, PAUSED = 2 } ClockStatus;
 
 extern const char *clockStatusName[];
+
+typedef struct {
+    int         bar;
+    int         beat;
+    float       bpm;
+    ClockStatus status;
+    int         cur_step;
+    int         beats_per_bar;
+} ClockDisplay;
+
+extern LightLock    g_clock_display_lock;
+extern ClockDisplay g_clock_display;
+extern void         clock_display_init(void);
 
 typedef struct {
     int bar;

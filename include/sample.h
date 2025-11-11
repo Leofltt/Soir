@@ -24,6 +24,9 @@ void    sample_dec_ref_main_thread(Sample *sample);
 
 void sample_cleanup_init(void);
 void sample_cleanup_process(void);
+void pointer_cleanup_init(void);
+void pointer_cleanup_process(void);
+bool pointer_cleanup_queue_push(void *p);
 void sample_get_name(const Sample *sample, char *buffer, size_t buffer_size);
 
 #endif // SAMPLE_H

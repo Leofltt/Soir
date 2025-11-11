@@ -10,9 +10,18 @@ typedef struct {
     Sample    *samples[CLEANUP_QUEUE_SIZE];
     atomic_int write_ptr;
     atomic_int read_ptr;
-    LightLock  lock;
-} CleanupQueue;
+} SampleCleanupQueue;
 
-void    cleanupQueueInit(CleanupQueue *q);
-bool    cleanupQueuePush(CleanupQueue *q, Sample *s);
-Sample *cleanupQueuePop(CleanupQueue *q);
+void    sampleCleanupQueueInit(SampleCleanupQueue *q);
+bool    sampleCleanupQueuePush(SampleCleanupQueue *q, Sample *s);
+Sample *sampleCleanupQueuePop(SampleCleanupQueue *q);
+
+typedef struct {
+    void      *pointers[CLEANUP_QUEUE_SIZE];
+    atomic_int write_ptr;
+    atomic_int read_ptr;
+} PointerCleanupQueue;
+
+void  pointerCleanupQueueInit(PointerCleanupQueue *q);
+bool  pointerCleanupQueuePush(PointerCleanupQueue *q, void *p);
+void *pointerCleanupQueuePop(PointerCleanupQueue *q);

@@ -11,25 +11,42 @@
 #include <string.h> // For memset
 
 Envelope defaultEnvelopeStruct(float sample_rate) {
-    Envelope env = { .atk         = 50,
-                     .dec         = 300,
-                     .rel         = 100,
-                     .dur         = 1000,
-                     .sus_level   = 0.8,
-                     .sus_time    = 550,
-                     .gate        = ENV_OFF,
-                     .env_pos     = 0,
-                     .sr          = sample_rate,
-                     .env_buffer  = NULL,
-                     .buffer_size = 0 };
+    Envelope env = { .atk            = 50,
+                     .dec            = 300,
+                     .rel            = 100,
+                     .dur            = 1000,
+                     .sus_level      = 0.8,
+                     .sus_time       = 550,
+                     .gate           = ENV_OFF,
+                     .env_pos        = 0,
+                     .sr             = sample_rate,
+                     .env_buffer     = NULL,
+                     .pending_buffer = NULL,
+                     .buffer_size    = 0 };
 
-    // Pre-allocate buffer to the maximum possible size
-    size_t max_size = (size_t) (MAX_ENVELOPE_DURATION_MS * env.sr * 0.001) + 1; // +1 for safety
-    env.env_buffer  = (float *) linearAlloc(max_size * sizeof(float));
-    if (env.env_buffer) {
+    // Pre-allocate buffers to the maximum possible size
+    size_t max_size    = (size_t) (MAX_ENVELOPE_DURATION_MS * env.sr * 0.001) + 1; // +1 for safety
+    env.env_buffer     = (float *) linearAlloc(max_size * sizeof(float));
+    env.pending_buffer = (float *) linearAlloc(max_size * sizeof(float));
+
+    if (env.env_buffer && env.pending_buffer) {
         env.buffer_size = max_size;
         memset(env.env_buffer, 0, max_size * sizeof(float));
+        memset(env.pending_buffer, 0, max_size * sizeof(float));
+    } else {
+        // Allocation failed, ensure both are NULL
+        if (env.env_buffer)
+            linearFree(env.env_buffer);
+        if (env.pending_buffer)
+            linearFree(env.pending_buffer);
+        env.env_buffer     = NULL;
+        env.pending_buffer = NULL;
+        env.buffer_size    = 0;
     }
+
+    LightLock_Init(&env.lock);
+    atomic_init(&env.buffer_is_pending, false);
+
     return env;
 };
 
@@ -38,8 +55,9 @@ void triggerEnvelope(Envelope *env) {
     env->gate    = ENV_ON;
 };
 
-void renderEnvBuffer(Envelope *env) {
-    if (!env || !env->env_buffer) {
+// Renders the envelope shape into the provided buffer
+static void renderEnvToBuffer(Envelope *env, float *buffer) {
+    if (!env || !buffer) {
         return;
     }
 
@@ -48,69 +66,68 @@ void renderEnvBuffer(Envelope *env) {
     float inc = 0.0f;
 
     // --- Attack Phase ---
-    // Handle 0 attack to prevent divide-by-zero
     if (env->atk > 0) {
         inc = 1.0f / (float) env->atk;
     } else {
-        inc = 0.0f; // No attack
+        inc = 0.0f;
     }
-    // Loop *atk* times (i < env->atk)
-    for (int i = 0; i < env->atk; i++) { // <-- FIX: Was <=
+    for (int i = 0; i < env->atk; i++) {
         if (x < env->buffer_size)
-            env->env_buffer[x] = y;
+            buffer[x] = y;
         y += inc;
         x++;
     }
-    y = 1.0f; // Ensure we are at peak
+    y = 1.0f;
 
     // --- Decay Phase ---
-    // Handle 0 decay
     if (env->dec > 0) {
         inc = (env->sus_level - 1.0f) / (float) env->dec;
     } else {
-        inc = 0.0f; // No decay
+        inc = 0.0f;
     }
-    // Loop *dec* times
-    for (int i = 0; i < env->dec; i++) { // <-- FIX: Was <=
+    for (int i = 0; i < env->dec; i++) {
         if (x < env->buffer_size)
-            env->env_buffer[x] = y;
+            buffer[x] = y;
         y += inc;
         x++;
     }
-    y = env->sus_level; // Ensure we are at sustain level
+    y = env->sus_level;
 
     // --- Sustain Phase ---
-    // Loop *sus_time* times
-    // (Ensure sus_time is not negative)
     int sus_time_safe = (env->sus_time < 0) ? 0 : env->sus_time;
-    for (int i = 0; i < sus_time_safe; i++) { // <-- FIX: Was <=
+    for (int i = 0; i < sus_time_safe; i++) {
         if (x < env->buffer_size)
-            env->env_buffer[x] = y;
+            buffer[x] = y;
         x++;
     }
-    // y is still env->sus_level
 
     // --- Release Phase ---
-    // Handle 0 release
     if (env->rel > 0) {
         inc = (0.0f - env->sus_level) / (float) env->rel;
     } else {
-        inc = 0.0f; // No release
+        inc = 0.0f;
     }
-    // Loop *rel* times
-    for (int i = 0; i < env->rel; i++) { // <-- FIX: Was <=
+    for (int i = 0; i < env->rel; i++) {
         if (x < env->buffer_size)
-            env->env_buffer[x] = y;
+            buffer[x] = y;
         y += inc;
         x++;
     }
-    y = 0.0f; // Ensure we end at 0
+    y = 0.0f;
 
-    // Fill any remaining buffer with 0s (if sus_time was negative or rounding errors)
+    // Fill any remaining buffer with 0s
     while (x < env->buffer_size) {
-        env->env_buffer[x] = 0.0f;
+        buffer[x] = 0.0f;
         x++;
     }
+}
+
+void renderEnvBuffer(Envelope *env) {
+    if (!env || !env->pending_buffer) {
+        return;
+    }
+    renderEnvToBuffer(env, env->pending_buffer);
+    atomic_store(&env->buffer_is_pending, true);
 };
 
 bool updateAttack(Envelope *env, int attack) {
@@ -183,7 +200,24 @@ void updateEnvelope(Envelope *env, int attack, int decay, float sustain, int rel
 };
 
 float nextEnvelopeSample(Envelope *env) {
-    if (!env || !env->env_buffer || env->env_pos >= env->buffer_size) {
+    if (!env) {
+        return 0.0f;
+    }
+
+    // Check if a new buffer is ready to be swapped
+    if (atomic_load(&env->buffer_is_pending)) {
+        LightLock_Lock(&env->lock);
+        // Double check after acquiring the lock
+        if (env->buffer_is_pending) {
+            float *temp         = env->env_buffer;
+            env->env_buffer     = env->pending_buffer;
+            env->pending_buffer = temp;
+            atomic_store(&env->buffer_is_pending, false);
+        }
+        LightLock_Unlock(&env->lock);
+    }
+
+    if (!env->env_buffer || env->env_pos >= env->buffer_size) {
         return 0.0f;
     }
 
@@ -215,8 +249,14 @@ float nextEnvelopeSample(Envelope *env) {
 }
 
 void Envelope_deinit(Envelope *env) {
-    if (env && env->env_buffer) {
-        linearFree(env->env_buffer);
-        env->env_buffer = NULL;
+    if (env) {
+        if (env->env_buffer) {
+            linearFree(env->env_buffer);
+            env->env_buffer = NULL;
+        }
+        if (env->pending_buffer) {
+            linearFree(env->pending_buffer);
+            env->pending_buffer = NULL;
+        }
     }
 }

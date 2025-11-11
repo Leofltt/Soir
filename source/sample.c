@@ -1,25 +1,41 @@
 #include "sample.h"
-#include "sample_bank.h"
 #include "cleanup_queue.h"
+#include "sample_bank.h"
+#include <3ds/allocator/linear.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
-#include <3ds/allocator/linear.h>
 
-static void         _sample_destroy(Sample *sample);
-static CleanupQueue g_cleanup_queue;
+static void _sample_destroy(Sample *sample);
+
+// Queues for managing memory cleanup between threads
+static SampleCleanupQueue  g_sample_cleanup_queue;
+static PointerCleanupQueue g_pointer_cleanup_queue;
 
 void sample_cleanup_init(void) {
-    cleanupQueueInit(&g_cleanup_queue);
+    sampleCleanupQueueInit(&g_sample_cleanup_queue);
+}
+
+void pointer_cleanup_init(void) {
+    pointerCleanupQueueInit(&g_pointer_cleanup_queue);
 }
 
 void sample_cleanup_process(void) {
     Sample *s = NULL;
-    while ((s = cleanupQueuePop(&g_cleanup_queue)) != NULL) {
-        // The audio thread queued this. Now the main thread
-        // (at quit time) is responsible for decrementing its reference.
+    while ((s = sampleCleanupQueuePop(&g_sample_cleanup_queue)) != NULL) {
         sample_dec_ref_main_thread(s);
     }
+}
+
+void pointer_cleanup_process(void) {
+    void *p = NULL;
+    while ((p = pointerCleanupQueuePop(&g_pointer_cleanup_queue)) != NULL) {
+        linearFree(p);
+    }
+}
+
+bool pointer_cleanup_queue_push(void *p) {
+    return pointerCleanupQueuePush(&g_pointer_cleanup_queue, p);
 }
 
 static void _sample_destroy(Sample *sample) {
@@ -105,8 +121,8 @@ void sample_dec_ref_audio_thread(Sample *sample) {
         return;
 
     // DO NOT lock. DO NOT decrement. Just queue it.
-    // The main thread will handle the decrement AND free *at quit time*.
-    bool pushed = cleanupQueuePush(&g_cleanup_queue, sample);
+    // The main thread will handle the decrement AND free.
+    bool pushed = sampleCleanupQueuePush(&g_sample_cleanup_queue, sample);
     if (!pushed) {
         // CRITICAL ERROR: The cleanup queue is full.
         // This sample will be leaked. This is the only safe option
@@ -115,7 +131,6 @@ void sample_dec_ref_audio_thread(Sample *sample) {
 }
 
 // This function is called by the main thread.
-// It is NOW ONLY CALLED AT QUIT TIME.
 void sample_dec_ref_main_thread(Sample *sample) {
     if (!sample)
         return;

@@ -1,7 +1,8 @@
 #include "ui/ui.h"
-#include "ui_constants.h"
+#include "clock.h"
 #include "engine_constants.h"
 #include "session.h"
+#include "ui_constants.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -12,9 +13,10 @@ static void drawBorder(float x, float y, float w, float h, u32 color) {
     C2D_DrawRectangle(x + w - 1, y, 0, 1, h, color, color, color, color); // Right
 }
 
-static void drawClockSettingsCommon(Clock *clock, int selected_option, float screen_width) {
-    if (!clock || !clock->barBeats)
-        return;
+static void drawClockSettingsCommon(int selected_option, float screen_width) {
+    LightLock_Lock(&g_clock_display_lock);
+    ClockDisplay clock_display = g_clock_display;
+    LightLock_Unlock(&g_clock_display_lock);
 
     const char *options[]   = { "BPM", "Beats per Bar", "Back" };
     int         num_options = sizeof(options) / sizeof(options[0]);
@@ -36,9 +38,9 @@ static void drawClockSettingsCommon(Clock *clock, int selected_option, float scr
         C2D_TextBufClear(text_buf);
         char text[64];
         if (i == 0) {
-            snprintf(text, sizeof(text), "%s %.0f", options[i], clock->bpm);
+            snprintf(text, sizeof(text), "%s %.0f", options[i], clock_display.bpm);
         } else if (i == 1) {
-            snprintf(text, sizeof(text), "%s %d", options[i], clock->barBeats->beats_per_bar);
+            snprintf(text, sizeof(text), "%s %d", options[i], clock_display.beats_per_bar);
         } else {
             snprintf(text, sizeof(text), "%s", options[i]);
         }
@@ -58,12 +60,12 @@ static void drawClockSettingsCommon(Clock *clock, int selected_option, float scr
     }
 }
 
-void drawClockSettingsView(Clock *clock, int selected_option) {
+void drawClockSettingsView(int selected_option) {
     C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 128),
                       C2D_Color32(0, 0, 0, 128), C2D_Color32(0, 0, 0, 128),
                       C2D_Color32(0, 0, 0, 128));
 
-    drawClockSettingsCommon(clock, selected_option, (float) TOP_SCREEN_WIDTH);
+    drawClockSettingsCommon(selected_option, (float) TOP_SCREEN_WIDTH);
 }
 
 void drawQuitMenu(const char *options[], int num_options, int selected_option) {
@@ -150,8 +152,8 @@ void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus) {
     }
 }
 
-void drawTouchClockSettingsView(Clock *clock, int selected_option) {
-    drawClockSettingsCommon(clock, selected_option, (float) BOTTOM_SCREEN_WIDTH);
+void drawTouchClockSettingsView(int selected_option) {
+    drawClockSettingsCommon(selected_option, (float) BOTTOM_SCREEN_WIDTH);
 }
 
 void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,
