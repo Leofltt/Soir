@@ -36,4 +36,4 @@ To clean the tests build:
 
 ### Adding your own samples
 
-Create a ```samples``` folder in the root of your SD card and add samples in ````.opus``` format
+Create a ```samples``` folder in the root of your SD card and add samples in ```.opus``` format

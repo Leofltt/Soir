@@ -11,6 +11,8 @@ void tearDown(void) {}
 extern void test_sequence_length_update(void);
 extern void test_sequence_step_update(void);
 extern void test_envelope_initialization(void);
+extern void test_envelope_trigger_and_release(void);
+extern void test_envelope_adsr_progression(void);
 
 // Clock tests
 extern void test_setBpm_calculates_correct_ticks_per_step(void);
@@ -35,6 +37,8 @@ int main(void) {
 
     // Envelope tests
     RUN_TEST(test_envelope_initialization);
+    RUN_TEST(test_envelope_trigger_and_release);
+    RUN_TEST(test_envelope_adsr_progression);
 
     // Clock tests
     RUN_TEST(test_setBpm_calculates_correct_ticks_per_step);

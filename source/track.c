@@ -30,7 +30,6 @@ void Track_deinit(Track *track) {
                 sample_dec_ref_main_thread(sampler->sample);
             }
             if (sampler->env) {
-                Envelope_deinit(sampler->env);
                 linearFree(sampler->env);
             }
             linearFree(sampler);
@@ -40,7 +39,6 @@ void Track_deinit(Track *track) {
                 linearFree(subsynth->osc);
             }
             if (subsynth->env) {
-                Envelope_deinit(subsynth->env);
                 linearFree(subsynth->env);
             }
             linearFree(subsynth);
@@ -54,20 +52,17 @@ void Track_deinit(Track *track) {
                     linearFree(fmsynth->fm_op->modulator);
                 }
                 if (fmsynth->fm_op->mod_envelope) {
-                    Envelope_deinit(fmsynth->fm_op->mod_envelope);
                     linearFree(fmsynth->fm_op->mod_envelope);
                 }
                 linearFree(fmsynth->fm_op);
             }
             if (fmsynth->carrierEnv) {
-                Envelope_deinit(fmsynth->carrierEnv);
                 linearFree(fmsynth->carrierEnv);
             }
             linearFree(fmsynth);
         } else if (track->instrument_type == NOISE_SYNTH) {
             NoiseSynth *noise_synth = (NoiseSynth *) track->instrument_data;
             if (noise_synth->env) {
-                Envelope_deinit(noise_synth->env);
                 linearFree(noise_synth->env);
             }
             linearFree(noise_synth);

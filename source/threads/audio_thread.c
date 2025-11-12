@@ -164,8 +164,7 @@ static void audio_thread_entry(void *arg) {
                                        fmSynthParams->carrier_env_sus_level,
                                        fmSynthParams->carrier_env_rel, fmSynthParams->env_dur);
                         updateEnvelope(fs->fm_op->mod_envelope, fmSynthParams->mod_env_atk,
-                                       fmSynthParams->mod_env_dec,
-                                       fmSynthParams->mod_env_sus_level,
+                                       fmSynthParams->mod_env_dec, fmSynthParams->mod_env_sus_level,
                                        fmSynthParams->mod_env_rel, fmSynthParams->env_dur);
                         FMOpSetCarrierFrequency(fs->fm_op, fmSynthParams->carrier_freq);
                         FMOpSetModRatio(fs->fm_op, fmSynthParams->mod_freq_ratio);

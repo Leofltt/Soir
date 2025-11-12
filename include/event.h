@@ -75,7 +75,7 @@ typedef struct {
             int beats;
         } beats_data;
 
-        SwapSampleData     swap_sample_data;
+        SwapSampleData swap_sample_data;
 
     } data;
 } Event;

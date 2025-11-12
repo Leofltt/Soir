@@ -188,6 +188,46 @@ void handleInputStepEditView(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now)
                 step_idx < track->sequencer->n_beats * track->sequencer->steps_per_beat) {
                 SeqStep *seq_step = &track->sequencer->steps[step_idx];
 
+                if (seq_step->data == NULL) {
+                    seq_step->data = linearAlloc(sizeof(TrackParameters));
+                    if (seq_step->data) {
+                        memcpy(seq_step->data, track->default_parameters, sizeof(TrackParameters));
+                        if (track->instrument_type == SUB_SYNTH) {
+                            seq_step->data->instrument_data =
+                                linearAlloc(sizeof(SubSynthParameters));
+                            if (seq_step->data->instrument_data) {
+                                memcpy(seq_step->data->instrument_data,
+                                       track->default_parameters->instrument_data,
+                                       sizeof(SubSynthParameters));
+                            }
+                        } else if (track->instrument_type == OPUS_SAMPLER) {
+                            seq_step->data->instrument_data =
+                                linearAlloc(sizeof(OpusSamplerParameters));
+                            if (seq_step->data->instrument_data) {
+                                memcpy(seq_step->data->instrument_data,
+                                       track->default_parameters->instrument_data,
+                                       sizeof(OpusSamplerParameters));
+                            }
+                        } else if (track->instrument_type == FM_SYNTH) {
+                            seq_step->data->instrument_data =
+                                linearAlloc(sizeof(FMSynthParameters));
+                            if (seq_step->data->instrument_data) {
+                                memcpy(seq_step->data->instrument_data,
+                                       track->default_parameters->instrument_data,
+                                       sizeof(FMSynthParameters));
+                            }
+                        } else if (track->instrument_type == NOISE_SYNTH) {
+                            seq_step->data->instrument_data =
+                                linearAlloc(sizeof(NoiseSynthParameters));
+                            if (seq_step->data->instrument_data) {
+                                memcpy(seq_step->data->instrument_data,
+                                       track->default_parameters->instrument_data,
+                                       sizeof(NoiseSynthParameters));
+                            }
+                        }
+                    }
+                }
+
                 void *original_instrument_data = seq_step->data->instrument_data;
                 memcpy(seq_step->data, ctx->editing_step_params, sizeof(TrackParameters));
                 seq_step->data->instrument_data = original_instrument_data;

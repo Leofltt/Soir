@@ -5,55 +5,37 @@
 #include "../tests/mock_3ds.h"
 #else
 #include <3ds/types.h>
-#include <3ds/synchronization.h>
 #endif
-#include <stdatomic.h>
 
-#define MAX_ENVELOPE_DURATION_MS 5000
-
-typedef enum { ENV_ON = 1, ENV_OFF = 0 } EnvGate;
+typedef enum {
+    ENVELOPE_STATE_IDLE,
+    ENVELOPE_STATE_ATTACK,
+    ENVELOPE_STATE_DECAY,
+    ENVELOPE_STATE_SUSTAIN,
+    ENVELOPE_STATE_RELEASE,
+} EnvelopeState;
 
 typedef struct {
-    EnvGate gate;
-    size_t  env_pos; // Changed from int to size_t
-    float  *env_buffer;
-    float  *pending_buffer;
-    float   sr;
-    size_t  buffer_size; // Added to track allocated buffer size
-
-    atomic_bool buffer_is_pending;
-    LightLock   lock;
-
-    // Env params
-    int   atk;
-    int   dec;
-    int   sus_time;
-    float sus_level;
-    int   rel;
-    int   dur;
+    EnvelopeState state;
+    float         output;
+    float         attack_rate;
+    float         decay_rate;
+    float         release_rate;
+    float         sustain_level;
+    float         sr;
+    u32           env_pos;
+    u32           dur_samples;
 } Envelope;
 
 extern Envelope defaultEnvelopeStruct(float sample_rate);
 
 extern void triggerEnvelope(Envelope *env);
 
-extern void renderEnvBuffer(Envelope *env);
-
-extern bool updateAttack(Envelope *env, int attack);
-
-extern bool updateDecay(Envelope *env, int decay);
-
-extern bool updateSustain(Envelope *env, float sustain);
-
-extern bool updateDuration(Envelope *env, int dur_ms);
-
-extern bool updateRelease(Envelope *env, int release);
-
-extern void updateEnvelope(Envelope *env, int attack, int decay, float sustain, int release,
-                           int dur_ms);
+extern void updateEnvelope(Envelope *env, int attack_ms, int decay_ms, float sustain_level,
+                           int release_ms, int dur_ms);
 
 extern float nextEnvelopeSample(Envelope *env);
 
-extern void Envelope_deinit(Envelope *env);
+extern void releaseEnvelope(Envelope *env);
 
 #endif // ENVELOPE_H
