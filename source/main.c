@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
     C2D_Prepare();
     initViews();
     sample_cleanup_init();
+    pointer_cleanup_init();
     clock_display_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
@@ -637,7 +638,6 @@ cleanup:
     audioThreadSignal();
 
     // 3. Wait for the audio thread to fully exit and terminate.
-    //    This blocks the main thread, which is correct.
     audioThreadJoin();
 
     // --- AUDIO THREAD IS DEAD ---
@@ -651,30 +651,29 @@ cleanup:
 
     // --- NDSP IS DEAD ---
 
-    // Decrement references from active tracks and bank slots.
-    // These calls will now safely free the samples.
+    // 5. Process any pending cleanup operations from the audio thread.
+    //    This is critical to do *before* deiniting the main systems.
+    pointer_cleanup_process();
+    sample_cleanup_process();
+
+    // 6. Now, deinit the main systems.
     cleanupTracks(tracks, N_TRACKS);  // Calls sample_dec_ref_main_thread
     SampleBankDeinit(&g_sample_bank); // ALSO calls sample_dec_ref_main_thread
 
-    // 6. Just in case Deinit queued anything (it shouldn't with this new
+    // 7. Just in case Deinit queued anything (it shouldn't with this new
     //    logic, but for absolute safety), run the cleanup process one last time.
     sample_cleanup_process();
 
-    // Clean up the dummy sample created for the quit fix
-    if (g_dummy_sample_for_quit_fix) {
-        sample_dec_ref_main_thread(g_dummy_sample_for_quit_fix);
-    }
-
-    // 7. Shut down graphics systems
+    // 8. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
 
-    // 8. Shut down services
+    // 9. Shut down services
     romfsExit();
     gfxExit();
 
     return ret;
-} // end of main()
+}
