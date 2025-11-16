@@ -631,47 +631,33 @@ int main(int argc, char **argv) {
     }
 
 cleanup:
-    // 1. Signal the audio thread to stop
     should_exit = true;
 
-    // 2. Wake up the audio thread in case it is sleeping on the event
     audioThreadSignal();
 
-    // 3. Wait for the audio thread to fully exit and terminate.
+    ndspSetCallback(NULL, NULL);
+
     audioThreadJoin();
 
-    // --- AUDIO THREAD IS DEAD ---
-
-    // 4. Shut down NDSP (audio hardware) FIRST
-    // This stops all DMA and makes it 100% safe to free audio memory.
     for (int i = 0; i < N_TRACKS; i++) {
         ndspChnWaveBufClear(tracks[i].chan_id);
     }
     ndspExit();
 
-    // --- NDSP IS DEAD ---
-
-    // 5. Process any pending cleanup operations from the audio thread.
-    //    This is critical to do *before* deiniting the main systems.
     pointer_cleanup_process();
     sample_cleanup_process();
 
-    // 6. Now, deinit the main systems.
     cleanupTracks(tracks, N_TRACKS);  // Calls sample_dec_ref_main_thread
     SampleBankDeinit(&g_sample_bank); // ALSO calls sample_dec_ref_main_thread
 
-    // 7. Just in case Deinit queued anything (it shouldn't with this new
-    //    logic, but for absolute safety), run the cleanup process one last time.
     sample_cleanup_process();
 
-    // 8. Shut down graphics systems
     C3D_RenderTargetDelete(topScreen);
     C3D_RenderTargetDelete(bottomScreen);
     deinitViews();
     C2D_Fini();
     C3D_Fini();
 
-    // 9. Shut down services
     romfsExit();
     gfxExit();
 
