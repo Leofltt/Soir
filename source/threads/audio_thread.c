@@ -73,15 +73,17 @@ static void processSequencerTick() {
 }
 
 static void audio_thread_entry(void *arg) {
-    while (!*s_should_exit_ptr) {
+    while (1) {
+        LightEvent_Wait(&s_audio_event);
+        if (*s_should_exit_ptr) {
+            break;
+        }
         ClockDisplay temp_display;
 
         LightLock_Lock(s_clock_lock_ptr);
         int ticks_to_process = updateClock(s_clock_ptr);
 
         if (ticks_to_process > 0) {
-            // Clock ticked. We call processSequencerTick directly.
-            // It will push TRIGGER_STEP events onto our *own* queue (MPSC push is safe).
             for (int i = 0; i < ticks_to_process; i++) {
                 processSequencerTick();
             }
@@ -262,7 +264,6 @@ static void audio_thread_entry(void *arg) {
                 LightLock_Unlock(&s_sample_bank_ptr->lock);
 
                 if (old_sample != NULL) {
-                    // This is now safe, it just queues the old sample
                     sample_dec_ref_audio_thread(old_sample);
                 }
                 break;
@@ -298,9 +299,14 @@ static void audio_thread_entry(void *arg) {
                 s_tracks_ptr[i].fillBlock = !s_tracks_ptr[i].fillBlock;
             }
         }
-        LightEvent_Wait(&s_audio_event);
-        if (*s_should_exit_ptr) {
-            break;
+    }
+
+    for (int i = 0; i < N_TRACKS; i++) {
+        if (s_tracks_ptr[i].instrument_type == OPUS_SAMPLER) {
+            Sampler *sampler = (Sampler *) s_tracks_ptr[i].instrument_data;
+            if (sampler && sampler->sample) {
+                sample_dec_ref_audio_thread(sampler->sample);
+            }
         }
     }
 }

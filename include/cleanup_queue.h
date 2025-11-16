@@ -15,13 +15,3 @@ typedef struct {
 void    sampleCleanupQueueInit(SampleCleanupQueue *q);
 bool    sampleCleanupQueuePush(SampleCleanupQueue *q, Sample *s);
 Sample *sampleCleanupQueuePop(SampleCleanupQueue *q);
-
-typedef struct {
-    void      *pointers[CLEANUP_QUEUE_SIZE];
-    atomic_int write_ptr;
-    atomic_int read_ptr;
-} PointerCleanupQueue;
-
-void  pointerCleanupQueueInit(PointerCleanupQueue *q);
-bool  pointerCleanupQueuePush(PointerCleanupQueue *q, void *p);
-void *pointerCleanupQueuePop(PointerCleanupQueue *q);
