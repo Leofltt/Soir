@@ -300,6 +300,15 @@ static void audio_thread_entry(void *arg) {
             }
         }
     }
+
+    for (int i = 0; i < N_TRACKS; i++) {
+        if (s_tracks_ptr[i].instrument_type == OPUS_SAMPLER) {
+            Sampler *sampler = (Sampler *) s_tracks_ptr[i].instrument_data;
+            if (sampler && sampler->sample) {
+                sample_dec_ref_audio_thread(sampler->sample);
+            }
+        }
+    }
 }
 
 s32 audioThreadInit(Track *tracks_ptr, EventQueue *event_queue_ptr, SampleBank *sample_bank_ptr,

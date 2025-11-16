@@ -9,15 +9,10 @@
 static void _sample_destroy(Sample *sample);
 
 // Queues for managing memory cleanup between threads
-static SampleCleanupQueue  g_sample_cleanup_queue;
-static PointerCleanupQueue g_pointer_cleanup_queue;
+static SampleCleanupQueue g_sample_cleanup_queue;
 
 void sample_cleanup_init(void) {
     sampleCleanupQueueInit(&g_sample_cleanup_queue);
-}
-
-void pointer_cleanup_init(void) {
-    pointerCleanupQueueInit(&g_pointer_cleanup_queue);
 }
 
 void sample_cleanup_process(void) {
@@ -27,40 +22,29 @@ void sample_cleanup_process(void) {
     }
 }
 
-void pointer_cleanup_process(void) {
-    void *p = NULL;
-    while ((p = pointerCleanupQueuePop(&g_pointer_cleanup_queue)) != NULL) {
-        linearFree(p);
-    }
-}
-
-bool pointer_cleanup_queue_push(void *p) {
-    return pointerCleanupQueuePush(&g_pointer_cleanup_queue, p);
-}
-
 static void _sample_destroy(Sample *sample) {
     if (!sample) {
         return;
     }
     if (sample->pcm_data) {
-        free(sample->pcm_data);
+        linearFree(sample->pcm_data);
     }
     if (sample->path) {
-        free(sample->path);
+        linearFree(sample->path);
     }
-    free(sample);
+    linearFree(sample);
 }
 
 Sample *sample_create(const char *path) {
-    Sample *sample = (Sample *) malloc(sizeof(Sample));
+    Sample *sample = (Sample *) linearAlloc(sizeof(Sample));
     if (!sample) {
         return NULL;
     }
 
     // Replace strdup with malloc + strcpy
-    sample->path = malloc(strlen(path) + 1);
+    sample->path = linearAlloc(strlen(path) + 1);
     if (!sample->path) {
-        free(sample);
+        linearFree(sample);
         return NULL;
     }
     strcpy(sample->path, path);
@@ -68,19 +52,20 @@ Sample *sample_create(const char *path) {
     int          err      = 0;
     OggOpusFile *opusFile = op_open_file(path, &err);
     if (err != 0) {
-        free(sample->path);
-        free(sample);
+        linearFree(sample->path);
+        linearFree(sample);
         return NULL;
     }
 
     sample->pcm_length              = op_pcm_total(opusFile, -1);
     sample->pcm_data_size_in_frames = sample->pcm_length;
-    sample->pcm_data = (int16_t *) malloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
+    sample->pcm_data =
+        (int16_t *) linearAlloc(sample->pcm_data_size_in_frames * 2 * sizeof(int16_t));
 
     if (!sample->pcm_data) {
         op_free(opusFile);
-        free(sample->path);
-        free(sample);
+        linearFree(sample->path);
+        linearFree(sample);
         return NULL;
     }
 

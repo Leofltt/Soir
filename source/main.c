@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
     C2D_Prepare();
     initViews();
     sample_cleanup_init();
-    pointer_cleanup_init();
     clock_display_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
@@ -644,7 +643,6 @@ cleanup:
     }
     ndspExit();
 
-    pointer_cleanup_process();
     sample_cleanup_process();
 
     cleanupTracks(tracks, N_TRACKS);  // Calls sample_dec_ref_main_thread
