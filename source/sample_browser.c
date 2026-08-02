@@ -18,14 +18,8 @@ static void add_sample(SampleBrowser *browser, const char *path, const char *pre
         filename = path;
     }
 
-    char name[MAX_SAMPLE_NAME_LENGTH];
-    snprintf(name, MAX_SAMPLE_NAME_LENGTH, "%s %s", prefix, filename);
-
-    strncpy(browser->names[browser->count], name, MAX_SAMPLE_NAME_LENGTH - 1);
-    browser->names[browser->count][MAX_SAMPLE_NAME_LENGTH - 1] = '\0';
-
-    strncpy(browser->paths[browser->count], path, MAX_SAMPLE_PATH_LENGTH - 1);
-    browser->paths[browser->count][MAX_SAMPLE_PATH_LENGTH - 1] = '\0';
+    snprintf(browser->names[browser->count], MAX_SAMPLE_NAME_LENGTH, "%s %s", prefix, filename);
+    snprintf(browser->paths[browser->count], MAX_SAMPLE_PATH_LENGTH, "%s", path);
 
     browser->count++;
 }

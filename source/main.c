@@ -20,6 +20,8 @@
 #include "threads/audio_thread.h"
 #include "noise_synth.h"
 #include "cleanup_queue.h"
+#include "project.h"
+#include "controllers/controller_project_load.h"
 
 #include <3ds.h>
 #include <3ds/os.h>
@@ -58,6 +60,7 @@ int main(int argc, char **argv) {
     clock_display_init();
     SampleBankInit(&g_sample_bank);
     SampleBrowserInit(&g_sample_browser);
+    createProjectDirs();
 
     int ret = 0;
 
@@ -78,6 +81,7 @@ int main(int argc, char **argv) {
     int  selected_step_option          = 0;
     int  selected_adsr_option          = 0;
     int  selected_quit_option          = 0;
+    int  selected_project_option       = 0;
 
     u64 up_timer    = 0;
     u64 down_timer  = 0;
@@ -161,6 +165,7 @@ int main(int argc, char **argv) {
                            .selected_step_option          = &selected_step_option,
                            .selected_adsr_option          = &selected_adsr_option,
                            .selected_quit_option          = &selected_quit_option,
+                           .selected_project_option       = &selected_project_option,
 
                            .up_timer    = &up_timer,
                            .down_timer  = &down_timer,
@@ -562,8 +567,12 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
-    const char *quitMenuOptions[]  = { "Quit", "Cancel" };
+    const char *quitMenuOptions[]  = { "Save", "Load", "Quit", "Cancel" };
     const int   numQuitMenuOptions = sizeof(quitMenuOptions) / sizeof(quitMenuOptions[0]);
+    const char *saveMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track", "Back" };
+    const int   numSaveMenuOptions = sizeof(saveMenuOptions) / sizeof(saveMenuOptions[0]);
+    const char *loadMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track", "Back" };
+    const int   numLoadMenuOptions = sizeof(loadMenuOptions) / sizeof(loadMenuOptions[0]);
     bool        should_break_loop  = false;
 
     while (aptMainLoop()) {
@@ -594,6 +603,21 @@ int main(int argc, char **argv) {
             break;
         case VIEW_QUIT:
             drawQuitMenu(quitMenuOptions, numQuitMenuOptions, selected_quit_option);
+            break;
+        case VIEW_SAVE_SUBMENU:
+            drawSubMenu("Save Option", saveMenuOptions, numSaveMenuOptions, selected_quit_option);
+            break;
+        case VIEW_LOAD_SUBMENU:
+            drawSubMenu("Load Option", loadMenuOptions, numLoadMenuOptions, selected_quit_option);
+            break;
+        case VIEW_PROJECT_LOAD:
+            drawProjectLoadView(selected_project_option, 0);
+            break;
+        case VIEW_SEQUENCE_LOAD:
+            drawProjectLoadView(selected_project_option, 1);
+            break;
+        case VIEW_TRACK_LOAD:
+            drawProjectLoadView(selected_project_option, 2);
             break;
         case VIEW_STEP_SETTINGS_EDIT:
             drawStepSettingsEditView(&tracks[selected_row - 1], &g_editing_step_params,

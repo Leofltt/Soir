@@ -208,7 +208,7 @@ $(GFXBUILD)/%.bcfnt :		%.ttf
 #---------------------------------------------------------------------------------
 TEST_BUILD := build/tests
 TEST_SOURCES := tests
-TEST_SOURCE_FILES := sequencer.c envelope.c mock_3ds.c clock.c event_queue.c
+TEST_SOURCE_FILES := sequencer.c envelope.c mock_3ds.c clock.c event_queue.c project.c
 TEST_CC := clang
 TEST_CFLAGS := -I include -I tests/unity/src -I tests -DTESTING
 TEST_OBJECTS := $(TEST_BUILD)/test_runner.o \
@@ -216,6 +216,7 @@ TEST_OBJECTS := $(TEST_BUILD)/test_runner.o \
                 $(TEST_BUILD)/test_envelope.o \
                 $(TEST_BUILD)/test_clock.o \
                 $(TEST_BUILD)/test_event_queue.o \
+                $(TEST_BUILD)/test_project.o \
                 $(TEST_BUILD)/unity.o \
                 $(addprefix $(TEST_BUILD)/,$(TEST_SOURCE_FILES:.c=.o))
 
