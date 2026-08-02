@@ -2,7 +2,11 @@
 #define SAMPLE_BANK_H
 
 #include "sample.h"
+#ifdef TESTING
+#include "mock_3ds.h"
+#else
 #include <3ds.h>
+#endif
 
 #define MAX_SAMPLES 12
 #define DEFAULT_SAMPLE_PATHS_COUNT 5

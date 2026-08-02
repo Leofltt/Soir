@@ -76,7 +76,7 @@ void drawQuitMenu(const char *options[], int num_options, int selected_option) {
 
     // Menu box
     float menu_width  = QUIT_MENU_WIDTH;
-    float menu_height = QUIT_MENU_HEIGHT;
+    float menu_height = QUIT_MENU_HEIGHT + 50; // Increased height to fit more options
     float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
     float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
     C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
@@ -102,6 +102,134 @@ void drawQuitMenu(const char *options[], int num_options, int selected_option) {
 
         C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_NORMAL,
                      TEXT_SCALE_NORMAL, color);
+    }
+}
+
+#include "controllers/controller_project_load.h"
+
+void drawProjectLoadView(int selected_project, int load_mode) {
+    // Dim background
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 192),
+                      C2D_Color32(0, 0, 0, 192), C2D_Color32(0, 0, 0, 192),
+                      C2D_Color32(0, 0, 0, 192));
+
+    // Menu box
+    float menu_width  = 300;
+    float menu_height = 200;
+    float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
+                      CLR_BLACK);
+    // Border
+    drawBorder(menu_x, menu_y, menu_width, menu_height, CLR_LIGHT_GRAY);
+
+    // Header title
+    const char *title = "Load Project";
+    if (load_mode == 1) title = "Load Sequence";
+    else if (load_mode == 2) title = "Load Track";
+
+    C2D_TextBufClear(text_buf);
+    C2D_TextFontParse(&text_obj, font_heavy, text_buf, title);
+    C2D_TextOptimize(&text_obj);
+    float text_width, text_height;
+    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width, &text_height);
+    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10, 0.0f,
+                 TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
+
+    if (g_project_count == 0) {
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, "No files found. Press B to cancel.");
+        C2D_TextOptimize(&text_obj);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 80, 0.0f,
+                     TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_WHITE);
+        return;
+    }
+
+    // List options with pagination/scrolling
+    int items_per_page = 5;
+    int start_index = 0;
+    if (selected_project >= items_per_page) {
+        start_index = selected_project - (items_per_page - 1);
+    }
+    
+    for (int i = 0; i < items_per_page && (start_index + i) < g_project_count; i++) {
+        int index = start_index + i;
+        C2D_Font current_font = (index == selected_project) ? font_heavy : font_angular;
+        u32 color = (index == selected_project) ? CLR_YELLOW : CLR_WHITE;
+
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, current_font, text_buf, g_project_names[index]);
+        C2D_TextOptimize(&text_obj);
+
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        float text_x = menu_x + 20;
+        float text_y = menu_y + 45 + (i * 25);
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_SMALL,
+                     TEXT_SCALE_SMALL, color);
+    }
+
+    // Draw scroll indicators if necessary
+    if (start_index > 0) {
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, "^");
+        C2D_TextOptimize(&text_obj);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + menu_width - 15, menu_y + 45, 0.0f,
+                     TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_YELLOW);
+    }
+    if (start_index + items_per_page < g_project_count) {
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, font_angular, text_buf, "v");
+        C2D_TextOptimize(&text_obj);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + menu_width - 15, menu_y + menu_height - 30, 0.0f,
+                     TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_YELLOW);
+    }
+}
+
+void drawSubMenu(const char *title, const char *options[], int num_options, int selected_option) {
+    // Dim background
+    C2D_DrawRectangle(0, 0, 0, TOP_SCREEN_WIDTH, SCREEN_HEIGHT, C2D_Color32(0, 0, 0, 192),
+                      C2D_Color32(0, 0, 0, 192), C2D_Color32(0, 0, 0, 192),
+                      C2D_Color32(0, 0, 0, 192));
+
+    // Menu box
+    float menu_width  = QUIT_MENU_WIDTH;
+    float menu_height = QUIT_MENU_HEIGHT + 20;
+    float menu_x      = (TOP_SCREEN_WIDTH - menu_width) / 2;
+    float menu_y      = (SCREEN_HEIGHT - menu_height) / 2;
+    C2D_DrawRectangle(menu_x, menu_y, 0, menu_width, menu_height, CLR_BLACK, CLR_BLACK, CLR_BLACK,
+                      CLR_BLACK);
+    // Border
+    drawBorder(menu_x, menu_y, menu_width, menu_height, CLR_LIGHT_GRAY);
+
+    // Header Title
+    C2D_TextBufClear(text_buf);
+    C2D_TextFontParse(&text_obj, font_heavy, text_buf, title);
+    C2D_TextOptimize(&text_obj);
+    float text_width, text_height;
+    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width, &text_height);
+    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10, 0.0f,
+                 TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
+
+    // Menu options
+    for (int i = 0; i < num_options; i++) {
+        C2D_Font current_font = (i == selected_option) ? font_heavy : font_angular;
+        u32      color        = (i == selected_option) ? CLR_YELLOW : CLR_WHITE;
+
+        C2D_TextBufClear(text_buf);
+        C2D_TextFontParse(&text_obj, current_font, text_buf, options[i]);
+        C2D_TextOptimize(&text_obj);
+
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+
+        float text_x = menu_x + (menu_width - text_width) / 2;
+        float text_y = menu_y + 45 + (i * 25);
+
+        C2D_DrawText(&text_obj, C2D_WithColor, text_x, text_y, 0.0f, TEXT_SCALE_SMALL,
+                     TEXT_SCALE_SMALL, color);
     }
 }
 

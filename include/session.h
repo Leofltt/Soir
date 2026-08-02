@@ -18,7 +18,12 @@ typedef enum {
     VIEW_SETTINGS           = 1,
     VIEW_ABOUT              = 2,
     VIEW_QUIT               = 3,
-    VIEW_STEP_SETTINGS_EDIT = 4
+    VIEW_STEP_SETTINGS_EDIT = 4,
+    VIEW_PROJECT_LOAD       = 5,
+    VIEW_TRACK_LOAD         = 6,
+    VIEW_SEQUENCE_LOAD      = 7,
+    VIEW_SAVE_SUBMENU       = 8,
+    VIEW_LOAD_SUBMENU       = 9
 } TopScreenView;
 
 typedef enum {
@@ -52,6 +57,7 @@ typedef struct {
     int     *selected_step_option;
     int     *selected_adsr_option;
     int     *selected_quit_option;
+    int     *selected_project_option;
     bool    *is_selecting_sample;
 
     u64 *up_timer;

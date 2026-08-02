@@ -1,9 +1,12 @@
 #include "unity.h"
 #include "mock_3ds.h"
 
+extern void createProjectDirs(void);
+
 void setUp(void) {
     // Reset mocks before each test
     mock_set_system_tick(0);
+    createProjectDirs();
 }
 void tearDown(void) {}
 
@@ -27,6 +30,10 @@ extern void test_event_queue_push_and_pop_should_work_correctly(void);
 extern void test_event_queue_should_not_push_when_full(void);
 extern void test_event_queue_should_not_pop_when_empty(void);
 extern void test_event_queue_wraparound_should_work_correctly(void);
+
+// Project/Track Save/Recall tests
+extern void test_track_save_and_load(void);
+extern void test_sequence_save_and_load(void);
 
 int main(void) {
     UNITY_BEGIN();
@@ -53,6 +60,10 @@ int main(void) {
     RUN_TEST(test_event_queue_should_not_push_when_full);
     RUN_TEST(test_event_queue_should_not_pop_when_empty);
     RUN_TEST(test_event_queue_wraparound_should_work_correctly);
+
+    // Project tests
+    RUN_TEST(test_track_save_and_load);
+    RUN_TEST(test_sequence_save_and_load);
 
     return UNITY_END();
 }

@@ -32,6 +32,8 @@ bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
     return false;
 }
 
+#include "controllers/controller_project_load.h"
+
 void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
                                   bool *should_break_loop) {
     if (kDown & KEY_START) {
@@ -44,7 +46,12 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
         eventQueuePush(ctx->event_queue, event);
     }
 
-    if (ctx->session->main_screen_view != VIEW_QUIT) {
+    if (ctx->session->main_screen_view != VIEW_QUIT &&
+        ctx->session->main_screen_view != VIEW_PROJECT_LOAD &&
+        ctx->session->main_screen_view != VIEW_SEQUENCE_LOAD &&
+        ctx->session->main_screen_view != VIEW_TRACK_LOAD &&
+        ctx->session->main_screen_view != VIEW_SAVE_SUBMENU &&
+        ctx->session->main_screen_view != VIEW_LOAD_SUBMENU) {
         if (kDown & KEY_R) {
             *ctx->screen_focus = (*ctx->screen_focus == FOCUS_TOP) ? FOCUS_BOTTOM : FOCUS_TOP;
         }
@@ -78,8 +85,23 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
         case VIEW_QUIT:
             handleInputQuitView(ctx, kDown, should_break_loop);
             break;
+        case VIEW_SAVE_SUBMENU:
+            handleInputSaveSubMenu(ctx, kDown);
+            break;
+        case VIEW_LOAD_SUBMENU:
+            handleInputLoadSubMenu(ctx, kDown);
+            break;
         case VIEW_STEP_SETTINGS_EDIT:
             handleInputStepEditView(ctx, kDown, kHeld, now);
+            break;
+        case VIEW_PROJECT_LOAD:
+            handleInputProjectLoad(ctx, kDown, 0);
+            break;
+        case VIEW_SEQUENCE_LOAD:
+            handleInputProjectLoad(ctx, kDown, 1);
+            break;
+        case VIEW_TRACK_LOAD:
+            handleInputProjectLoad(ctx, kDown, 2);
             break;
         case VIEW_ABOUT:
             // No handler yet
