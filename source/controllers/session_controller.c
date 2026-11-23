@@ -34,8 +34,12 @@ bool handle_continuous_press(u32 kDown, u32 kHeld, u64 now, u32 key, u64 *timer,
 
 #include "controllers/controller_project_load.h"
 
-void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64 now,
-                                  bool *should_break_loop) {
+void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, touchPosition touch,
+                                  u64 now, bool *should_break_loop) {
+    if ((kDown & KEY_TOUCH) && ctx->session->main_screen_view == VIEW_MAIN) {
+        *ctx->screen_focus = FOCUS_BOTTOM;
+    }
+
     if (kDown & KEY_START) {
         *ctx->previous_screen_focus    = *ctx->screen_focus;
         *ctx->screen_focus             = FOCUS_TOP;
@@ -110,16 +114,16 @@ void sessionControllerHandleInput(SessionContext *ctx, u32 kDown, u32 kHeld, u64
     } else if (*ctx->screen_focus == FOCUS_BOTTOM) {
         switch (ctx->session->touch_screen_view) {
         case VIEW_TOUCH_SETTINGS:
-            handleInputTouchSettings(ctx, kDown, kHeld, now);
+            handleInputTouchSettings(ctx, kDown, kHeld, touch, now);
             break;
         case VIEW_TOUCH_CLOCK_SETTINGS:
-            handleInputTouchClock(ctx, kDown, kHeld, now);
+            handleInputTouchClock(ctx, kDown, kHeld, touch, now);
             break;
         case VIEW_SAMPLE_MANAGER:
-            handleInputSampleManager(ctx, kDown);
+            handleInputSampleManager(ctx, kDown, touch);
             break;
         case VIEW_STEP_SETTINGS:
-            handleInputStepSettings(ctx, kDown);
+            handleInputStepSettings(ctx, kDown, touch);
             break;
         default:
             break;

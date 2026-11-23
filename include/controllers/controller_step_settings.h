@@ -1,3 +1,3 @@
 #pragma once
 #include "session.h"
-void handleInputStepSettings(SessionContext *ctx, u32 kDown);
+void handleInputStepSettings(SessionContext *ctx, u32 kDown, touchPosition touch);

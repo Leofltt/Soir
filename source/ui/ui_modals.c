@@ -125,44 +125,49 @@ void drawProjectLoadView(int selected_project, int load_mode) {
 
     // Header title
     const char *title = "Load Project";
-    if (load_mode == 1) title = "Load Sequence";
-    else if (load_mode == 2) title = "Load Track";
+    if (load_mode == 1)
+        title = "Load Sequence";
+    else if (load_mode == 2)
+        title = "Load Track";
 
     C2D_TextBufClear(text_buf);
     C2D_TextFontParse(&text_obj, font_heavy, text_buf, title);
     C2D_TextOptimize(&text_obj);
     float text_width, text_height;
-    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width, &text_height);
-    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10, 0.0f,
-                 TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
+    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                          &text_height);
+    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10,
+                 0.0f, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
 
     if (g_project_count == 0) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "No files found. Press B to cancel.");
         C2D_TextOptimize(&text_obj);
-        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
-        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 80, 0.0f,
-                     TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_WHITE);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
+        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 80,
+                     0.0f, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_WHITE);
         return;
     }
 
     // List options with pagination/scrolling
     int items_per_page = 5;
-    int start_index = 0;
+    int start_index    = 0;
     if (selected_project >= items_per_page) {
         start_index = selected_project - (items_per_page - 1);
     }
-    
+
     for (int i = 0; i < items_per_page && (start_index + i) < g_project_count; i++) {
-        int index = start_index + i;
+        int      index        = start_index + i;
         C2D_Font current_font = (index == selected_project) ? font_heavy : font_angular;
-        u32 color = (index == selected_project) ? CLR_YELLOW : CLR_WHITE;
+        u32      color        = (index == selected_project) ? CLR_YELLOW : CLR_WHITE;
 
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, current_font, text_buf, g_project_names[index]);
         C2D_TextOptimize(&text_obj);
 
-        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
         float text_x = menu_x + 20;
         float text_y = menu_y + 45 + (i * 25);
 
@@ -175,7 +180,8 @@ void drawProjectLoadView(int selected_project, int load_mode) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "^");
         C2D_TextOptimize(&text_obj);
-        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
         C2D_DrawText(&text_obj, C2D_WithColor, menu_x + menu_width - 15, menu_y + 45, 0.0f,
                      TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_YELLOW);
     }
@@ -183,9 +189,10 @@ void drawProjectLoadView(int selected_project, int load_mode) {
         C2D_TextBufClear(text_buf);
         C2D_TextFontParse(&text_obj, font_angular, text_buf, "v");
         C2D_TextOptimize(&text_obj);
-        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
-        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + menu_width - 15, menu_y + menu_height - 30, 0.0f,
-                     TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_YELLOW);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
+        C2D_DrawText(&text_obj, C2D_WithColor, menu_x + menu_width - 15, menu_y + menu_height - 30,
+                     0.0f, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, CLR_YELLOW);
     }
 }
 
@@ -210,9 +217,10 @@ void drawSubMenu(const char *title, const char *options[], int num_options, int 
     C2D_TextFontParse(&text_obj, font_heavy, text_buf, title);
     C2D_TextOptimize(&text_obj);
     float text_width, text_height;
-    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width, &text_height);
-    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10, 0.0f,
-                 TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
+    C2D_TextGetDimensions(&text_obj, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, &text_width,
+                          &text_height);
+    C2D_DrawText(&text_obj, C2D_WithColor, menu_x + (menu_width - text_width) / 2, menu_y + 10,
+                 0.0f, TEXT_SCALE_NORMAL, TEXT_SCALE_NORMAL, CLR_YELLOW);
 
     // Menu options
     for (int i = 0; i < num_options; i++) {
@@ -223,7 +231,8 @@ void drawSubMenu(const char *title, const char *options[], int num_options, int 
         C2D_TextFontParse(&text_obj, current_font, text_buf, options[i]);
         C2D_TextOptimize(&text_obj);
 
-        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width, &text_height);
+        C2D_TextGetDimensions(&text_obj, TEXT_SCALE_SMALL, TEXT_SCALE_SMALL, &text_width,
+                              &text_height);
 
         float text_x = menu_x + (menu_width - text_width) / 2;
         float text_y = menu_y + 45 + (i * 25);

@@ -25,38 +25,38 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
     int id = 0;
 
     // Column 0: Common Parameters
-    list_buffer[id] = (ParameterInfo) { .label         = "Volume",
-                                        .unique_id     = id,
-                                        .column        = 0,
-                                        .row_in_column = 0,
-                                        .type          = PARAM_TYPE_FLOAT_0_1 };
+    list_buffer[id] = (ParameterInfo){ .label         = "Volume",
+                                       .unique_id     = id,
+                                       .column        = 0,
+                                       .row_in_column = 0,
+                                       .type          = PARAM_TYPE_FLOAT_0_1 };
     snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
              params->volume);
     id++;
 
-    list_buffer[id] = (ParameterInfo) { .label         = "Pan",
-                                        .unique_id     = id,
-                                        .column        = 0,
-                                        .row_in_column = 1,
-                                        .type          = PARAM_TYPE_FLOAT_N1_1 };
+    list_buffer[id] = (ParameterInfo){ .label         = "Pan",
+                                       .unique_id     = id,
+                                       .column        = 0,
+                                       .row_in_column = 1,
+                                       .type          = PARAM_TYPE_FLOAT_N1_1 };
     snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
              params->pan);
     id++;
 
-    list_buffer[id] = (ParameterInfo) { .label         = "Filter Cf",
-                                        .unique_id     = id,
-                                        .column        = 0,
-                                        .row_in_column = 2,
-                                        .type          = PARAM_TYPE_HZ };
+    list_buffer[id] = (ParameterInfo){ .label         = "Filter Cf",
+                                       .unique_id     = id,
+                                       .column        = 0,
+                                       .row_in_column = 2,
+                                       .type          = PARAM_TYPE_HZ };
     snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.0f",
              params->ndsp_filter_cutoff);
     id++;
 
-    list_buffer[id] = (ParameterInfo) { .label         = "Filter Type",
-                                        .unique_id     = id,
-                                        .column        = 0,
-                                        .row_in_column = 3,
-                                        .type          = PARAM_TYPE_FILTER_TYPE };
+    list_buffer[id] = (ParameterInfo){ .label         = "Filter Type",
+                                       .unique_id     = id,
+                                       .column        = 0,
+                                       .row_in_column = 3,
+                                       .type          = PARAM_TYPE_FILTER_TYPE };
     int filter_type = params->ndsp_filter_type;
     if (filter_type < 0 || filter_type >= 6) {
         filter_type = 0;
@@ -72,20 +72,20 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         if (!synth_params) {
             break;
         }
-        list_buffer[id] = (ParameterInfo) { .label         = "MIDI Note",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 0,
-                                            .type          = PARAM_TYPE_MIDI_NOTE };
+        list_buffer[id] = (ParameterInfo){ .label         = "MIDI Note",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 0,
+                                           .type          = PARAM_TYPE_MIDI_NOTE };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  hertzToMidi(synth_params->osc_freq));
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Waveform",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 1,
-                                            .type          = PARAM_TYPE_WAVEFORM };
+        list_buffer[id] = (ParameterInfo){ .label         = "Waveform",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 1,
+                                           .type          = PARAM_TYPE_WAVEFORM };
         int waveform    = synth_params->osc_waveform;
         if (waveform < 0 || waveform >= WAVEFORM_COUNT) {
             waveform = 0;
@@ -94,28 +94,28 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                  waveform_names[waveform]);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Pulse Width",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 2,
-                                            .type          = PARAM_TYPE_FLOAT_0_1 };
+        list_buffer[id] = (ParameterInfo){ .label         = "Pulse Width",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 2,
+                                           .type          = PARAM_TYPE_FLOAT_0_1 };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
                  synth_params->pulse_width);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 3,
-                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        list_buffer[id] = (ParameterInfo){ .label         = "Envelope",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 3,
+                                           .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 4,
-                                            .type          = PARAM_TYPE_INT };
+        list_buffer[id] = (ParameterInfo){ .label         = "Env Dur",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 4,
+                                           .type          = PARAM_TYPE_INT };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  synth_params->env_dur);
         id++;
@@ -126,63 +126,63 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         if (!fm_params) {
             break;
         }
-        list_buffer[id] = (ParameterInfo) { .label         = "Mod Depth",
-                                            .unique_id     = id,
-                                            .column        = 0,
-                                            .row_in_column = 4,
-                                            .type          = PARAM_TYPE_FLOAT_0_1 };
+        list_buffer[id] = (ParameterInfo){ .label         = "Mod Depth",
+                                           .unique_id     = id,
+                                           .column        = 0,
+                                           .row_in_column = 4,
+                                           .type          = PARAM_TYPE_FLOAT_0_1 };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.2f",
                  fm_params->mod_depth);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Mod Index",
-                                            .unique_id     = id,
-                                            .column        = 0,
-                                            .row_in_column = 5,
-                                            .type          = PARAM_TYPE_FLOAT_0_1 };
+        list_buffer[id] = (ParameterInfo){ .label         = "Mod Index",
+                                           .unique_id     = id,
+                                           .column        = 0,
+                                           .row_in_column = 5,
+                                           .type          = PARAM_TYPE_FLOAT_0_1 };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.1f",
                  fm_params->mod_index);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "MIDI Note",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 0,
-                                            .type          = PARAM_TYPE_MIDI_NOTE };
+        list_buffer[id] = (ParameterInfo){ .label         = "MIDI Note",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 0,
+                                           .type          = PARAM_TYPE_MIDI_NOTE };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  hertzToMidi(fm_params->carrier_freq));
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Mod Ratio",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 1,
-                                            .type          = PARAM_TYPE_MOD_RATIO };
+        list_buffer[id] = (ParameterInfo){ .label         = "Mod Ratio",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 1,
+                                           .type          = PARAM_TYPE_MOD_RATIO };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%.1f",
                  fm_params->mod_freq_ratio);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Car Env",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 2,
-                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        list_buffer[id] = (ParameterInfo){ .label         = "Car Env",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 2,
+                                           .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Mod Env",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 3,
-                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        list_buffer[id] = (ParameterInfo){ .label         = "Mod Env",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 3,
+                                           .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 4,
-                                            .type          = PARAM_TYPE_INT };
+        list_buffer[id] = (ParameterInfo){ .label         = "Env Dur",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 4,
+                                           .type          = PARAM_TYPE_INT };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  fm_params->env_dur);
         id++;
@@ -193,29 +193,29 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         if (!sampler_params) {
             break;
         }
-        list_buffer[id] = (ParameterInfo) { .label         = "Sample",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 0,
-                                            .type          = PARAM_TYPE_SAMPLE_INDEX };
+        list_buffer[id] = (ParameterInfo){ .label         = "Sample",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 0,
+                                           .type          = PARAM_TYPE_SAMPLE_INDEX };
         SampleBankGetSampleName(sample_bank, sampler_params->sample_index,
                                 list_buffer[id].value_string, sizeof(list_buffer[id].value_string));
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Pb Mode",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 1,
-                                            .type          = PARAM_TYPE_PLAYBACK_MODE };
+        list_buffer[id] = (ParameterInfo){ .label         = "Pb Mode",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 1,
+                                           .type          = PARAM_TYPE_PLAYBACK_MODE };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%s",
                  playback_mode_names[sampler_params->playback_mode]);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Start Pos",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 2,
-                                            .type          = PARAM_TYPE_FLOAT_0_1 };
+        list_buffer[id] = (ParameterInfo){ .label         = "Start Pos",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 2,
+                                           .type          = PARAM_TYPE_FLOAT_0_1 };
         Sample *sample  = SampleBankGetSample(sample_bank, sampler_params->sample_index);
         float   start_pos_normalized = 0.0f;
         if (sample && sample->pcm_length > 0) {
@@ -225,19 +225,19 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
                  start_pos_normalized);
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 3,
-                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        list_buffer[id] = (ParameterInfo){ .label         = "Envelope",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 3,
+                                           .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 4,
-                                            .type          = PARAM_TYPE_INT };
+        list_buffer[id] = (ParameterInfo){ .label         = "Env Dur",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 4,
+                                           .type          = PARAM_TYPE_INT };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  sampler_params->env_dur);
         id++;
@@ -248,19 +248,19 @@ int generateParameterList(Track *track, TrackParameters *params, SampleBank *sam
         if (!noise_params) {
             break;
         }
-        list_buffer[id] = (ParameterInfo) { .label         = "Envelope",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 0,
-                                            .type          = PARAM_TYPE_ENVELOPE_BUTTON };
+        list_buffer[id] = (ParameterInfo){ .label         = "Envelope",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 0,
+                                           .type          = PARAM_TYPE_ENVELOPE_BUTTON };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "Edit");
         id++;
 
-        list_buffer[id] = (ParameterInfo) { .label         = "Env Dur",
-                                            .unique_id     = id,
-                                            .column        = 1,
-                                            .row_in_column = 1,
-                                            .type          = PARAM_TYPE_INT };
+        list_buffer[id] = (ParameterInfo){ .label         = "Env Dur",
+                                           .unique_id     = id,
+                                           .column        = 1,
+                                           .row_in_column = 1,
+                                           .type          = PARAM_TYPE_INT };
         snprintf(list_buffer[id].value_string, sizeof(list_buffer[id].value_string), "%d",
                  noise_params->env_dur);
         id++;

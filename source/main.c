@@ -204,12 +204,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *osc = (PolyBLEPOscillator) { .frequency   = 220.0f,
-                                  .samplerate  = SAMPLERATE,
-                                  .waveform    = SQUARE,
-                                  .phase       = 0.,
-                                  .pulse_width = 0.5f,
-                                  .phase_inc   = 220.0f * M_TWOPI / SAMPLERATE };
+    *osc = (PolyBLEPOscillator){ .frequency   = 220.0f,
+                                 .samplerate  = SAMPLERATE,
+                                 .waveform    = SQUARE,
+                                 .phase       = 0.,
+                                 .pulse_width = 0.5f,
+                                 .phase_inc   = 220.0f * M_TWOPI / SAMPLERATE };
 
     env = (Envelope *) linearAlloc(sizeof(Envelope));
     if (!env) {
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *subsynth                 = (SubSynth) { .osc = osc, .env = env };
+    *subsynth                 = (SubSynth){ .osc = osc, .env = env };
     tracks[0].instrument_data = subsynth;
 
     sequence1 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         subsynthParamsArray[i] = defaultSubSynthParameters();
         trackParamsArray1[i]   = defaultTrackParameters(0, &subsynthParamsArray[i]);
-        sequence1[i]           = (SeqStep) { .active = false };
+        sequence1[i]           = (SeqStep){ .active = false };
         sequence1[i].data      = &trackParamsArray1[i];
     }
     seq1 = (Sequencer *) linearAlloc(sizeof(Sequencer));
@@ -253,12 +253,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq1               = (Sequencer) { .cur_step                = 0,
-                                        .steps                   = sequence1,
-                                        .n_beats                 = 4,
-                                        .steps_per_beat          = 4,
-                                        .instrument_params_array = subsynthParamsArray,
-                                        .track_params_array      = trackParamsArray1 };
+    *seq1               = (Sequencer){ .cur_step                = 0,
+                                       .steps                   = sequence1,
+                                       .n_beats                 = 4,
+                                       .steps_per_beat          = 4,
+                                       .instrument_params_array = subsynthParamsArray,
+                                       .track_params_array      = trackParamsArray1 };
     tracks[0].sequencer = seq1;
 
     // TRACK 1 (FM_SYNTH) ///////////////////////////////////////////
@@ -293,18 +293,18 @@ int main(int argc, char **argv) {
     fm_op->mod_depth      = 100.0f;
     fm_op->base_frequency = 220.0f;
 
-    *fm_op->carrier = (PolyBLEPOscillator) { .frequency   = 220.0f,
-                                             .samplerate  = SAMPLERATE,
-                                             .waveform    = SINE,
-                                             .phase       = 0.0f,
-                                             .pulse_width = 0.5f };
+    *fm_op->carrier = (PolyBLEPOscillator){ .frequency   = 220.0f,
+                                            .samplerate  = SAMPLERATE,
+                                            .waveform    = SINE,
+                                            .phase       = 0.0f,
+                                            .pulse_width = 0.5f };
     setOscFrequency(fm_op->carrier, fm_op->carrier->frequency);
 
-    *fm_op->modulator = (PolyBLEPOscillator) { .frequency   = 0.0f,
-                                               .samplerate  = SAMPLERATE,
-                                               .waveform    = SINE,
-                                               .phase       = 0.0f,
-                                               .pulse_width = 0.5f };
+    *fm_op->modulator = (PolyBLEPOscillator){ .frequency   = 0.0f,
+                                              .samplerate  = SAMPLERATE,
+                                              .waveform    = SINE,
+                                              .phase       = 0.0f,
+                                              .pulse_width = 0.5f };
     setOscFrequency(fm_op->modulator, fm_op->modulator->frequency);
 
     *fm_op->mod_envelope = defaultEnvelopeStruct(SAMPLERATE);
@@ -323,7 +323,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *fm_synth                 = (FMSynth) { .carrierEnv = fm_env, .fm_op = fm_op };
+    *fm_synth                 = (FMSynth){ .carrierEnv = fm_env, .fm_op = fm_op };
     tracks[1].instrument_data = fm_synth;
 
     sequenceFM = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         fmSynthParamsArray[i] = defaultFMSynthParameters();
         trackParamsArrayFM[i] = defaultTrackParameters(1, &fmSynthParamsArray[i]);
-        sequenceFM[i]         = (SeqStep) { .active = false };
+        sequenceFM[i]         = (SeqStep){ .active = false };
         sequenceFM[i].data    = &trackParamsArrayFM[i];
     }
     seqFM = (Sequencer *) linearAlloc(sizeof(Sequencer));
@@ -352,12 +352,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seqFM              = (Sequencer) { .cur_step                = 0,
-                                        .steps                   = sequenceFM,
-                                        .n_beats                 = 4,
-                                        .steps_per_beat          = 4,
-                                        .instrument_params_array = fmSynthParamsArray,
-                                        .track_params_array      = trackParamsArrayFM };
+    *seqFM              = (Sequencer){ .cur_step                = 0,
+                                       .steps                   = sequenceFM,
+                                       .n_beats                 = 4,
+                                       .steps_per_beat          = 4,
+                                       .instrument_params_array = fmSynthParamsArray,
+                                       .track_params_array      = trackParamsArrayFM };
     tracks[1].sequencer = seqFM;
 
     // TRACK 2 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -381,14 +381,14 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
-                           .start_position  = 0,
-                           .playback_mode   = ONE_SHOT,
-                           .samples_per_buf = OPUSSAMPLESPERFBUF,
-                           .samplerate      = OPUSSAMPLERATE,
-                           .env             = env1,
-                           .current_frame   = 0,
-                           .finished        = true };
+    *sampler = (Sampler){ .sample          = SampleBankGetSample(&g_sample_bank, 0),
+                          .start_position  = 0,
+                          .playback_mode   = ONE_SHOT,
+                          .samples_per_buf = OPUSSAMPLESPERFBUF,
+                          .samplerate      = OPUSSAMPLERATE,
+                          .env             = env1,
+                          .current_frame   = 0,
+                          .finished        = true };
     sample_inc_ref(sampler->sample);
     tracks[2].instrument_data = sampler;
 
@@ -412,7 +412,7 @@ int main(int argc, char **argv) {
         opusSamplerParamsArray[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray[i].sample_index = 0;
         trackParamsArray2[i] = defaultTrackParameters(2, &opusSamplerParamsArray[i]);
-        sequence2[i]         = (SeqStep) { .active = false };
+        sequence2[i]         = (SeqStep){ .active = false };
         sequence2[i].data    = &trackParamsArray2[i];
     }
     seq2 = (Sequencer *) linearAlloc(sizeof(Sequencer));
@@ -420,12 +420,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq2               = (Sequencer) { .cur_step                = 0,
-                                        .steps                   = sequence2,
-                                        .n_beats                 = 4,
-                                        .steps_per_beat          = 4,
-                                        .instrument_params_array = opusSamplerParamsArray,
-                                        .track_params_array      = trackParamsArray2 };
+    *seq2               = (Sequencer){ .cur_step                = 0,
+                                       .steps                   = sequence2,
+                                       .n_beats                 = 4,
+                                       .steps_per_beat          = 4,
+                                       .instrument_params_array = opusSamplerParamsArray,
+                                       .track_params_array      = trackParamsArray2 };
     tracks[2].sequencer = seq2;
 
     // TRACK 3 (OPUS_SAMPLER) ///////////////////////////////////////////
@@ -449,14 +449,14 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *sampler2 = (Sampler) { .sample          = SampleBankGetSample(&g_sample_bank, 0),
-                            .start_position  = 0,
-                            .playback_mode   = ONE_SHOT,
-                            .samples_per_buf = OPUSSAMPLESPERFBUF,
-                            .samplerate      = OPUSSAMPLERATE,
-                            .env             = env2,
-                            .current_frame   = 0,
-                            .finished        = true };
+    *sampler2 = (Sampler){ .sample          = SampleBankGetSample(&g_sample_bank, 0),
+                           .start_position  = 0,
+                           .playback_mode   = ONE_SHOT,
+                           .samples_per_buf = OPUSSAMPLESPERFBUF,
+                           .samplerate      = OPUSSAMPLERATE,
+                           .env             = env2,
+                           .current_frame   = 0,
+                           .finished        = true };
     sample_inc_ref(sampler2->sample);
     tracks[3].instrument_data = sampler2;
 
@@ -480,7 +480,7 @@ int main(int argc, char **argv) {
         opusSamplerParamsArray2[i]              = defaultOpusSamplerParameters();
         opusSamplerParamsArray2[i].sample_index = 0;
         trackParamsArray3[i] = defaultTrackParameters(3, &opusSamplerParamsArray2[i]);
-        sequence3[i]         = (SeqStep) { .active = false };
+        sequence3[i]         = (SeqStep){ .active = false };
         sequence3[i].data    = &trackParamsArray3[i];
     }
     seq3 = (Sequencer *) linearAlloc(sizeof(Sequencer));
@@ -488,12 +488,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq3               = (Sequencer) { .cur_step                = 0,
-                                        .steps                   = sequence3,
-                                        .n_beats                 = 4,
-                                        .steps_per_beat          = 4,
-                                        .instrument_params_array = opusSamplerParamsArray2,
-                                        .track_params_array      = trackParamsArray3 };
+    *seq3               = (Sequencer){ .cur_step                = 0,
+                                       .steps                   = sequence3,
+                                       .n_beats                 = 4,
+                                       .steps_per_beat          = 4,
+                                       .instrument_params_array = opusSamplerParamsArray2,
+                                       .track_params_array      = trackParamsArray3 };
     tracks[3].sequencer = seq3;
 
     // TRACK 4 (NOISE_SYNTH) ///////////////////////////////////////////
@@ -517,7 +517,7 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *noise_synth = (NoiseSynth) { .env = env3, .lfsr_register = 0x4000 }; // Initial seed
+    *noise_synth = (NoiseSynth){ .env = env3, .lfsr_register = 0x4000 }; // Initial seed
     tracks[4].instrument_data = noise_synth;
 
     sequence4 = (SeqStep *) linearAlloc(16 * sizeof(SeqStep));
@@ -538,7 +538,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
         noiseSynthParamsArray[i] = defaultNoiseSynthParameters();
         trackParamsArray4[i]     = defaultTrackParameters(4, &noiseSynthParamsArray[i]);
-        sequence4[i]             = (SeqStep) { .active = false };
+        sequence4[i]             = (SeqStep){ .active = false };
         sequence4[i].data        = &trackParamsArray4[i];
     }
     seq4 = (Sequencer *) linearAlloc(sizeof(Sequencer));
@@ -546,12 +546,12 @@ int main(int argc, char **argv) {
         ret = 1;
         goto cleanup;
     }
-    *seq4               = (Sequencer) { .cur_step                = 0,
-                                        .steps                   = sequence4,
-                                        .n_beats                 = 4,
-                                        .steps_per_beat          = 4,
-                                        .instrument_params_array = noiseSynthParamsArray,
-                                        .track_params_array      = trackParamsArray4 };
+    *seq4               = (Sequencer){ .cur_step                = 0,
+                                       .steps                   = sequence4,
+                                       .n_beats                 = 4,
+                                       .steps_per_beat          = 4,
+                                       .instrument_params_array = noiseSynthParamsArray,
+                                       .track_params_array      = trackParamsArray4 };
     tracks[4].sequencer = seq4;
 
     LightLock_Init(&clock_lock);
@@ -569,9 +569,11 @@ int main(int argc, char **argv) {
 
     const char *quitMenuOptions[]  = { "Save", "Load", "Quit", "Cancel" };
     const int   numQuitMenuOptions = sizeof(quitMenuOptions) / sizeof(quitMenuOptions[0]);
-    const char *saveMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track", "Back" };
+    const char *saveMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track",
+                                       "Back" };
     const int   numSaveMenuOptions = sizeof(saveMenuOptions) / sizeof(saveMenuOptions[0]);
-    const char *loadMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track", "Back" };
+    const char *loadMenuOptions[]  = { "Project / Song", "Current Sequence", "Active Track",
+                                       "Back" };
     const int   numLoadMenuOptions = sizeof(loadMenuOptions) / sizeof(loadMenuOptions[0]);
     bool        should_break_loop  = false;
 
@@ -579,11 +581,13 @@ int main(int argc, char **argv) {
         hidScanInput();
         sample_cleanup_process();
 
-        u64 now   = svcGetSystemTick();
-        u32 kDown = hidKeysDown();
-        u32 kHeld = hidKeysHeld();
+        u64           now   = svcGetSystemTick();
+        u32           kDown = hidKeysDown();
+        u32           kHeld = hidKeysHeld();
+        touchPosition touch;
+        hidTouchRead(&touch);
 
-        sessionControllerHandleInput(&ctx, kDown, kHeld, now, &should_break_loop);
+        sessionControllerHandleInput(&ctx, kDown, kHeld, touch, now, &should_break_loop);
 
         if (should_break_loop) {
             break;

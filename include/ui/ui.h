@@ -50,7 +50,8 @@ extern void drawMainView(Track *tracks, int selected_row, int selected_col, Scre
 extern void drawClockSettingsView(int selected_option);
 extern void drawQuitMenu(const char *options[], int num_options, int selected_option);
 extern void drawProjectLoadView(int selected_project, int load_mode);
-extern void drawSubMenu(const char *title, const char *options[], int num_options, int selected_option);
+extern void drawSubMenu(const char *title, const char *options[], int num_options,
+                        int selected_option);
 extern void drawTouchScreenSettingsView(int selected_option, ScreenFocus focus);
 extern void drawTouchClockSettingsView(int selected_option);
 extern void drawSampleManagerView(SampleBank *bank, int selected_row, int selected_col,

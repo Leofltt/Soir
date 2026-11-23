@@ -54,7 +54,7 @@ void setSteps(Sequencer *seq, SeqStep *steps) {
 
 SeqStep updateSequencer(Sequencer *seq) {
     if (!seq || !seq->steps) {
-        return (SeqStep) { .active = false, .data = NULL };
+        return (SeqStep){ .active = false, .data = NULL };
     }
 
     SeqStep current_step = seq->steps[seq->cur_step];

@@ -49,7 +49,14 @@ void initEditingParams(SessionContext *ctx, Track *track, int selected_col) {
     }
 }
 
-void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
+void handleInputStepSettings(SessionContext *ctx, u32 kDown, touchPosition touch) {
+    if (*ctx->selected_row == 0) {
+        if (kDown & KEY_TOUCH) {
+            *ctx->selected_row = 1;
+        }
+        return;
+    }
+
     int track_idx = *ctx->selected_row - 1;
     if (track_idx < 0 || track_idx >= N_TRACKS)
         return;
@@ -122,7 +129,36 @@ void handleInputStepSettings(SessionContext *ctx, u32 kDown) {
 
     *ctx->selected_step_option = (current_col == 0) ? current_row : current_row + num_left;
 
-    if (kDown & KEY_A) {
+    bool open_edit = (kDown & KEY_A) != 0;
+
+    if (kDown & KEY_TOUCH) {
+        if (touch.py < 28 && touch.px >= 190) {
+            if (touch.px < 250) {
+                *ctx->selected_row = (*ctx->selected_row % N_TRACKS) + 1;
+            } else {
+                int n_steps        = track->sequencer->n_beats * track->sequencer->steps_per_beat;
+                *ctx->selected_col = (*ctx->selected_col + 1) % (n_steps + 1);
+            }
+        } else {
+            const float cell_width  = 140.0f;
+            const float cell_height = 20.0f;
+            const float padding     = 5.0f;
+
+            for (int i = 0; i < param_count; i++) {
+                float x = (param_list[i].column == 0) ? 10.0f : 160.0f;
+                float y = 30.0f + param_list[i].row_in_column * (cell_height + padding);
+
+                if (touch.px >= x && touch.px <= x + cell_width && touch.py >= y &&
+                    touch.py <= y + cell_height) {
+                    *ctx->selected_step_option = param_list[i].unique_id;
+                    open_edit                  = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (open_edit) {
         if (track_idx >= 0) {
             initEditingParams(ctx, track, *ctx->selected_col);
             if (*ctx->selected_step_option >= 0 && *ctx->selected_step_option < param_count) {

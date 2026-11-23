@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 char g_project_names[MAX_PROJECTS][MAX_PROJECT_NAME_LEN];
-int g_project_count = 0;
+int  g_project_count = 0;
 
 void enterProjectLoadView(SessionContext *ctx, int mode) {
     *ctx->selected_project_option = 0;
@@ -26,7 +26,7 @@ void handleInputProjectLoad(SessionContext *ctx, u32 kDown, int mode) {
     if (kDown & KEY_B) {
         // Go back to the load submenu
         ctx->session->main_screen_view = VIEW_LOAD_SUBMENU;
-        *ctx->selected_quit_option = mode; // Highlight the selected option
+        *ctx->selected_quit_option     = mode; // Highlight the selected option
         return;
     }
 
@@ -66,6 +66,6 @@ void handleInputProjectLoad(SessionContext *ctx, u32 kDown, int mode) {
 
         // Return to main view
         ctx->session->main_screen_view = VIEW_MAIN;
-        *ctx->screen_focus = *ctx->previous_screen_focus;
+        *ctx->screen_focus             = *ctx->previous_screen_focus;
     }
 }
